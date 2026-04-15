@@ -12,10 +12,11 @@ import ApprovalSetoran from './pages/dm/ApprovalSetoran'
 import AuditSetoran from './pages/finance/AuditSetoran'
 
 function RootRedirect() {
-  const { profile, loading } = useAuth()
+  const { user, profile, loading, profileError } = useAuth()
 
-  if (loading) return <Navigate to="/login" replace />
-  if (!profile) return <Navigate to="/login" replace />
+  if (loading) return <AuthScreen message="Menyiapkan sesi login..." />
+  if (!user) return <Navigate to="/login" replace />
+  if (!profile) return <AuthScreen message={profileError || 'Menghubungkan data profil...'} />
 
   const role = profile.role
   if (['staff', 'asst_head_store', 'head_store'].includes(role)) return <Navigate to="/staff" replace />
@@ -26,13 +27,26 @@ function RootRedirect() {
 }
 
 function RequireAuth({ children, roles }) {
-  const { profile, loading } = useAuth()
+  const { user, profile, loading, profileError } = useAuth()
 
-  if (loading) return <Navigate to="/login" replace />
-  if (!profile) return <Navigate to="/login" replace />
+  if (loading) return <AuthScreen message="Menyiapkan sesi login..." />
+  if (!user) return <Navigate to="/login" replace />
+  if (!profile) return <AuthScreen message={profileError || 'Menghubungkan data profil...'} />
   if (roles && !roles.includes(profile.role)) return <Navigate to="/" replace />
 
   return children
+}
+
+function AuthScreen({ message }) {
+  return (
+    <div className="min-h-screen bg-primary-50 flex items-center justify-center px-6">
+      <div className="max-w-sm w-full bg-white rounded-2xl shadow-sm border border-primary-100 p-6 text-center">
+        <div className="animate-spin w-8 h-8 border-2 border-primary-600 border-t-transparent rounded-full mx-auto mb-4" />
+        <div className="text-sm font-semibold text-gray-800">Sesi masih aktif</div>
+        <div className="text-xs text-gray-500 mt-2">{message}</div>
+      </div>
+    </div>
+  )
 }
 
 const STORE_ROLES   = ['staff', 'asst_head_store', 'head_store']
