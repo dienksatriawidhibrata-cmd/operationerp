@@ -1,35 +1,45 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
 export default function Login() {
-  const { signIn, profile } = useAuth()
+  const { signIn, profile, loading } = useAuth()
   const navigate = useNavigate()
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
-  const [loading, setLoading]   = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   const [error, setError]       = useState('')
+
+  // Kalau profile sudah ada, redirect sesuai role
+  useEffect(() => {
+    if (!loading && profile) {
+      const role = profile.role
+      if (['staff', 'asst_head_store', 'head_store'].includes(role))
+        navigate('/staff', { replace: true })
+      else if (['district_manager', 'area_manager', 'ops_manager'].includes(role))
+        navigate('/dm', { replace: true })
+      else if (role === 'finance_supervisor')
+        navigate('/finance', { replace: true })
+    }
+  }, [profile, loading])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
-    setLoading(true)
+    setSubmitting(true)
 
     const { error: err } = await signIn(email.trim(), password)
 
     if (err) {
       setError('Email atau password salah.')
-      setLoading(false)
-      return
+      setSubmitting(false)
     }
-
-    // Redirect handled by App.jsx via RootRedirect after profile loads
-    navigate('/', { replace: true })
+    // Kalau berhasil, biarkan useEffect di atas yang redirect
+    // setelah profile selesai di-load oleh AuthContext
   }
 
   return (
     <div className="page-shell items-center justify-center px-6 py-12">
-      {/* Logo */}
       <div className="text-center mb-8">
         <div className="w-20 h-20 bg-primary-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-primary-200">
           <span className="text-4xl">☕</span>
@@ -38,7 +48,6 @@ export default function Login() {
         <p className="text-sm text-gray-500 mt-1">Sistem Operasional Toko</p>
       </div>
 
-      {/* Form */}
       <form onSubmit={handleSubmit} className="w-full space-y-4">
         <div>
           <label className="label">Email</label>
@@ -74,10 +83,10 @@ export default function Login() {
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={submitting}
           className="btn-primary mt-2"
         >
-          {loading ? (
+          {submitting ? (
             <span className="flex items-center justify-center gap-2">
               <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
