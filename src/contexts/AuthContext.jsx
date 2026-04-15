@@ -24,10 +24,11 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
-      if (session?.user) fetchProfile(session.user.id)
-      setLoading(false)
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+  setUser(session?.user ?? null)
+  if (session?.user) await fetchProfile(session.user.id)
+  setLoading(false)
+})
     })
 
     // Listen for auth changes
