@@ -12,7 +12,9 @@ export default function Login() {
 
   // Kalau profile sudah ada, redirect sesuai role
   useEffect(() => {
-    if (!loading && profile) {
+    if (loading) return
+
+    if (profile) {
       const role = profile.role
       if (['staff', 'asst_head_store', 'head_store'].includes(role))
         navigate('/staff', { replace: true })
@@ -20,8 +22,14 @@ export default function Login() {
         navigate('/dm', { replace: true })
       else if (role === 'finance_supervisor')
         navigate('/finance', { replace: true })
+      return
     }
-  }, [profile, loading])
+
+    if (submitting) {
+      setError('Login berhasil, tapi profil user belum siap. Cek tabel profiles di Supabase.')
+      setSubmitting(false)
+    }
+  }, [profile, loading, navigate, submitting])
 
   const handleSubmit = async (e) => {
     e.preventDefault()

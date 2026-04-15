@@ -20,23 +20,31 @@ export default function DMDashboard() {
 
   // Ambil start of week (Senin)
   const weekStart = () => {
-    const d = new Date()
-    const day = d.getDay()
-    const mon = new Date(d)
-    mon.setDate(d.getDate() - (day === 0 ? 6 : day - 1))
-    mon.setHours(0, 0, 0, 0)
-    return mon.toISOString().split('T')[0]
+    const now = new Date()
+    const wibNow = new Date(now.getTime() + 7 * 3600 * 1000)
+    const day = wibNow.getUTCDay()
+    const diff = day === 0 ? 6 : day - 1
+    wibNow.setUTCDate(wibNow.getUTCDate() - diff)
+    return wibNow.toISOString().split('T')[0]
   }
 
   const fetchDashboard = async () => {
+    setLoading(true)
+
     let branchQuery = supabase.from('branches').select('*').eq('is_active', true)
     if (profile.role === 'district_manager')
       branchQuery = branchQuery.in('district', profile.managed_districts || [])
     else if (profile.role === 'area_manager')
       branchQuery = branchQuery.in('area', profile.managed_areas || [])
 
-    const { data: branches } = await branchQuery.order('name')
-    if (!branches || branches.length === 0) { setLoading(false); return }
+    const { data: branches, error: branchError } = await branchQuery.order('name')
+    if (branchError || !branches || branches.length === 0) {
+      setStores([])
+      setVisits([])
+      setSummary({ total: 0, ceklisOK: 0, laporanOK: 0, visitedCount: 0, pendingSetoran: 0 })
+      setLoading(false)
+      return
+    }
 
     const ids = branches.map(b => b.id)
     const ws  = weekStart()
@@ -51,6 +59,14 @@ export default function DMDashboard() {
         .gte('tanggal', ws)
         .order('tanggal', { ascending: false }),
     ])
+
+    if (ceklisRes.error || laporanRes.error || setoranRes.error || visitRes.error) {
+      setStores([])
+      setVisits([])
+      setSummary({ total: branches.length, ceklisOK: 0, laporanOK: 0, visitedCount: 0, pendingSetoran: 0 })
+      setLoading(false)
+      return
+    }
 
     const ceklisMap  = {}
     const laporanMap = {}
@@ -276,12 +292,14 @@ export default function DMDashboard() {
 }
 
 function StatCard({ label, value, pct, color }) {
+  const width = Math.min(Math.max(pct * 100, 0), 100)
+
   return (
     <div className="card p-4">
       <div className={`text-xl font-bold ${color}`}>{value}</div>
       <div className="text-xs text-gray-500 mt-1">{label}</div>
       <div className="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-        <div className="h-full bg-primary-500 rounded-full transition-all" style={{ width: `${pct * 100}%` }} />
+        <div className="h-full bg-primary-500 rounded-full transition-all" style={{ width: `${width}%` }} />
       </div>
     </div>
   )
