@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
 export default function Login() {
-  const { signIn, profile, loading } = useAuth()
+  const { signIn, user, profile, loading, profileError } = useAuth()
   const navigate = useNavigate()
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
@@ -25,11 +25,11 @@ export default function Login() {
       return
     }
 
-    if (submitting) {
-      setError('Login berhasil, tapi profil user belum siap. Cek tabel profiles di Supabase.')
+    if (submitting && user && !profile) {
+      setError(profileError || 'Login berhasil, tapi profil user belum siap. Cek tabel profiles di Supabase.')
       setSubmitting(false)
     }
-  }, [profile, loading, navigate, submitting])
+  }, [user, profile, loading, navigate, profileError, submitting])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
