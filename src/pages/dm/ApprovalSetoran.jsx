@@ -28,14 +28,14 @@ export default function ApprovalSetoran() {
   const fetchSetoran = async () => {
     setLoading(true)
     let q = supabase.from('daily_deposits')
-      .select('*, branch:branches(name,store_id,district,area)')
+      .select('*, branch:branches!inner(name,store_id,district,area)')
       .eq('status', tab)
       .order('submitted_at', { ascending: false })
 
     if (profile?.role === 'district_manager') {
-      q = q.in('branches.district', profile.managed_districts || [])
+      q = q.in('branch.district', profile.managed_districts || [])
     } else if (profile?.role === 'area_manager') {
-      q = q.in('branches.area', profile.managed_areas || [])
+      q = q.in('branch.area', profile.managed_areas || [])
     }
 
     const { data } = await q
