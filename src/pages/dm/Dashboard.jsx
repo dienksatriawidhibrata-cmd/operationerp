@@ -59,6 +59,7 @@ export default function DMDashboard() {
   const [availableMonths, setAvailableMonths] = useState([])
   const [budgetMonth, setBudgetMonth] = useState(getMonthKey(today))
   const [loading, setLoading] = useState(true)
+  const [selectedBudgetDetail, setSelectedBudgetDetail] = useState(null)
   const [activeTab, setActiveTab] = useState('toko')
   const [visitPeriod, setVisitPeriod] = useState('week')
   const [visitSummary, setVisitSummary] = useState(EMPTY_VISIT_SUMMARY)
@@ -605,6 +606,7 @@ export default function DMDashboard() {
                       <OpexBudgetRow
                         key={row.id}
                         row={row}
+                        onOpenDetail={() => setSelectedBudgetDetail(row)}
                         bordered={index < opexRows.length - 1}
                       />
                     ))
@@ -758,6 +760,13 @@ export default function DMDashboard() {
           </>
         )}
       </div>
+
+      {selectedBudgetDetail && (
+        <BudgetDetailModal
+          row={selectedBudgetDetail}
+          onClose={() => setSelectedBudgetDetail(null)}
+        />
+      )}
 
       <DMBottomNav />
     </div>
@@ -1254,7 +1263,7 @@ function NotificationRow({ item, bordered }) {
   )
 }
 
-function OpexBudgetRow({ row, bordered }) {
+function OpexBudgetRow({ row, bordered, onOpenDetail }) {
   const statusClass = row.status === 'over'
     ? 'bg-red-50 text-red-600'
     : row.status === 'pending'
@@ -1296,22 +1305,68 @@ function OpexBudgetRow({ row, bordered }) {
           </div>
         </div>
       </div>
-      <div className="grid grid-cols-3 gap-2 mt-2 text-xs">
-        <div className="bg-primary-50 rounded-lg px-3 py-2">
-          <div className="text-primary-400">Estimasi Sales</div>
-          <div className="font-semibold text-primary-700 mt-1">{fmtRp(row.estimatedNetSales)}</div>
+      <div className="mt-3 flex items-center justify-between gap-3">
+        <div className="text-xs text-primary-600">
+          Estimasi sales {fmtRp(row.estimatedNetSales)} · budget {fmtRp(row.budgetCap)}
         </div>
-        <div className="bg-primary-50 rounded-lg px-3 py-2">
-          <div className="text-primary-400">Budget BOH 3%</div>
-          <div className="font-semibold text-primary-700 mt-1">{fmtRp(row.budgetCap)}</div>
+        <button
+          onClick={onOpenDetail}
+          className="text-xs font-semibold text-primary-700 px-3 py-1.5 rounded-full bg-primary-50 border border-primary-100"
+        >
+          Detail
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function BudgetDetailModal({ row, onClose }) {
+  return (
+    <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[1px] flex items-end justify-center px-4 py-6">
+      <div className="w-full max-w-[430px] bg-white rounded-3xl shadow-2xl overflow-hidden">
+        <div className="px-4 py-4 border-b border-gray-100 flex items-start justify-between gap-3">
+          <div>
+            <div className="text-lg font-bold text-gray-900">{row.name.replace('Bagi Kopi ', '')}</div>
+            <div className="text-xs text-gray-500 mt-1">
+              {row.monthKey ? formatMonthKey(row.monthKey) : 'Belum ada periode'} · {row.note}
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-9 h-9 rounded-full bg-gray-100 text-gray-500 text-lg leading-none"
+          >
+            ×
+          </button>
         </div>
-        <div className="bg-primary-50 rounded-lg px-3 py-2">
-          <div className="text-primary-400">Rasio Estimasi</div>
-          <div className="font-semibold text-primary-700 mt-1">
-            {row.projectedRatio == null ? '-' : formatRatio(row.projectedRatio)}
+
+        <div className="p-4 space-y-3 max-h-[70vh] overflow-y-auto">
+          <div className="grid grid-cols-2 gap-3 text-xs">
+            <MetricBox label="Total BOH" value={fmtRp(row.bohAmount)} tone="gray" />
+            <MetricBox label="Net Sales Input" value={fmtRp(row.netSales)} tone="gray" />
+            <MetricBox label="Rasio Aktual" value={row.ratio == null ? '-' : formatRatio(row.ratio)} tone={row.status === 'over' ? 'danger' : 'ok'} />
+            <MetricBox label="Estimasi Sales" value={fmtRp(row.estimatedNetSales)} tone="primary" />
+            <MetricBox label="Budget BOH 3%" value={fmtRp(row.budgetCap)} tone="primary" />
+            <MetricBox label="Rasio Estimasi" value={row.projectedRatio == null ? '-' : formatRatio(row.projectedRatio)} tone="primary" />
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+function MetricBox({ label, value, tone }) {
+  const toneClass = tone === 'danger'
+    ? 'bg-red-50 text-red-600'
+    : tone === 'ok'
+      ? 'bg-green-50 text-green-700'
+      : tone === 'primary'
+        ? 'bg-primary-50 text-primary-700'
+        : 'bg-gray-50 text-gray-900'
+
+  return (
+    <div className={`rounded-xl px-3 py-3 ${toneClass}`}>
+      <div className="text-[11px] opacity-70">{label}</div>
+      <div className="font-semibold mt-1">{value}</div>
     </div>
   )
 }
