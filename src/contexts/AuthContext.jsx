@@ -11,27 +11,20 @@ export function AuthProvider({ children }) {
   const fetchProfile = async (userId) => {
     const { data, error } = await supabase
       .from('profiles')
-      .select(`
-        *,
-        branch:branches(*)
-      `)
+      .select('*, branch:branches(*)')
       .eq('id', userId)
       .single()
-
     if (!error && data) setProfile(data)
     else setProfile(null)
   }
 
   useEffect(() => {
-    // Get initial session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
-  setUser(session?.user ?? null)
-  if (session?.user) await fetchProfile(session.user.id)
-  setLoading(false)
-})
-    })
+      setUser(session?.user ?? null)
+      if (session?.user) await fetchProfile(session.user.id)
+      setLoading(false)
+    }).catch(() => setLoading(false))
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         setUser(session?.user ?? null)
@@ -45,8 +38,7 @@ export function AuthProvider({ children }) {
   }, [])
 
   const signIn = async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-    return { data, error }
+    return await supabase.auth.signInWithPassword({ email, password })
   }
 
   const signOut = async () => {
@@ -55,9 +47,11 @@ export function AuthProvider({ children }) {
     setProfile(null)
   }
 
-  const value = { user, profile, loading, signIn, signOut }
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider value={{ user, profile, loading, signIn, signOut }}>
+      {children}
+    </AuthContext.Provider>
+  )
 }
 
 export function useAuth() {
