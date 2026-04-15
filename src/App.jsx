@@ -1,7 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext'
 
-// Pages
 import Login from './pages/Login'
 import StaffHome from './pages/staff/Home'
 import CeklisHarian from './pages/staff/CeklisHarian'
@@ -15,12 +14,7 @@ import AuditSetoran from './pages/finance/AuditSetoran'
 function RootRedirect() {
   const { profile, loading } = useAuth()
 
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="animate-spin w-8 h-8 border-2 border-primary-600 border-t-transparent rounded-full" />
-    </div>
-  )
-
+  if (loading) return <Navigate to="/login" replace />
   if (!profile) return <Navigate to="/login" replace />
 
   const role = profile.role
@@ -34,12 +28,7 @@ function RootRedirect() {
 function RequireAuth({ children, roles }) {
   const { profile, loading } = useAuth()
 
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="animate-spin w-8 h-8 border-2 border-primary-600 border-t-transparent rounded-full" />
-    </div>
-  )
-
+  if (loading) return <Navigate to="/login" replace />
   if (!profile) return <Navigate to="/login" replace />
   if (roles && !roles.includes(profile.role)) return <Navigate to="/" replace />
 
@@ -57,7 +46,6 @@ export default function App() {
       <Route path="/" element={<RootRedirect />} />
       <Route path="/login" element={<Login />} />
 
-      {/* Staff routes */}
       <Route path="/staff" element={
         <RequireAuth roles={[...STORE_ROLES, ...ALL_MANAGER, ...FINANCE_ROLES]}>
           <StaffHome />
@@ -79,7 +67,6 @@ export default function App() {
         </RequireAuth>
       } />
 
-      {/* DM / AM / OM routes */}
       <Route path="/dm" element={
         <RequireAuth roles={ALL_MANAGER}>
           <DMDashboard />
@@ -96,7 +83,6 @@ export default function App() {
         </RequireAuth>
       } />
 
-      {/* Finance routes */}
       <Route path="/finance" element={
         <RequireAuth roles={[...FINANCE_ROLES, 'ops_manager']}>
           <AuditSetoran />
