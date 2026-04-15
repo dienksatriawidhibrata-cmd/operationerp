@@ -43,6 +43,7 @@ const EMPTY_OPEX_SUMMARY = {
 const BOH_CATEGORY = 'Beban Operasional Harian'
 const BROWSER_NOTIFICATION_LIMIT = 4
 const REFETCH_INTERVAL_MS = 5 * 60 * 1000
+const SALES_SAFETY_FACTOR = 0.925
 
 export default function DMDashboard() {
   const { profile, signOut } = useAuth()
@@ -55,6 +56,8 @@ export default function DMDashboard() {
   const [activities, setActivities] = useState([])
   const [opexRows, setOpexRows] = useState([])
   const [opexSummary, setOpexSummary] = useState(EMPTY_OPEX_SUMMARY)
+  const [availableMonths, setAvailableMonths] = useState([])
+  const [budgetMonth, setBudgetMonth] = useState(getMonthKey(today))
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('toko')
   const [visitPeriod, setVisitPeriod] = useState('week')
@@ -74,7 +77,7 @@ export default function DMDashboard() {
     if (profile) {
       fetchDashboard()
     }
-  }, [profile, visitPeriod])
+  }, [profile, visitPeriod, budgetMonth])
 
   useEffect(() => {
     dashboardRefreshRef.current = () => fetchDashboard()
@@ -133,6 +136,7 @@ export default function DMDashboard() {
 
   const fetchDashboard = async () => {
     setLoading(true)
+    const monthWindowStart = getMonthStart(addMonths(today, -5))
 
     let branchQuery = supabase.from('branches').select('*').eq('is_active', true)
     if (profile.role === 'district_manager') {
@@ -170,9 +174,10 @@ export default function DMDashboard() {
         .eq('tanggal', today),
       supabase
         .from('daily_reports')
-        .select('id,branch_id,net_sales,submitted_at')
+        .select('id,branch_id,tanggal,net_sales,submitted_at')
         .in('branch_id', branchIds)
-        .eq('tanggal', yesterday),
+        .gte('tanggal', monthWindowStart)
+        .lte('tanggal', today),
       supabase
         .from('daily_deposits')
         .select('id,branch_id,status,selisih,submitted_at,approved_at,rejection_reason')
@@ -182,7 +187,8 @@ export default function DMDashboard() {
         .from('operational_expenses')
         .select('id,branch_id,tanggal,category,total,item_name,created_at')
         .in('branch_id', branchIds)
-        .in('tanggal', [today, yesterday])
+        .gte('tanggal', monthWindowStart)
+        .lte('tanggal', today)
         .order('created_at', { ascending: false }),
       supabase
         .from('daily_visits')
@@ -249,7 +255,8 @@ export default function DMDashboard() {
     }
 
     const checklistsByBranch = {}
-    const reportsByBranch = {}
+    const reportsByBranchDay = {}
+    const reportsByBranchMonth = {}
     const depositsByBranch = {}
     const latestVisitByBranch = {}
     const myLatestVisitByBranch = {}
@@ -260,7 +267,22 @@ export default function DMDashboard() {
       checklistsByBranch[item.branch_id][item.shift] = item
     })
     ;(laporanRes.data || []).forEach((item) => {
-      reportsByBranch[item.branch_id] = item
+      if (item.tanggal === yesterday) {
+        reportsByBranchDay[item.branch_id] = item
+      }
+      const monthKey = getMonthKey(item.tanggal)
+      if (!reportsByBranchMonth[item.branch_id]) reportsByBranchMonth[item.branch_id] = {}
+      if (!reportsByBranchMonth[item.branch_id][monthKey]) {
+        reportsByBranchMonth[item.branch_id][monthKey] = {
+          netSales: 0,
+          filledDays: 0,
+          lastSubmittedAt: item.submitted_at,
+        }
+      }
+
+      reportsByBranchMonth[item.branch_id][monthKey].netSales += Number(item.net_sales || 0)
+      reportsByBranchMonth[item.branch_id][monthKey].filledDays += 1
+      reportsByBranchMonth[item.branch_id][monthKey].lastSubmittedAt = item.submitted_at
     })
     ;(setoranRes.data || []).forEach((item) => {
       depositsByBranch[item.branch_id] = item
@@ -279,28 +301,34 @@ export default function DMDashboard() {
 
     const enrichedStores = branches.map((branch) => {
       const todayExpenses = expensesByBranchDate[`${branch.id}:${today}`] || []
-      const yesterdayExpenses = expensesByBranchDate[`${branch.id}:${yesterday}`] || []
-      const bohYesterday = yesterdayExpenses
-        .filter((expense) => expense.category === BOH_CATEGORY)
-        .reduce((sum, expense) => sum + Number(expense.total || 0), 0)
-      const report = reportsByBranch[branch.id] || null
-      const netSales = Number(report?.net_sales || 0)
-      const bohRatio = netSales > 0 ? bohYesterday / netSales : null
+      const monthlyReports = reportsByBranchMonth[branch.id] || {}
+      const monthlyBudget = buildMonthlyBudget(monthlyReports, expensesByBranchDate, branch.id)
+      const selectedBudget =
+        monthlyBudget[budgetMonth] ||
+        monthlyBudget[getMonthKey(today)] ||
+        monthlyBudget[Object.keys(monthlyBudget).sort().reverse()[0]] ||
+        null
 
       return {
         ...branch,
         ceklisPagi: checklistsByBranch[branch.id]?.pagi || null,
         ceklisMalam: checklistsByBranch[branch.id]?.malam || null,
-        laporan: report,
+        laporan: reportsByBranchDay[branch.id] || null,
         setoran: depositsByBranch[branch.id] || null,
         visitPeriod: latestVisitByBranch[branch.id] || null,
         myLastVisit: myLatestVisitByBranch[branch.id] || null,
         opexTodayCount: todayExpenses.length,
         opexTodayTotal: todayExpenses.reduce((sum, expense) => sum + Number(expense.total || 0), 0),
-        bohYesterday,
-        bohRatio,
+        monthlyBudget,
+        selectedBudget,
       }
     })
+
+    const months = buildAvailableMonths(reportsByBranchMonth, expensesByBranchDate, today)
+    setAvailableMonths(months)
+    if (!months.find((month) => month.key === budgetMonth) && months[0]) {
+      setBudgetMonth(months[0].key)
+    }
 
     const visitedBranchIds = new Set((visitRes.data || []).map((item) => item.branch_id))
     const visitedCount = visitedBranchIds.size
@@ -390,7 +418,7 @@ export default function DMDashboard() {
     if (store.setoran?.status === 'submitted') return { variant: 'warn', label: 'Setoran' }
     if (store.setoran?.status === 'rejected') return { variant: 'danger', label: 'Rejected' }
     if (!store.setoran) return { variant: 'warn', label: 'Setoran' }
-    if (store.bohRatio != null && store.bohRatio > 0.03) return { variant: 'danger', label: 'BOH > 3%' }
+    if (store.selectedBudget?.actualRatio != null && store.selectedBudget.actualRatio > 0.03) return { variant: 'danger', label: 'BOH > 3%' }
     return { variant: 'ok', label: 'OK' }
   }
 
@@ -553,7 +581,22 @@ export default function DMDashboard() {
                   )}
                 </div>
 
-                <p className="section-title">Kontrol BOH vs Net Sales H-1</p>
+                <div className="flex items-center justify-between gap-3">
+                  <p className="section-title">Kontrol BOH vs Net Sales Bulanan</p>
+                  {availableMonths.length > 0 && (
+                    <select
+                      value={budgetMonth}
+                      onChange={(event) => setBudgetMonth(event.target.value)}
+                      className="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white text-gray-700"
+                    >
+                      {availableMonths.map((month) => (
+                        <option key={month.key} value={month.key}>
+                          {month.label}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
                 <div className="card overflow-hidden mb-3">
                   {opexRows.length === 0 ? (
                     <div className="px-4 py-5 text-sm text-gray-500 text-center">Belum ada data BOH yang bisa dibandingkan.</div>
@@ -592,9 +635,9 @@ export default function DMDashboard() {
                             <span className={store.opexTodayCount > 0 ? 'text-primary-600' : 'text-gray-400'}>
                               {store.opexTodayCount > 0 ? `${store.opexTodayCount} OPEX` : 'Belum OPEX'}
                             </span>
-                            {store.bohRatio != null && (
-                              <span className={store.bohRatio > 0.03 ? 'text-red-500' : 'text-green-600'}>
-                                BOH {formatRatio(store.bohRatio)}
+                            {store.selectedBudget?.actualRatio != null && (
+                              <span className={store.selectedBudget.actualRatio > 0.03 ? 'text-red-500' : 'text-green-600'}>
+                                BOH {formatRatio(store.selectedBudget.actualRatio)}
                               </span>
                             )}
                             {store.visitPeriod && (
@@ -827,12 +870,12 @@ function buildAlerts(stores, today, yesterday) {
       })
     }
 
-    if (store.bohRatio != null && store.bohRatio > 0.03) {
+    if (store.selectedBudget?.actualRatio != null && store.selectedBudget.actualRatio > 0.03) {
       items.push({
-        id: `budget-over-${yesterday}-${store.id}`,
+        id: `budget-over-${store.selectedBudget.monthKey}-${store.id}`,
         level: 'danger',
         title: `${shortName} melewati budget BOH`,
-        subtitle: `BOH ${fmtRp(store.bohYesterday)} vs net sales ${fmtRp(store.laporan?.net_sales || 0)} (${formatRatio(store.bohRatio)})`,
+        subtitle: `BOH ${fmtRp(store.selectedBudget.bohTotal)} vs net sales ${fmtRp(store.selectedBudget.actualNetSales)} (${formatRatio(store.selectedBudget.actualRatio)})`,
         timeLabel: 'Over budget',
       })
     }
@@ -921,41 +964,52 @@ function buildActivities({ branchMap, checklists, reports, deposits, expenses })
 function buildOpexRows(stores) {
   return stores
     .map((store) => {
-      const netSales = Number(store.laporan?.net_sales || 0)
+      const budget = store.selectedBudget
 
-      if (!store.laporan) {
+      if (!budget) {
         return {
           id: store.id,
           name: store.name,
           status: 'pending',
-          bohAmount: Number(store.bohYesterday || 0),
+          monthKey: null,
+          bohAmount: 0,
           netSales: 0,
           ratio: null,
-          note: 'Laporan harian H-1 belum ada',
+          estimatedNetSales: 0,
+          projectedRatio: null,
+          budgetCap: 0,
+          note: 'Belum ada data bulanan yang bisa dihitung',
         }
       }
 
-      if (netSales <= 0) {
+      if (budget.filledDays === 0 || budget.actualNetSales <= 0) {
         return {
           id: store.id,
           name: store.name,
-          status: store.bohYesterday > 0 ? 'over' : 'within',
-          bohAmount: Number(store.bohYesterday || 0),
-          netSales,
-          ratio: store.bohYesterday > 0 ? 1 : 0,
-          note: 'Net sales 0 atau belum valid',
+          monthKey: budget.monthKey,
+          status: budget.bohTotal > 0 ? 'over' : 'pending',
+          bohAmount: budget.bohTotal,
+          netSales: budget.actualNetSales,
+          ratio: budget.bohTotal > 0 ? 1 : null,
+          estimatedNetSales: budget.estimatedNetSales,
+          projectedRatio: budget.projectedRatio,
+          budgetCap: budget.estimatedBudgetCap,
+          note: 'Net sales bulan ini belum cukup untuk dibandingkan',
         }
       }
 
-      const ratio = Number(store.bohRatio || 0)
       return {
         id: store.id,
         name: store.name,
-        status: ratio > 0.03 ? 'over' : 'within',
-        bohAmount: Number(store.bohYesterday || 0),
-        netSales,
-        ratio,
-        note: ratio > 0.03 ? 'Melewati batas maksimal 3%' : 'Masih dalam batas maksimal 3%',
+        monthKey: budget.monthKey,
+        status: budget.actualRatio > 0.03 ? 'over' : 'within',
+        bohAmount: budget.bohTotal,
+        netSales: budget.actualNetSales,
+        ratio: budget.actualRatio,
+        estimatedNetSales: budget.estimatedNetSales,
+        projectedRatio: budget.projectedRatio,
+        budgetCap: budget.estimatedBudgetCap,
+        note: budget.actualRatio > 0.03 ? 'Melewati batas maksimal 3%' : 'Masih dalam batas maksimal 3%',
       }
     })
     .sort((left, right) => {
@@ -985,6 +1039,64 @@ function buildBrowserNotificationCandidates(alerts, activities) {
   return [...highPriorityAlerts, ...freshActivities]
 }
 
+function buildMonthlyBudget(monthlyReports, expensesByBranchDate, branchId) {
+  const reportMonths = Object.keys(monthlyReports || {})
+  const expenseMonths = Object.keys(expensesByBranchDate || {})
+    .filter((key) => key.startsWith(`${branchId}:`))
+    .map((key) => key.split(':')[1])
+    .filter((date) => {
+      const expenses = expensesByBranchDate[`${branchId}:${date}`] || []
+      return expenses.some((expense) => expense.category === BOH_CATEGORY)
+    })
+    .map((date) => getMonthKey(date))
+
+  const months = Array.from(new Set([...reportMonths, ...expenseMonths]))
+  const budgetMap = {}
+
+  months.forEach((monthKey) => {
+    const report = monthlyReports[monthKey] || { netSales: 0, filledDays: 0 }
+    const daysInMonth = getDaysInMonth(monthKey)
+    const monthlyDates = Object.keys(expensesByBranchDate || {}).filter((key) => key.startsWith(`${branchId}:${monthKey}`))
+    const bohTotal = monthlyDates.reduce((sum, key) => {
+      const expenses = expensesByBranchDate[key] || []
+      return sum + expenses
+        .filter((expense) => expense.category === BOH_CATEGORY)
+        .reduce((innerSum, expense) => innerSum + Number(expense.total || 0), 0)
+    }, 0)
+    const actualNetSales = Number(report.netSales || 0)
+    const estimatedNetSales = report.filledDays > 0
+      ? Math.round((actualNetSales / report.filledDays) * daysInMonth * SALES_SAFETY_FACTOR)
+      : 0
+
+    budgetMap[monthKey] = {
+      monthKey,
+      bohTotal,
+      actualNetSales,
+      filledDays: report.filledDays || 0,
+      daysInMonth,
+      actualRatio: actualNetSales > 0 ? bohTotal / actualNetSales : null,
+      estimatedNetSales,
+      projectedRatio: estimatedNetSales > 0 ? bohTotal / estimatedNetSales : null,
+      estimatedBudgetCap: estimatedNetSales > 0 ? estimatedNetSales * 0.03 : 0,
+    }
+  })
+
+  return budgetMap
+}
+
+function buildAvailableMonths(reportsByBranchMonth, expensesByBranchDate, today) {
+  const reportMonths = Object.values(reportsByBranchMonth || {}).flatMap((months) => Object.keys(months || {}))
+  const expenseMonths = Object.keys(expensesByBranchDate || {}).map((key) => getMonthKey(key.split(':')[1]))
+  const monthKeys = Array.from(new Set([getMonthKey(today), ...reportMonths, ...expenseMonths]))
+    .sort()
+    .reverse()
+
+  return monthKeys.map((monthKey) => ({
+    key: monthKey,
+    label: formatMonthKey(monthKey),
+  }))
+}
+
 function canManagerAccessBranch(manager, branch) {
   if (manager.role === 'district_manager') {
     return (manager.managed_districts || []).includes(branch.district)
@@ -993,6 +1105,32 @@ function canManagerAccessBranch(manager, branch) {
     return (manager.managed_areas || []).includes(branch.area)
   }
   return false
+}
+
+function getMonthKey(dateString) {
+  return String(dateString).slice(0, 7)
+}
+
+function getMonthStart(dateString) {
+  return `${getMonthKey(dateString)}-01`
+}
+
+function addMonths(dateString, offset) {
+  const [year, month] = getMonthKey(dateString).split('-').map(Number)
+  const next = new Date(Date.UTC(year, month - 1 + offset, 1))
+  return `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, '0')}-01`
+}
+
+function getDaysInMonth(monthKey) {
+  const [year, month] = monthKey.split('-').map(Number)
+  return new Date(Date.UTC(year, month, 0)).getUTCDate()
+}
+
+function formatMonthKey(monthKey) {
+  return new Date(`${monthKey}-01`).toLocaleDateString('id-ID', {
+    month: 'long',
+    year: 'numeric',
+  })
 }
 
 function getVisitRange(period, today) {
@@ -1134,7 +1272,9 @@ function OpexBudgetRow({ row, bordered }) {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="text-sm font-semibold text-gray-900 truncate">{row.name.replace('Bagi Kopi ', '')}</div>
-          <div className="text-xs text-gray-500 mt-1">{row.note}</div>
+          <div className="text-xs text-gray-500 mt-1">
+            {row.monthKey ? `${formatMonthKey(row.monthKey)} · ${row.note}` : row.note}
+          </div>
         </div>
         <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full flex-shrink-0 ${statusClass}`}>
           {statusLabel}
@@ -1142,17 +1282,33 @@ function OpexBudgetRow({ row, bordered }) {
       </div>
       <div className="grid grid-cols-3 gap-2 mt-3 text-xs">
         <div className="bg-gray-50 rounded-lg px-3 py-2">
-          <div className="text-gray-400">BOH H-1</div>
+          <div className="text-gray-400">Total BOH</div>
           <div className="font-semibold text-gray-900 mt-1">{fmtRp(row.bohAmount)}</div>
         </div>
         <div className="bg-gray-50 rounded-lg px-3 py-2">
-          <div className="text-gray-400">Net Sales H-1</div>
+          <div className="text-gray-400">Net Sales Input</div>
           <div className="font-semibold text-gray-900 mt-1">{fmtRp(row.netSales)}</div>
         </div>
         <div className="bg-gray-50 rounded-lg px-3 py-2">
-          <div className="text-gray-400">Rasio</div>
+          <div className="text-gray-400">Rasio Aktual</div>
           <div className={`font-semibold mt-1 ${row.status === 'over' ? 'text-red-600' : row.status === 'pending' ? 'text-yellow-700' : 'text-green-600'}`}>
             {row.ratio == null ? '-' : formatRatio(row.ratio)}
+          </div>
+        </div>
+      </div>
+      <div className="grid grid-cols-3 gap-2 mt-2 text-xs">
+        <div className="bg-primary-50 rounded-lg px-3 py-2">
+          <div className="text-primary-400">Estimasi Sales</div>
+          <div className="font-semibold text-primary-700 mt-1">{fmtRp(row.estimatedNetSales)}</div>
+        </div>
+        <div className="bg-primary-50 rounded-lg px-3 py-2">
+          <div className="text-primary-400">Budget BOH 3%</div>
+          <div className="font-semibold text-primary-700 mt-1">{fmtRp(row.budgetCap)}</div>
+        </div>
+        <div className="bg-primary-50 rounded-lg px-3 py-2">
+          <div className="text-primary-400">Rasio Estimasi</div>
+          <div className="font-semibold text-primary-700 mt-1">
+            {row.projectedRatio == null ? '-' : formatRatio(row.projectedRatio)}
           </div>
         </div>
       </div>

@@ -2,7 +2,36 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
 const AuthContext = createContext(null)
-const PROFILE_TIMEOUT_MS = 8000
+const PROFILE_TIMEOUT_MS = 20000
+const PROFILE_CACHE_KEY = 'bagikopi_ops_profile_cache'
+
+function readCachedProfile(userId) {
+  if (typeof window === 'undefined' || !userId) return null
+
+  try {
+    const raw = window.localStorage.getItem(PROFILE_CACHE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (parsed?.id !== userId) return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+function writeCachedProfile(profile) {
+  if (typeof window === 'undefined') return
+
+  try {
+    if (!profile) {
+      window.localStorage.removeItem(PROFILE_CACHE_KEY)
+      return
+    }
+    window.localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(profile))
+  } catch {
+    // Ignore cache write errors.
+  }
+}
 
 export function AuthProvider({ children }) {
   const [user, setUser]       = useState(null)
@@ -43,13 +72,19 @@ export function AuthProvider({ children }) {
     try {
       const profileData = await fetchProfileWithTimeout(session.user.id)
       setProfile(profileData || null)
+      writeCachedProfile(profileData || null)
 
       if (!profileData) {
         setProfileError('Profil user tidak ditemukan. Cek tabel profiles di Supabase.')
       }
     } catch (error) {
-      setProfile(null)
-      setProfileError(error.message || 'Gagal mengambil profil user.')
+      const cachedProfile = readCachedProfile(session.user.id)
+      setProfile(cachedProfile || null)
+      setProfileError(
+        cachedProfile
+          ? 'Koneksi ke profil sedang lambat. Aplikasi memakai data login terakhir agar tidak perlu login ulang.'
+          : (error.message || 'Gagal mengambil profil user.')
+      )
     } finally {
       setLoading(false)
     }
@@ -79,6 +114,7 @@ export function AuthProvider({ children }) {
     setUser(null)
     setProfile(null)
     setProfileError('')
+    writeCachedProfile(null)
   }
 
   return (
