@@ -576,7 +576,13 @@ export default function DMDashboard() {
         },
       })
 
-      if (authError) throw authError
+      if (authError) {
+        const msg = authError.message || ''
+        if (msg.toLowerCase().includes('already registered') || msg.toLowerCase().includes('already been registered')) {
+          throw new Error('Email ini sudah terdaftar di sistem auth. Jika akun baru saja dibuat tapi gagal dikonfigurasi, hubungi admin untuk set ulang profile-nya langsung di Supabase.')
+        }
+        throw authError
+      }
       if (!authData.user?.id) {
         throw new Error('Akun auth belum berhasil dibuat. Coba ulangi sekali lagi.')
       }

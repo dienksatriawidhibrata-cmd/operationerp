@@ -37,7 +37,7 @@ export default function DailyVisit() {
     setBranches(data || [])
   }
 
-  const fetchExisting = async () => {
+  const fetchExisting = async (preserveDone = false) => {
     const { data: visit } = await supabase
       .from('daily_visits')
       .select('*, visit_scores(*)')
@@ -63,7 +63,9 @@ export default function DailyVisit() {
       setCatatan('')
       setFotoKondisi([])
     }
-    setDone(false); setError('')
+    if (!preserveDone) setDone(false)
+    setError('')
+    setPhotoErrors({})
   }
 
   const totalScore = AUDIT_ITEMS.reduce((s, item) => s + (scores[item.key] || 0), 0)
@@ -113,11 +115,13 @@ export default function DailyVisit() {
       if (e1) { setError('Gagal: ' + e1.message); setSaving(false); return }
       visitId = newVisit.id
     } else {
-      await supabase.from('daily_visits').update({
+      const { error: eUpd } = await supabase.from('daily_visits').update({
         total_score: totalScore, grade: g.label, catatan, foto_kondisi: fotoKondisi
       }).eq('id', visitId)
+      if (eUpd) { setError('Gagal update visit: ' + eUpd.message); setSaving(false); return }
       // Delete old scores
-      await supabase.from('visit_scores').delete().eq('visit_id', visitId)
+      const { error: eDel } = await supabase.from('visit_scores').delete().eq('visit_id', visitId)
+      if (eDel) { setError('Gagal hapus scores lama: ' + eDel.message); setSaving(false); return }
     }
 
     // Insert scores
@@ -128,10 +132,18 @@ export default function DailyVisit() {
       photos: photos[item.key] || [],
     }))
     const { error: e2 } = await supabase.from('visit_scores').insert(scoreRows)
-    if (e2) { setError('Gagal simpan scores: ' + e2.message); setSaving(false); return }
+    if (e2) {
+      // Hapus orphan visit header kalau baru saja dibuat (bukan update)
+      if (!existing?.id) {
+        await supabase.from('daily_visits').delete().eq('id', visitId)
+      }
+      setError('Gagal simpan scores: ' + e2.message)
+      setSaving(false)
+      return
+    }
 
     setDone(true)
-    await fetchExisting()
+    await fetchExisting(true)
     setSaving(false)
   }
 

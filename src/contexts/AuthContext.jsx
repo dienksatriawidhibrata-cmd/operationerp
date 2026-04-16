@@ -100,10 +100,13 @@ export function AuthProvider({ children }) {
       return
     }
 
-    currentUserIdRef.current = session.user.id
+    const fetchingForUserId = session.user.id
+    currentUserIdRef.current = fetchingForUserId
 
     try {
-      const profileData = await fetchProfileWithTimeout(session.user.id)
+      const profileData = await fetchProfileWithTimeout(fetchingForUserId)
+      // Guard: auth state might have changed while we were awaiting
+      if (currentUserIdRef.current !== fetchingForUserId) return
       setProfile(profileData || null)
       writeCachedProfile(profileData || null)
 
@@ -111,7 +114,8 @@ export function AuthProvider({ children }) {
         setProfileError('Profil user tidak ditemukan. Cek tabel profiles di Supabase.')
       }
     } catch (error) {
-      const cachedProfile = readCachedProfile(session.user.id)
+      if (currentUserIdRef.current !== fetchingForUserId) return
+      const cachedProfile = readCachedProfile(fetchingForUserId)
       setProfile(cachedProfile || null)
       setProfileError(
         cachedProfile
@@ -119,7 +123,9 @@ export function AuthProvider({ children }) {
           : (error.message || 'Gagal mengambil profil user.')
       )
     } finally {
-      setLoading(false)
+      if (currentUserIdRef.current === fetchingForUserId) {
+        setLoading(false)
+      }
     }
   }
 

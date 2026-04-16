@@ -63,7 +63,7 @@ export default function AuditSetoran() {
   const fetchSetoran = async () => {
     setLoading(true)
     const range = getDateRange(period, anchorDate)
-    const { data } = await supabase
+    const { data, error: fetchErr } = await supabase
       .from('daily_deposits')
       .select('*, branch:branches(id,name,store_id,district,area)')
       .eq('finance_status', tab)
@@ -73,7 +73,11 @@ export default function AuditSetoran() {
       .order('tanggal', { ascending: false })
       .order('submitted_at', { ascending: false })
 
-    setItems(data || [])
+    if (fetchErr) {
+      setMsg({ type: 'error', text: 'Gagal memuat data: ' + fetchErr.message })
+    } else {
+      setItems(data || [])
+    }
     setLoading(false)
   }
 
@@ -392,7 +396,12 @@ function FinanceCard({ item, expanded, onToggle, onAudit, onFlag, notes, onNotes
 
           <div className="text-xs text-gray-400 space-y-0.5">
             <div>Submit: {item.submitted_at ? new Date(item.submitted_at).toLocaleString('id-ID') : '-'}</div>
-            {item.approved_at && <div>Approved by DM: {new Date(item.approved_at).toLocaleString('id-ID')}</div>}
+            {item.approved_at && item.status === 'approved' && (
+              <div>Approved by DM: {new Date(item.approved_at).toLocaleString('id-ID')}</div>
+            )}
+            {item.approved_at && item.status === 'rejected' && (
+              <div className="text-red-500">Rejected by DM: {new Date(item.approved_at).toLocaleString('id-ID')}</div>
+            )}
             {item.finance_notes && <div className="mt-1 text-primary-600">Catatan audit: {item.finance_notes}</div>}
           </div>
 

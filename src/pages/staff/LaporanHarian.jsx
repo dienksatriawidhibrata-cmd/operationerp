@@ -35,7 +35,7 @@ export default function LaporanHarian() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!branchId) return
+    if (!branchId) { setLoading(false); return }
     fetchData()
   }, [branchId])
 
@@ -44,6 +44,17 @@ export default function LaporanHarian() {
       supabase.from('daily_reports').select('*').eq('branch_id', branchId).eq('tanggal', yesterday).maybeSingle(),
       supabase.from('daily_deposits').select('*').eq('branch_id', branchId).eq('tanggal', yesterday).maybeSingle(),
     ])
+
+    if (lapRes.error) {
+      setError('Gagal memuat data laporan: ' + lapRes.error.message)
+      setLoading(false)
+      return
+    }
+    if (setRes.error) {
+      setError('Gagal memuat data setoran: ' + setRes.error.message)
+      setLoading(false)
+      return
+    }
 
     if (lapRes.data) {
       setLaporan(lapRes.data)
@@ -98,6 +109,10 @@ export default function LaporanHarian() {
       status: 'submitted',
       submitted_by: profile.id,
       submitted_at: new Date().toISOString(),
+      // Clear stale approval/rejection fields on re-submit
+      approved_by: null,
+      approved_at: null,
+      rejection_reason: null,
     }
     const { error: err } = setoran
       ? await supabase.from('daily_deposits').update(payload).eq('id', setoran.id)
@@ -196,14 +211,14 @@ export default function LaporanHarian() {
             <label className="label">Cash POS / Mesin Kasir (Rp)</label>
             <input className="input" type="number" value={cashPos}
               onChange={e => setCashPos(e.target.value)} placeholder="0"
-              disabled={setoranDone} />
+              disabled={setoranDone && setoran?.status !== 'rejected'} />
           </div>
 
           <div>
             <label className="label">Cash Disetorkan (Rp)</label>
             <input className="input" type="number" value={cashSetor}
               onChange={e => setCashSetor(e.target.value)} placeholder="0"
-              disabled={setoranDone} />
+              disabled={setoranDone && setoran?.status !== 'rejected'} />
           </div>
 
           {/* Selisih indicator */}
@@ -221,7 +236,7 @@ export default function LaporanHarian() {
           )}
 
           {/* Alasan selisih */}
-          {selisih !== 0 && !setoranDone && (
+          {selisih !== 0 && (!setoranDone || setoran?.status === 'rejected') && (
             <div>
               <label className="label">Alasan Selisih <span className="text-red-500">*</span></label>
               <input className="input" type="text" value={alasan}
@@ -238,7 +253,7 @@ export default function LaporanHarian() {
           {/* Foto bukti */}
           <div>
             <label className="label">Foto Bukti Setoran <span className="text-red-500">*</span></label>
-            {setoranDone ? (
+            {setoranDone && setoran?.status !== 'rejected' ? (
               <PhotoViewer urls={fotoBukti} emptyText="Tidak ada foto" />
             ) : (
               <PhotoUpload

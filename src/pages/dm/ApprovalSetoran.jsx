@@ -38,8 +38,12 @@ export default function ApprovalSetoran() {
       q = q.in('branch.area', profile.managed_areas || [])
     }
 
-    const { data } = await q
-    setItems(data || [])
+    const { data, error: fetchErr } = await q
+    if (fetchErr) {
+      setMsg({ type: 'error', text: 'Gagal memuat data: ' + fetchErr.message })
+    } else {
+      setItems(data || [])
+    }
     setLoading(false)
   }
 
@@ -104,7 +108,7 @@ export default function ApprovalSetoran() {
               key={item.id}
               item={item}
               expanded={selected?.id === item.id}
-              onToggle={() => setSelected(selected?.id === item.id ? null : item)}
+              onToggle={() => { setSelected(selected?.id === item.id ? null : item); setRejReason('') }}
               onApprove={() => approve(item)}
               onReject={() => reject(item)}
               rejReason={rejReason}

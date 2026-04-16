@@ -25,7 +25,7 @@ function RootRedirect() {
   if (['district_manager', 'area_manager', 'ops_manager'].includes(role)) return <Navigate to="/dm" replace />
   if (role === 'finance_supervisor') return <Navigate to="/finance" replace />
 
-  return <Navigate to="/login" replace />
+  return <NoRouteScreen role={role} />
 }
 
 function RequireAuth({ children, roles }) {
@@ -55,6 +55,24 @@ function PageLoader() {
   return (
     <div className="min-h-screen bg-primary-50 flex items-center justify-center px-6">
       <div className="animate-spin w-8 h-8 border-2 border-primary-600 border-t-transparent rounded-full" />
+    </div>
+  )
+}
+
+function NoRouteScreen({ role }) {
+  const { signOut } = useAuth()
+  return (
+    <div className="min-h-screen bg-primary-50 flex items-center justify-center px-6">
+      <div className="max-w-sm w-full bg-white rounded-2xl shadow-sm border border-primary-100 p-6 text-center space-y-4">
+        <div className="text-4xl">🔒</div>
+        <div className="text-sm font-semibold text-gray-800">Halaman belum tersedia</div>
+        <div className="text-xs text-gray-500">
+          Role <span className="font-mono bg-gray-100 px-1.5 py-0.5 rounded text-gray-700">{role}</span> belum memiliki halaman yang dikonfigurasi. Hubungi admin.
+        </div>
+        <button onClick={signOut} className="text-xs text-primary-600 font-semibold underline">
+          Keluar
+        </button>
+      </div>
     </div>
   )
 }
