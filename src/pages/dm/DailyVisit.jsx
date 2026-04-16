@@ -1,14 +1,20 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
-import { AUDIT_ITEMS, AUDIT_SECTIONS, AUDIT_MAX_SCORE } from '../../lib/constants'
+import { AUDIT_ITEMS, AUDIT_MAX_SCORE, AUDIT_SECTIONS } from '../../lib/constants'
 import { todayWIB, visitGrade } from '../../lib/utils'
-import Header from '../../components/Header'
 import ScoreDots from '../../components/ScoreDots'
 import PhotoUpload from '../../components/PhotoUpload'
 import PhotoViewer from '../../components/PhotoViewer'
 import Alert from '../../components/Alert'
 import { DMBottomNav } from '../../components/BottomNav'
+import {
+  HeroCard,
+  InlineStat,
+  SectionPanel,
+  SubpageShell,
+  ToneBadge,
+} from '../../components/ui/AppKit'
 
 export default function DailyVisit() {
   const { profile } = useAuth()
@@ -17,19 +23,21 @@ export default function DailyVisit() {
   const [branches, setBranches] = useState([])
   const [selectedBranch, setSelectedBranch] = useState('')
   const [existing, setExisting] = useState(null)
-  const [scores, setScores]   = useState({})
-  const [photos, setPhotos]   = useState({}) // { item_key: string[] }
+  const [scores, setScores] = useState({})
+  const [photos, setPhotos] = useState({})
   const [catatan, setCatatan] = useState('')
   const [fotoKondisi, setFotoKondisi] = useState([])
-  const [saving, setSaving]   = useState(false)
-  const [done, setDone]       = useState(false)
-  const [error, setError]     = useState('')
+  const [saving, setSaving] = useState(false)
+  const [done, setDone] = useState(false)
+  const [error, setError] = useState('')
   const [photoErrors, setPhotoErrors] = useState({})
 
-  useEffect(() => { fetchBranches() }, [profile?.id])
-
-  // Use a ref to cancel in-flight fetchExisting when branch changes
   const fetchSeqRef = useRef(0)
+
+  useEffect(() => {
+    fetchBranches()
+  }, [profile?.id])
+
   useEffect(() => {
     if (!selectedBranch) return
     fetchSeqRef.current += 1
@@ -38,10 +46,10 @@ export default function DailyVisit() {
   }, [selectedBranch])
 
   const fetchBranches = async () => {
-    let q = supabase.from('branches').select('id,name,store_id,district,area').eq('is_active', true)
-    if (profile?.role === 'district_manager') q = q.in('district', profile.managed_districts || [])
-    else if (profile?.role === 'area_manager') q = q.in('area', profile.managed_areas || [])
-    const { data } = await q.order('name')
+    let query = supabase.from('branches').select('id,name,store_id,district,area').eq('is_active', true)
+    if (profile?.role === 'district_manager') query = query.in('district', profile.managed_districts || [])
+    else if (profile?.role === 'area_manager') query = query.in('area', profile.managed_areas || [])
+    const { data } = await query.order('name')
     setBranches(data || [])
   }
 
@@ -53,7 +61,6 @@ export default function DailyVisit() {
       .eq('tanggal', today)
       .maybeSingle()
 
-    // Discard result if a newer fetchExisting has been triggered (branch changed)
     if (seq !== null && seq !== fetchSeqRef.current) return
 
     if (fetchErr) {
@@ -63,13 +70,14 @@ export default function DailyVisit() {
 
     if (visit) {
       setExisting(visit)
-      const sc = {}, ph = {}
-      ;(visit.visit_scores || []).forEach(s => {
-        sc[s.item_key] = s.score
-        ph[s.item_key] = s.photos || []
+      const nextScores = {}
+      const nextPhotos = {}
+      ;(visit.visit_scores || []).forEach((score) => {
+        nextScores[score.item_key] = score.score
+        nextPhotos[score.item_key] = score.photos || []
       })
-      setScores(sc)
-      setPhotos(ph)
+      setScores(nextScores)
+      setPhotos(nextPhotos)
       setCatatan(visit.catatan || '')
       setFotoKondisi(visit.foto_kondisi || [])
     } else {
@@ -84,37 +92,43 @@ export default function DailyVisit() {
     setPhotoErrors({})
   }
 
-  const totalScore = AUDIT_ITEMS.reduce((s, item) => s + (scores[item.key] || 0), 0)
-  const grade      = visitGrade(totalScore)
+  const totalScore = AUDIT_ITEMS.reduce((sum, item) => sum + (scores[item.key] || 0), 0)
+  const grade = visitGrade(totalScore)
 
-  const setScore = (key, val) => setScores(prev => ({ ...prev, [key]: val }))
-  const setPhoto = (key, urls) => setPhotos(prev => ({ ...prev, [key]: urls }))
+  const setScore = (key, value) => setScores((current) => ({ ...current, [key]: value }))
+  const setPhoto = (key, urls) => setPhotos((current) => ({ ...current, [key]: urls }))
 
   const validate = () => {
-    const errs = {}
-    AUDIT_ITEMS.forEach(item => {
-      if (!scores[item.key]) errs[item.key] = 'Wajib diberi nilai'
-      if (!photos[item.key] || photos[item.key].length === 0) errs[item.key + '_photo'] = 'Wajib foto'
+    const errors = {}
+    AUDIT_ITEMS.forEach((item) => {
+      if (!scores[item.key]) errors[item.key] = 'Wajib diberi nilai'
+      if (!photos[item.key] || photos[item.key].length === 0) errors[`${item.key}_photo`] = 'Wajib foto'
     })
-    return errs
+    return errors
   }
 
   const handleSubmit = async () => {
-    if (!selectedBranch) { setError('Pilih toko terlebih dahulu.'); return }
-    const errs = validate()
-    if (Object.keys(errs).length > 0) {
-      setPhotoErrors(errs)
+    if (!selectedBranch) {
+      setError('Pilih toko terlebih dahulu.')
+      return
+    }
+
+    const validationErrors = validate()
+    if (Object.keys(validationErrors).length > 0) {
+      setPhotoErrors(validationErrors)
       setError('Semua item wajib diberi nilai dan foto.')
       return
     }
-    setSaving(true); setError(''); setPhotoErrors({})
 
-    const g = visitGrade(totalScore)
+    setSaving(true)
+    setError('')
+    setPhotoErrors({})
 
-    // Upsert daily_visit header
+    const gradeResult = visitGrade(totalScore)
+
     let visitId = existing?.id
     if (!visitId) {
-      const { data: newVisit, error: e1 } = await supabase
+      const { data: newVisit, error: insertErr } = await supabase
         .from('daily_visits')
         .insert({
           branch_id: selectedBranch,
@@ -122,38 +136,56 @@ export default function DailyVisit() {
           auditor_id: profile.id,
           total_score: totalScore,
           max_score: AUDIT_MAX_SCORE,
-          grade: g.label,
+          grade: gradeResult.label,
           catatan,
           foto_kondisi: fotoKondisi,
         })
         .select('id')
         .single()
-      if (e1) { setError('Gagal: ' + e1.message); setSaving(false); return }
+
+      if (insertErr) {
+        setError('Gagal: ' + insertErr.message)
+        setSaving(false)
+        return
+      }
       visitId = newVisit.id
     } else {
-      const { error: eUpd } = await supabase.from('daily_visits').update({
-        total_score: totalScore, grade: g.label, catatan, foto_kondisi: fotoKondisi
-      }).eq('id', visitId)
-      if (eUpd) { setError('Gagal update visit: ' + eUpd.message); setSaving(false); return }
-      // Delete old scores
-      const { error: eDel } = await supabase.from('visit_scores').delete().eq('visit_id', visitId)
-      if (eDel) { setError('Gagal hapus scores lama: ' + eDel.message); setSaving(false); return }
+      const { error: updateErr } = await supabase
+        .from('daily_visits')
+        .update({
+          total_score: totalScore,
+          grade: gradeResult.label,
+          catatan,
+          foto_kondisi: fotoKondisi,
+        })
+        .eq('id', visitId)
+
+      if (updateErr) {
+        setError('Gagal update visit: ' + updateErr.message)
+        setSaving(false)
+        return
+      }
+
+      const { error: deleteErr } = await supabase.from('visit_scores').delete().eq('visit_id', visitId)
+      if (deleteErr) {
+        setError('Gagal hapus scores lama: ' + deleteErr.message)
+        setSaving(false)
+        return
+      }
     }
 
-    // Insert scores
-    const scoreRows = AUDIT_ITEMS.map(item => ({
+    const scoreRows = AUDIT_ITEMS.map((item) => ({
       visit_id: visitId,
       item_key: item.key,
       score: scores[item.key] || 1,
       photos: photos[item.key] || [],
     }))
-    const { error: e2 } = await supabase.from('visit_scores').insert(scoreRows)
-    if (e2) {
-      // Hapus orphan visit header kalau baru saja dibuat (bukan update)
+    const { error: scoreErr } = await supabase.from('visit_scores').insert(scoreRows)
+    if (scoreErr) {
       if (!existing?.id) {
         await supabase.from('daily_visits').delete().eq('id', visitId)
       }
-      setError('Gagal simpan scores: ' + e2.message)
+      setError('Gagal simpan scores: ' + scoreErr.message)
       setSaving(false)
       return
     }
@@ -164,99 +196,141 @@ export default function DailyVisit() {
   }
 
   const isReadOnly = !!existing
+  const selectedBranchName = branches.find((branch) => branch.id === selectedBranch)?.name
 
   return (
-    <div className="page-shell">
-      <Header title="Daily Visit / Audit" sub={today} />
+    <SubpageShell
+      title="Daily Visit / Audit"
+      subtitle={today}
+      eyebrow="Store Audit"
+      footer={<DMBottomNav />}
+    >
+      <SectionPanel
+        eyebrow="Outlet Picker"
+        title="Pilih Toko"
+        description="Pilih outlet yang ingin diaudit hari ini. Satu toko hanya punya satu audit per hari."
+      >
+        <div className="grid gap-4 sm:grid-cols-[1.4fr_0.6fr]">
+          <div>
+            <label className="label">Toko Audit</label>
+            <select
+              className="input"
+              value={selectedBranch}
+              onChange={(event) => setSelectedBranch(event.target.value)}
+              disabled={isReadOnly}
+            >
+              <option value="">-- Pilih toko --</option>
+              {branches.map((branch) => (
+                <option key={branch.id} value={branch.id}>{branch.name}</option>
+              ))}
+            </select>
+            {isReadOnly && (
+              <div className="mt-3 rounded-[20px] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                Audit toko ini hari ini sudah diisi. Kamu masih bisa melihat seluruh hasilnya di bawah.
+              </div>
+            )}
+          </div>
+          <div className="grid gap-3 sm:grid-cols-1">
+            <InlineStat label="Total Score" value={totalScore} tone="primary" />
+            <InlineStat label="Grade" value={grade.label} tone={totalScore >= 85 ? 'emerald' : totalScore >= 70 ? 'amber' : 'rose'} />
+          </div>
+        </div>
+      </SectionPanel>
 
-      <div className="flex-1 overflow-y-auto pb-28 px-4 pt-4 space-y-3">
-        {done && <Alert variant="ok">Audit berhasil disimpan! Score: {totalScore}/{AUDIT_MAX_SCORE}</Alert>}
+      <div className="mt-6 space-y-6">
+        {done && <Alert variant="ok">Audit berhasil disimpan. Score: {totalScore}/{AUDIT_MAX_SCORE}</Alert>}
         {error && <Alert variant="error">{error}</Alert>}
 
-        {/* Branch selector */}
-        <div className="card p-4">
-          <label className="label">Pilih Toko</label>
-          <select className="input" value={selectedBranch} onChange={e => setSelectedBranch(e.target.value)} disabled={isReadOnly}>
-            <option value="">-- Pilih toko --</option>
-            {branches.map(b => (
-              <option key={b.id} value={b.id}>{b.name}</option>
-            ))}
-          </select>
-          {isReadOnly && (
-            <p className="text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 mt-2">
-              Audit toko ini hari ini sudah diisi. Kamu bisa melihat hasilnya di bawah.
-            </p>
-          )}
-        </div>
-
-        {/* Score summary hero */}
         {selectedBranch && (
-          <div className="bg-primary-600 text-white rounded-2xl p-5 text-center">
-            <div className="text-xs opacity-60 tracking-widest mb-1">TOTAL SCORE</div>
-            <div className="text-5xl font-bold leading-none">{totalScore}</div>
-            <div className="text-sm opacity-75 mt-1">dari {AUDIT_MAX_SCORE} poin</div>
-            <div className={`inline-block mt-2 text-xs font-bold px-3 py-1 rounded-full ${grade.bg} ${grade.color}`}>
-              {grade.label}
+          <HeroCard
+            eyebrow={selectedBranchName || 'Audit Outlet'}
+            title={`Score sementara ${totalScore}/${AUDIT_MAX_SCORE} poin`}
+            description="Nilai akan terus terhitung otomatis saat kamu mengisi item per section. Lengkapi skor dan foto agar audit bisa disimpan."
+            meta={
+              <>
+                <ToneBadge tone={totalScore >= 85 ? 'ok' : totalScore >= 70 ? 'warn' : 'danger'}>
+                  Grade {grade.label}
+                </ToneBadge>
+                <ToneBadge tone="info">{AUDIT_ITEMS.length} item audit</ToneBadge>
+              </>
+            }
+          >
+            <div className="grid gap-3 sm:grid-cols-3">
+              <InlineStat label="Scored" value={`${Object.keys(scores).length}/${AUDIT_ITEMS.length}`} tone="primary" />
+              <InlineStat label="Foto Item" value={Object.values(photos).reduce((sum, urls) => sum + (urls?.length || 0), 0)} tone="slate" />
+              <InlineStat label="Foto Umum" value={fotoKondisi.length} tone="slate" />
             </div>
-            <div className="mt-3 h-2 bg-white/20 rounded-full overflow-hidden">
-              <div className="h-full bg-white rounded-full transition-all" style={{ width: `${totalScore / AUDIT_MAX_SCORE * 100}%` }} />
-            </div>
-          </div>
+          </HeroCard>
         )}
 
-        {/* Scoring sections */}
-        {selectedBranch && AUDIT_SECTIONS.map(sec => {
-          const items = AUDIT_ITEMS.filter(i => i.section === sec.key)
+        {selectedBranch && AUDIT_SECTIONS.map((section) => {
+          const sectionItems = AUDIT_ITEMS.filter((item) => item.section === section.key)
           return (
-            <div key={sec.key} className="card p-4">
-              <h3 className="font-bold text-gray-900 mb-3">{sec.emoji} {sec.label}</h3>
-              <div className="space-y-4">
-                {items.map((item, idx) => (
-                  <div key={item.key} className={`pb-4 ${idx < items.length - 1 ? 'border-b border-gray-50' : ''}`}>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-gray-700">{item.label}</span>
-                      <ScoreDots value={scores[item.key] || 0} onChange={v => setScore(item.key, v)} disabled={isReadOnly} />
+            <SectionPanel
+              key={section.key}
+              eyebrow="Audit Section"
+              title={`${section.emoji || ''} ${section.label}`.trim()}
+              description="Beri nilai dan unggah foto untuk setiap item di section ini."
+            >
+              <div className="space-y-5">
+                {sectionItems.map((item) => (
+                  <div key={item.key} className="rounded-[22px] bg-slate-50/85 px-4 py-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <span className="text-sm font-medium text-slate-700">{item.label}</span>
+                      <ScoreDots value={scores[item.key] || 0} onChange={(value) => setScore(item.key, value)} disabled={isReadOnly} />
                     </div>
-                    {/* Photo — wajib per item */}
-                    {isReadOnly ? (
-                      <PhotoViewer urls={photos[item.key]} emptyText="Tidak ada foto" />
-                    ) : (
-                      <>
-                        <PhotoUpload
-                          folder={`visit/${today}/${item.section}`}
-                          value={photos[item.key] || []}
-                          onChange={urls => setPhoto(item.key, urls)}
-                          label={`Foto ${item.label} (wajib)`}
-                          max={5}
-                        />
-                        {(photoErrors[item.key] || photoErrors[item.key + '_photo']) && (
-                          <p className="text-xs text-red-500 mt-1">⚠ Nilai dan foto wajib</p>
-                        )}
-                      </>
-                    )}
+                    <div className="mt-3">
+                      {isReadOnly ? (
+                        <PhotoViewer urls={photos[item.key]} emptyText="Tidak ada foto" />
+                      ) : (
+                        <>
+                          <PhotoUpload
+                            folder={`visit/${today}/${item.section}`}
+                            value={photos[item.key] || []}
+                            onChange={(urls) => setPhoto(item.key, urls)}
+                            label={`Foto ${item.label} (wajib)`}
+                            max={5}
+                          />
+                          {(photoErrors[item.key] || photoErrors[`${item.key}_photo`]) && (
+                            <p className="mt-2 text-xs text-rose-500">Nilai dan foto wajib diisi.</p>
+                          )}
+                        </>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
-            </div>
+            </SectionPanel>
           )
         })}
 
-        {/* Notes & kondisi foto */}
         {selectedBranch && (
           <>
-            <div className="card p-4">
-              <label className="label">Temuan & Rekomendasi</label>
+            <SectionPanel
+              eyebrow="Findings"
+              title="Temuan & Rekomendasi"
+              description="Isi catatan audit untuk hal yang perlu ditindaklanjuti."
+            >
               {isReadOnly ? (
-                <p className="text-sm text-gray-600">{existing?.catatan || <span className="italic text-gray-400">Tidak ada catatan</span>}</p>
+                <p className="text-sm leading-6 text-slate-600">
+                  {existing?.catatan || <span className="italic text-slate-400">Tidak ada catatan</span>}
+                </p>
               ) : (
-                <textarea className="input resize-none" rows={3} value={catatan}
-                  onChange={e => setCatatan(e.target.value)}
-                  placeholder="Catatan kondisi toko, temuan, tindak lanjut..." />
+                <textarea
+                  className="input resize-none"
+                  rows={4}
+                  value={catatan}
+                  onChange={(event) => setCatatan(event.target.value)}
+                  placeholder="Catat temuan, kondisi toko, dan rekomendasi tindak lanjut..."
+                />
               )}
-            </div>
+            </SectionPanel>
 
-            <div className="card p-4">
-              <label className="label">Foto Kondisi Umum Toko</label>
+            <SectionPanel
+              eyebrow="General View"
+              title="Foto Kondisi Umum Toko"
+              description="Dokumentasikan kondisi keseluruhan toko untuk pelengkap audit."
+            >
               {isReadOnly ? (
                 <PhotoViewer urls={fotoKondisi} emptyText="Tidak ada foto" />
               ) : (
@@ -268,7 +342,7 @@ export default function DailyVisit() {
                   max={10}
                 />
               )}
-            </div>
+            </SectionPanel>
 
             {!isReadOnly && (
               <button onClick={handleSubmit} disabled={saving} className="btn-primary">
@@ -278,8 +352,6 @@ export default function DailyVisit() {
           </>
         )}
       </div>
-
-      <DMBottomNav />
-    </div>
+    </SubpageShell>
   )
 }

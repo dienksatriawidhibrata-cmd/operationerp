@@ -1,10 +1,20 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
-import { fmtRp, fmtDateShort, roleLabel, todayWIB, downloadCsv } from '../../lib/utils'
+import { downloadCsv, fmtDateShort, fmtRp, roleLabel, todayWIB } from '../../lib/utils'
 import PhotoViewer from '../../components/PhotoViewer'
 import Alert from '../../components/Alert'
 import { FinanceBottomNav } from '../../components/BottomNav'
+import {
+  AppIcon,
+  EmptyPanel,
+  InlineStat,
+  SectionPanel,
+  SegmentedControl,
+  SubpageShell,
+  SoftButton,
+  ToneBadge,
+} from '../../components/ui/AppKit'
 
 const TABS = [
   { key: 'pending', label: 'Belum Diaudit' },
@@ -81,9 +91,10 @@ export default function AuditSetoran() {
     setLoading(false)
   }
 
-  const areaOptions = useMemo(() => {
-    return Array.from(new Set(branches.map((branch) => branch.area).filter(Boolean))).sort()
-  }, [branches])
+  const areaOptions = useMemo(
+    () => Array.from(new Set(branches.map((branch) => branch.area).filter(Boolean))).sort(),
+    [branches]
+  )
 
   const districtOptions = useMemo(() => {
     return Array.from(
@@ -172,7 +183,7 @@ export default function AuditSetoran() {
       'Alasan Selisih', 'Status DM', 'Status Finance',
       'Submitted At', 'DM Action At', 'Catatan Finance',
     ]
-    const rows = filtered.map(item => [
+    const rows = filtered.map((item) => [
       item.tanggal,
       item.branch?.name || '',
       item.branch?.district || '',
@@ -184,269 +195,235 @@ export default function AuditSetoran() {
       item.status,
       item.finance_status,
       item.submitted_at ? new Date(item.submitted_at).toLocaleString('id-ID') : '',
-      item.approved_at  ? new Date(item.approved_at).toLocaleString('id-ID')  : '',
+      item.approved_at ? new Date(item.approved_at).toLocaleString('id-ID') : '',
       item.finance_notes || '',
     ])
     downloadCsv(filename, headers, rows)
   }
 
+  const summaryStats = [
+    { label: 'Total', value: filtered.length, tone: 'primary' },
+    { label: 'Ada Selisih', value: filtered.filter((item) => Number(item.selisih || 0) !== 0).length, tone: 'rose' },
+    { label: 'Total Selisih', value: fmtRp(totalSelisih), tone: totalSelisih > 0 ? 'amber' : 'slate' },
+  ]
+
   return (
-    <div className="page-shell">
-      <header className="bg-primary-600 text-white px-4 pt-5 pb-4">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-primary-200 text-xs">{financeTitle}</p>
-            <h1 className="text-lg font-bold mt-0.5">Audit Setoran</h1>
-            <p className="text-primary-300 text-[11px] mt-1">{selectedRange.label}</p>
-          </div>
-          <button onClick={signOut} className="text-primary-300 hover:text-white p-1">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-          </button>
-        </div>
-      </header>
-
-      <div className="flex bg-white border-b border-gray-100 px-4 gap-1 sticky top-0 z-10">
-        {TABS.map((currentTab) => (
-          <button
-            key={currentTab.key}
-            onClick={() => setTab(currentTab.key)}
-            className={`flex-1 py-3 text-xs font-bold border-b-2 transition-colors ${
-              tab === currentTab.key ? 'border-primary-600 text-primary-600' : 'border-transparent text-gray-400'
-            }`}
-          >
-            {currentTab.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="flex-1 overflow-y-auto pb-24 px-4 pt-4 space-y-3">
-        {msg && <Alert variant={msg.type === 'ok' ? 'ok' : 'error'}>{msg.text}</Alert>}
-
-        <div className="grid grid-cols-3 gap-2">
-          {PERIODS.map((option) => (
-            <button
-              key={option.key}
-              onClick={() => setPeriod(option.key)}
-              className={`py-2 text-xs font-bold rounded-xl border transition-colors ${
-                period === option.key
-                  ? 'bg-primary-600 text-white border-primary-600'
-                  : 'bg-white text-gray-500 border-gray-200'
-              }`}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="card p-3 space-y-3">
-          <div>
-            <label className="label">Tanggal Acuan</label>
-            <input
-              className="input"
-              type="date"
-              value={anchorDate}
-              onChange={(event) => setAnchorDate(event.target.value)}
-            />
+    <SubpageShell
+      title="Audit Setoran"
+      subtitle={selectedRange.label}
+      eyebrow={financeTitle}
+      showBack={false}
+      action={
+        <button
+          onClick={signOut}
+          className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500 shadow-[0_18px_45px_-34px_rgba(15,23,42,0.35)] transition-colors hover:border-primary-200 hover:text-primary-700"
+          aria-label="Keluar"
+        >
+          <AppIcon name="logout" size={18} />
+        </button>
+      }
+      footer={<FinanceBottomNav />}
+    >
+      <SectionPanel
+        eyebrow="Audit Mode"
+        title="Filter Audit Finance"
+        description="Rapikan antrian audit berdasarkan periode, wilayah, dan status agar tidak menumpuk."
+        actions={
+          <SegmentedControl
+            options={TABS}
+            value={tab}
+            onChange={(nextTab) => {
+              setTab(nextTab)
+              setSelectedId(null)
+            }}
+          />
+        }
+      >
+        <div className="grid gap-4 xl:grid-cols-[1.3fr_0.7fr]">
+          <div className="grid gap-3 sm:grid-cols-3">
+            {summaryStats.map((item) => (
+              <InlineStat key={item.label} label={item.label} value={item.value} tone={item.tone} />
+            ))}
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <label className="label">Area</label>
-              <select className="input" value={areaFilter} onChange={(event) => setAreaFilter(event.target.value)}>
-                <option value="all">Semua area</option>
-                {areaOptions.map((area) => (
-                  <option key={area} value={area}>{area}</option>
-                ))}
-              </select>
+              <label className="label">Tanggal Acuan</label>
+              <input
+                className="input"
+                type="date"
+                value={anchorDate}
+                onChange={(event) => setAnchorDate(event.target.value)}
+              />
             </div>
             <div>
-              <label className="label">District</label>
-              <select className="input" value={districtFilter} onChange={(event) => setDistrictFilter(event.target.value)}>
-                <option value="all">Semua district</option>
-                {districtOptions.map((district) => (
-                  <option key={district} value={district}>{district}</option>
-                ))}
-              </select>
+              <label className="label">Periode</label>
+              <SegmentedControl options={PERIODS} value={period} onChange={setPeriod} className="w-full" />
             </div>
           </div>
+        </div>
 
+        <div className="mt-5 grid gap-3 md:grid-cols-4">
+          <div>
+            <label className="label">Area</label>
+            <select className="input" value={areaFilter} onChange={(event) => setAreaFilter(event.target.value)}>
+              <option value="all">Semua area</option>
+              {areaOptions.map((area) => (
+                <option key={area} value={area}>{area}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="label">District</label>
+            <select className="input" value={districtFilter} onChange={(event) => setDistrictFilter(event.target.value)}>
+              <option value="all">Semua district</option>
+              {districtOptions.map((district) => (
+                <option key={district} value={district}>{district}</option>
+              ))}
+            </select>
+          </div>
           <div>
             <label className="label">Toko</label>
             <select className="input" value={branchFilter} onChange={(event) => setBranchFilter(event.target.value)}>
               <option value="all">Semua toko</option>
               {branchOptions.map((branch) => (
-                <option key={branch.id} value={branch.id}>
-                  {branch.name.replace('Bagi Kopi ', '')}
-                </option>
+                <option key={branch.id} value={branch.id}>{branch.name.replace('Bagi Kopi ', '')}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="label">Status DM</label>
+            <select className="input" value={filter} onChange={(event) => setFilter(event.target.value)}>
+              {STATUS_FILTERS.map((statusFilter) => (
+                <option key={statusFilter.key} value={statusFilter.key}>{statusFilter.label}</option>
               ))}
             </select>
           </div>
         </div>
 
-        {!loading && filtered.length > 0 && (
-          <>
-            <div className="flex gap-2">
-              <div className="card flex-1 p-3 text-center">
-                <div className="text-lg font-bold text-primary-700">{filtered.length}</div>
-                <div className="text-xs text-gray-400">Total</div>
-              </div>
-              <div className="card flex-1 p-3 text-center">
-                <div className="text-lg font-bold text-red-600">
-                  {filtered.filter((item) => Number(item.selisih) !== 0).length}
-                </div>
-                <div className="text-xs text-gray-400">Ada Selisih</div>
-              </div>
-              <div className="card flex-1 p-3 text-center">
-                <div className="text-base font-bold text-red-600">{fmtRp(totalSelisih)}</div>
-                <div className="text-xs text-gray-400">Total Selisih</div>
-              </div>
+        <div className="mt-5">
+          <SoftButton tone="white" icon="chevronRight" onClick={handleDownload}>
+            Download CSV ({filtered.length} baris)
+          </SoftButton>
+        </div>
+      </SectionPanel>
+
+      <div className="mt-6 space-y-6">
+        {msg && <Alert variant={msg.type === 'ok' ? 'ok' : 'error'}>{msg.text}</Alert>}
+
+        <SectionPanel
+          eyebrow="Review Queue"
+          title={`Daftar ${TABS.find((item) => item.key === tab)?.label || tab}`}
+          description="Buka detail setoran untuk melihat bukti foto, selisih, dan memberi keputusan audit finance."
+          actions={
+            <ToneBadge tone={tab === 'pending' ? 'warn' : tab === 'audited' ? 'ok' : 'danger'}>
+              {filtered.length} item
+            </ToneBadge>
+          }
+        >
+          {loading ? (
+            <div className="flex justify-center py-14">
+              <div className="h-9 w-9 animate-spin rounded-full border-2 border-primary-600 border-t-transparent" />
             </div>
-
-            <button
-              onClick={handleDownload}
-              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-primary-200 bg-primary-50 text-primary-700 text-sm font-semibold active:scale-95 transition-transform"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-              Download CSV ({filtered.length} baris)
-            </button>
-          </>
-        )}
-
-        {!loading && (
-          <div className="flex gap-2 flex-wrap">
-            {STATUS_FILTERS.map((statusFilter) => (
-              <button
-                key={statusFilter.key}
-                onClick={() => setFilter(statusFilter.key)}
-                className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
-                  filter === statusFilter.key
-                    ? 'bg-primary-600 text-white border-primary-600'
-                    : 'bg-white text-gray-600 border-gray-200'
-                }`}
-              >
-                {statusFilter.label}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <div className="animate-spin w-8 h-8 border-2 border-primary-600 border-t-transparent rounded-full" />
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="text-center py-12 text-gray-400">
-            <div className="text-4xl mb-3">-</div>
-            <p className="font-medium">Tidak ada setoran di filter ini</p>
-          </div>
-        ) : (
-          filtered.map((item) => (
-            <FinanceCard
-              key={item.id}
-              item={item}
-              expanded={selectedId === item.id}
-              onToggle={() => setSelectedId(selectedId === item.id ? null : item.id)}
-              onAudit={() => markAudited(item, false)}
-              onFlag={() => markAudited(item, true)}
-              notes={notesById[item.id] || ''}
-              onNotesChange={(value) => setNotesById((current) => ({ ...current, [item.id]: value }))}
-              actioning={actioningId === item.id}
-              tab={tab}
+          ) : filtered.length === 0 ? (
+            <EmptyPanel
+              title="Tidak ada setoran pada filter ini"
+              description="Coba ubah periode atau filter wilayah. Daftar audit akan muncul otomatis saat ada data yang cocok."
             />
-          ))
-        )}
+          ) : (
+            <div className="space-y-4">
+              {filtered.map((item) => (
+                <FinanceCard
+                  key={item.id}
+                  item={item}
+                  expanded={selectedId === item.id}
+                  onToggle={() => setSelectedId(selectedId === item.id ? null : item.id)}
+                  onAudit={() => markAudited(item, false)}
+                  onFlag={() => markAudited(item, true)}
+                  notes={notesById[item.id] || ''}
+                  onNotesChange={(value) => setNotesById((current) => ({ ...current, [item.id]: value }))}
+                  actioning={actioningId === item.id}
+                  tab={tab}
+                />
+              ))}
+            </div>
+          )}
+        </SectionPanel>
       </div>
-
-      <FinanceBottomNav />
-    </div>
+    </SubpageShell>
   )
 }
 
 function FinanceCard({ item, expanded, onToggle, onAudit, onFlag, notes, onNotesChange, actioning, tab }) {
-  const selisih = Number(item.selisih)
+  const selisih = Number(item.selisih || 0)
 
   return (
-    <div className="card overflow-hidden">
-      <button onClick={onToggle} className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 transition-colors">
-        <div className="w-10 h-10 bg-primary-50 rounded-xl flex items-center justify-center text-xs font-bold text-primary-700 flex-shrink-0">
-          {item.branch?.store_id?.split('-')[1] || '??'}
+    <article className="rounded-[26px] border border-white/85 bg-white shadow-[0_20px_55px_-40px_rgba(15,23,42,0.35)]">
+      <button
+        onClick={onToggle}
+        className="flex w-full items-center gap-4 px-5 py-5 text-left transition-colors hover:bg-slate-50/70"
+      >
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-50 text-primary-700">
+          <span className="text-sm font-bold">{item.branch?.store_id?.split('-')[1] || '--'}</span>
         </div>
-        <div className="flex-1 text-left min-w-0">
-          <div className="font-semibold text-sm text-gray-900 truncate">
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-base font-semibold text-slate-950">
             {item.branch?.name?.replace('Bagi Kopi ', '') || '-'}
           </div>
-          <div className="text-[11px] text-gray-400">{`${item.branch?.district || '-'} - ${item.branch?.area || '-'}`}</div>
-          <div className="text-xs text-gray-400 mt-0.5">
-            {`${fmtDateShort(item.tanggal)} - ${fmtRp(item.cash_disetorkan)}`}
-            {selisih !== 0 && <span className="text-red-500 ml-1.5 font-semibold">Selisih {fmtRp(Math.abs(selisih))}</span>}
+          <div className="mt-1 text-sm text-slate-500">
+            {item.branch?.district || '-'} / {item.branch?.area || '-'}
+          </div>
+          <div className="mt-1 text-sm text-slate-500">
+            {fmtDateShort(item.tanggal)} • {fmtRp(item.cash_disetorkan)}
           </div>
         </div>
-        <div className="flex flex-col items-end gap-1">
-          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
-            item.status === 'approved' ? 'bg-green-100 text-green-700' :
-            item.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
-          }`}>
+        <div className="flex shrink-0 items-center gap-3">
+          <ToneBadge tone={item.status === 'approved' ? 'ok' : item.status === 'rejected' ? 'danger' : 'warn'}>
             {item.status === 'approved' ? 'DM Approved' : item.status === 'rejected' ? 'DM Rejected' : 'Pending DM'}
-          </span>
-          <svg
-            className={`w-4 h-4 text-gray-300 transition-transform ${expanded ? 'rotate-180' : ''}`}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
+          </ToneBadge>
+          <AppIcon name={expanded ? 'chevronDown' : 'chevronRight'} size={18} className="text-slate-400" />
         </div>
       </button>
 
       {expanded && (
-        <div className="border-t border-gray-50 p-4 space-y-3">
-          <div className="grid grid-cols-2 gap-2">
-            <div className="bg-gray-50 rounded-xl p-3">
-              <div className="text-xs text-gray-400">Cash POS</div>
-              <div className="font-bold">{fmtRp(item.cash_pos)}</div>
-            </div>
-            <div className="bg-gray-50 rounded-xl p-3">
-              <div className="text-xs text-gray-400">Disetorkan</div>
-              <div className="font-bold">{fmtRp(item.cash_disetorkan)}</div>
-            </div>
+        <div className="border-t border-slate-100 px-5 py-5">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <FinanceMetric label="Cash POS" value={fmtRp(item.cash_pos)} />
+            <FinanceMetric label="Disetorkan" value={fmtRp(item.cash_disetorkan)} />
           </div>
 
           {selisih !== 0 && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-3">
-              <div className="text-xs text-red-500 font-semibold">Selisih Cash</div>
-              <div className="text-xl font-bold text-red-700">{fmtRp(Math.abs(selisih))}</div>
+            <div className="mt-4 rounded-[22px] border border-rose-200 bg-rose-50 px-4 py-4">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-rose-500">Selisih Cash</div>
+              <div className="mt-2 text-2xl font-semibold text-rose-700">{fmtRp(Math.abs(selisih))}</div>
               {item.alasan_selisih && (
-                <div className="text-xs text-red-600 mt-1.5 bg-red-100 rounded-lg px-2 py-1.5 italic">
-                  "{item.alasan_selisih}"
-                </div>
+                <div className="mt-2 text-sm leading-6 text-rose-700">{item.alasan_selisih}</div>
               )}
             </div>
           )}
 
-          <div>
-            <p className="label mb-2">Foto Bukti Setoran</p>
-            <PhotoViewer urls={item.foto_bukti || []} emptyText="Tidak ada foto bukti" />
+          <div className="mt-4">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Foto Bukti Setoran</div>
+            <div className="mt-3">
+              <PhotoViewer urls={item.foto_bukti || []} emptyText="Tidak ada foto bukti" />
+            </div>
           </div>
 
-          <div className="text-xs text-gray-400 space-y-0.5">
+          <div className="mt-4 rounded-[22px] bg-slate-50 px-4 py-4 text-sm leading-6 text-slate-500">
             <div>Submit: {item.submitted_at ? new Date(item.submitted_at).toLocaleString('id-ID') : '-'}</div>
             {item.approved_at && item.status === 'approved' && (
               <div>Approved by DM: {new Date(item.approved_at).toLocaleString('id-ID')}</div>
             )}
             {item.approved_at && item.status === 'rejected' && (
-              <div className="text-red-500">Rejected by DM: {new Date(item.approved_at).toLocaleString('id-ID')}</div>
+              <div>Rejected by DM: {new Date(item.approved_at).toLocaleString('id-ID')}</div>
             )}
-            {item.finance_notes && <div className="mt-1 text-primary-600">Catatan audit: {item.finance_notes}</div>}
+            {item.finance_notes && (
+              <div className="mt-2 text-primary-700">Catatan audit: {item.finance_notes}</div>
+            )}
           </div>
 
           {tab === 'pending' && (
-            <>
+            <div className="mt-4 space-y-4">
               <div>
                 <label className="label">Catatan Audit Finance</label>
                 <input
@@ -454,29 +431,39 @@ function FinanceCard({ item, expanded, onToggle, onAudit, onFlag, notes, onNotes
                   type="text"
                   value={notes}
                   onChange={(event) => onNotesChange(event.target.value)}
-                  placeholder="Catatan untuk rekap (opsional)..."
+                  placeholder="Tambahkan catatan audit bila perlu..."
                 />
               </div>
-              <div className="flex gap-2">
+
+              <div className="grid gap-3 sm:grid-cols-2">
                 <button
                   onClick={onFlag}
                   disabled={actioning}
-                  className="flex-1 py-2.5 rounded-xl bg-yellow-50 border border-yellow-200 text-yellow-700 text-sm font-semibold"
+                  className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700 transition-transform active:scale-[0.99] disabled:opacity-60"
                 >
-                  {actioning ? '...' : 'Flag'}
+                  {actioning ? 'Memproses...' : 'Flag'}
                 </button>
                 <button
                   onClick={onAudit}
                   disabled={actioning}
-                  className="flex-1 py-2.5 rounded-xl bg-primary-600 text-white text-sm font-semibold"
+                  className="rounded-2xl bg-primary-600 px-4 py-3 text-sm font-semibold text-white transition-transform active:scale-[0.99] disabled:opacity-60"
                 >
-                  {actioning ? '...' : 'Selesai Diaudit'}
+                  {actioning ? 'Memproses...' : 'Selesai Diaudit'}
                 </button>
               </div>
-            </>
+            </div>
           )}
         </div>
       )}
+    </article>
+  )
+}
+
+function FinanceMetric({ label, value }) {
+  return (
+    <div className="rounded-[22px] bg-slate-50 px-4 py-4">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">{label}</div>
+      <div className="mt-2 text-xl font-semibold text-slate-950">{value}</div>
     </div>
   )
 }
@@ -489,7 +476,7 @@ function getDateRange(period, anchorDate) {
     return {
       start: anchorDate,
       end: anchorDate,
-      label: `Harian - ${formatRangeDate(anchorDate, { day: 'numeric', month: 'long', year: 'numeric' })}`,
+      label: `Harian • ${formatRangeDate(anchorDate, { day: 'numeric', month: 'long', year: 'numeric' })}`,
     }
   }
 
@@ -500,7 +487,7 @@ function getDateRange(period, anchorDate) {
     return {
       start,
       end,
-      label: `Bulanan - ${formatRangeDate(start, { month: 'long', year: 'numeric' })}`,
+      label: `Bulanan • ${formatRangeDate(start, { month: 'long', year: 'numeric' })}`,
     }
   }
 
@@ -515,7 +502,7 @@ function getDateRange(period, anchorDate) {
   return {
     start: startIso,
     end: endIso,
-    label: `Mingguan - ${formatRangeDate(startIso, { day: 'numeric', month: 'short' })} - ${formatRangeDate(endIso, { day: 'numeric', month: 'short', year: 'numeric' })}`,
+    label: `Mingguan • ${formatRangeDate(startIso, { day: 'numeric', month: 'short' })} - ${formatRangeDate(endIso, { day: 'numeric', month: 'short', year: 'numeric' })}`,
   }
 }
 

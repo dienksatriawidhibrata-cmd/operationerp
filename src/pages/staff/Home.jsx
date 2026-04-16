@@ -1,21 +1,31 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { StaffBottomNav } from '../../components/BottomNav'
-import Badge from '../../components/Badge'
+import {
+  ActionCard,
+  AppIcon,
+  HeroCard,
+  InlineStat,
+  SectionPanel,
+  SubpageShell,
+  ToneBadge,
+} from '../../components/ui/AppKit'
 import { fmtRp, todayWIB, yesterdayWIB, sisaWaktuLaporan } from '../../lib/utils'
 
 export default function StaffHome() {
   const { profile, signOut } = useAuth()
-  const [status, setStatus]   = useState(null)
+  const [status, setStatus] = useState(null)
   const [loading, setLoading] = useState(true)
 
   const today = todayWIB()
   const yesterday = yesterdayWIB()
 
   useEffect(() => {
-    if (!profile?.branch_id) { setLoading(false); return }
+    if (!profile?.branch_id) {
+      setLoading(false)
+      return
+    }
     fetchStatus()
   }, [profile])
 
@@ -43,165 +53,210 @@ export default function StaffHome() {
         .eq('branch_id', branchId).eq('tanggal', today),
     ])
 
-    const totalOpex = (opexToday.data || []).reduce((s, r) => s + Number(r.total), 0)
+    const totalOpex = (opexToday.data || []).reduce((sum, row) => sum + Number(row.total), 0)
 
     setStatus({
-      ceklisPagi:  ceklisPagi.data,
+      ceklisPagi: ceklisPagi.data,
       ceklisMalam: ceklisMalam.data,
-      laporan:     laporan.data,
+      laporan: laporan.data,
       totalOpex,
     })
     setLoading(false)
   }
 
   const isStoreLevel = ['staff', 'asst_head_store', 'head_store'].includes(profile?.role)
+  const shortName = profile?.full_name?.split(' ')[0] || '-'
+  const branchName = profile?.branch?.name || 'Bagi Kopi'
+  const greetingLabel = getGreetingLabel()
 
-  const greeting = () => {
-    const h = new Date(new Date().getTime() + 7 * 3600 * 1000).getUTCHours()
-    if (h < 11) return 'Selamat pagi'
-    if (h < 15) return 'Selamat siang'
-    if (h < 18) return 'Selamat sore'
-    return 'Selamat malam'
+  const statCards = [
+    {
+      label: 'Ceklis Pagi',
+      value: status?.ceklisPagi ? (status.ceklisPagi.is_late ? 'Late' : 'Done') : 'Miss',
+      tone: status?.ceklisPagi ? (status.ceklisPagi.is_late ? 'amber' : 'emerald') : 'rose',
+    },
+    {
+      label: 'Ceklis Malam',
+      value: status?.ceklisMalam ? 'Done' : 'Open',
+      tone: status?.ceklisMalam ? 'emerald' : 'slate',
+    },
+    {
+      label: 'Laporan H-1',
+      value: status?.laporan ? 'Done' : 'Pending',
+      tone: status?.laporan ? 'emerald' : 'amber',
+    },
+    {
+      label: 'Opex Hari Ini',
+      value: fmtRp(status?.totalOpex || 0),
+      tone: status?.totalOpex > 0 ? 'primary' : 'slate',
+    },
+  ]
+
+  return (
+    <SubpageShell
+      title="Store Operations"
+      subtitle={branchName}
+      eyebrow={greetingLabel}
+      showBack={false}
+      action={
+        <button
+          onClick={signOut}
+          className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500 shadow-[0_18px_45px_-34px_rgba(15,23,42,0.35)] transition-colors hover:border-primary-200 hover:text-primary-700"
+          aria-label="Keluar"
+        >
+          <AppIcon name="logout" size={18} />
+        </button>
+      }
+      footer={<StaffBottomNav />}
+    >
+      <HeroCard
+        eyebrow={profile?.branch?.store_id || 'Store Ops'}
+        title={`Halo, ${shortName}. Jaga ritme operasional toko hari ini.`}
+        description="Semua alur penting seperti ceklis, laporan, dan OPEX aku rapikan di halaman ini supaya lebih cepat dipindai dan langsung terasa prioritasnya."
+        meta={
+          <>
+            <ToneBadge tone="info">
+              <AppIcon name="calendar" size={14} />
+              {new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+            </ToneBadge>
+            <ToneBadge tone={status?.laporan ? 'ok' : 'warn'}>
+              <AppIcon name="chart" size={14} />
+              {status?.laporan ? 'Laporan H-1 aman' : `Sisa ${sisaWaktuLaporan(yesterday)}`}
+            </ToneBadge>
+          </>
+        }
+      >
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {(loading ? [
+            { label: 'Ceklis Pagi', value: '...', tone: 'slate' },
+            { label: 'Ceklis Malam', value: '...', tone: 'slate' },
+            { label: 'Laporan H-1', value: '...', tone: 'slate' },
+            { label: 'Opex Hari Ini', value: '...', tone: 'slate' },
+          ] : statCards).map((item) => (
+            <InlineStat key={item.label} label={item.label} value={item.value} tone={item.tone} />
+          ))}
+        </div>
+      </HeroCard>
+
+      {!loading && status && !status.laporan && (
+        <div className="mt-6 rounded-[24px] border border-amber-200 bg-amber-50 px-5 py-4 text-sm leading-6 text-amber-800 shadow-[0_16px_48px_-36px_rgba(217,119,6,0.55)]">
+          Laporan harian <strong>{new Date(yesterday).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</strong> belum disubmit.
+          Sisa waktu: <strong>{sisaWaktuLaporan(yesterday)}</strong>.
+        </div>
+      )}
+
+      <div className="mt-6 grid gap-6 xl:grid-cols-[1.3fr_0.7fr]">
+        <SectionPanel
+          eyebrow="Workflow"
+          title="Menu Utama"
+          description="Akses cepat ke alur yang paling sering kamu kerjakan di toko."
+        >
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {isStoreLevel && (
+              <ActionCard
+                to="/staff/ceklis"
+                icon="checklist"
+                title="Ceklis Harian"
+                description="Isi checklist pagi dan malam beserta foto area."
+                accent="emerald"
+              />
+            )}
+            <ActionCard
+              to="/staff/laporan"
+              icon="chart"
+              title="Laporan Harian"
+              description="Input net sales, kunjungan, dan status setoran harian."
+              accent="primary"
+            />
+            <ActionCard
+              to="/staff/opex"
+              icon="opex"
+              title="Beban Operasional"
+              description="Catat pengeluaran toko beserta bukti nota."
+              accent="violet"
+            />
+            {!isStoreLevel && (
+              <ActionCard
+                to="/dm"
+                icon="home"
+                title="Dashboard Manajer"
+                description="Pantau semua toko, visit, approval, dan kontrol biaya."
+                accent="amber"
+              />
+            )}
+          </div>
+        </SectionPanel>
+
+        <SectionPanel
+          eyebrow="Snapshot"
+          title="Ringkasan Operasional"
+          description="Status cepat untuk melihat hal yang paling perlu dikerjakan."
+        >
+          <div className="space-y-3">
+            <StatusSnapshot
+              label="Ceklis Pagi"
+              value={status?.ceklisPagi ? 'Sudah masuk' : 'Belum masuk'}
+              detail={status?.ceklisPagi
+                ? (status.ceklisPagi.is_late
+                  ? 'Tercatat terlambat dari deadline'
+                  : new Date(status.ceklisPagi.submitted_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB')
+                : 'Perlu follow up'}
+              tone={status?.ceklisPagi ? (status.ceklisPagi.is_late ? 'warn' : 'ok') : 'danger'}
+            />
+            <StatusSnapshot
+              label="Ceklis Malam"
+              value={status?.ceklisMalam ? 'Sudah diisi' : 'Masih terbuka'}
+              detail={status?.ceklisMalam ? 'Checklist penutupan aman' : 'Belum ada input malam'}
+              tone={status?.ceklisMalam ? 'ok' : 'info'}
+            />
+            <StatusSnapshot
+              label="Laporan H-1"
+              value={status?.laporan ? 'Sudah submit' : 'Belum submit'}
+              detail={status?.laporan ? 'Laporan operasional sudah tercatat' : `Deadline jam 14.00 WIB, sisa ${sisaWaktuLaporan(yesterday)}`}
+              tone={status?.laporan ? 'ok' : 'warn'}
+            />
+            <StatusSnapshot
+              label="Opex Hari Ini"
+              value={fmtRp(status?.totalOpex || 0)}
+              detail={status?.totalOpex > 0 ? 'Pengeluaran hari ini sudah tercatat' : 'Belum ada pengeluaran tercatat'}
+              tone={status?.totalOpex > 0 ? 'info' : 'slate'}
+            />
+          </div>
+        </SectionPanel>
+      </div>
+    </SubpageShell>
+  )
+}
+
+function StatusSnapshot({ label, value, detail, tone }) {
+  const toneClass = {
+    danger: 'bg-rose-50 text-rose-700',
+    warn: 'bg-amber-50 text-amber-700',
+    ok: 'bg-emerald-50 text-emerald-700',
+    info: 'bg-primary-50 text-primary-700',
+    slate: 'bg-slate-100 text-slate-600',
   }
 
-  const shortName = profile?.full_name?.split(' ')[0] || '—'
-
   return (
-    <div className="page-shell">
-      {/* Header */}
-      <header className="bg-primary-600 text-white px-4 pt-5 pb-6">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-primary-200 text-sm">{greeting()},</p>
-            <h1 className="text-xl font-bold mt-0.5">{shortName} 👋</h1>
-            <p className="text-primary-300 text-xs mt-1">
-              {profile?.branch?.name || 'Bagi Kopi'} · {new Date().toLocaleDateString('id-ID', { weekday:'long', day:'numeric', month:'short', year:'numeric' })}
-            </p>
-          </div>
-          <button
-            onClick={signOut}
-            className="text-primary-300 hover:text-white transition-colors p-1"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-          </button>
+    <div className="rounded-[22px] border border-white/80 bg-slate-50/85 px-4 py-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">{label}</div>
+          <div className="mt-2 text-base font-semibold text-slate-950">{value}</div>
+          <div className="mt-1 text-sm leading-6 text-slate-500">{detail}</div>
         </div>
-      </header>
-
-      <div className="flex-1 overflow-y-auto pb-24 px-4 -mt-3">
-        {/* Status cards */}
-        {loading ? (
-          <div className="grid grid-cols-2 gap-3 mt-0">
-            {[1,2,3,4].map(i => (
-              <div key={i} className="card p-4 animate-pulse">
-                <div className="h-6 bg-gray-100 rounded mb-2 w-8" />
-                <div className="h-3 bg-gray-100 rounded w-20" />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3 mt-0">
-            <StatusCard
-              value={status?.ceklisPagi ? (status.ceklisPagi.is_late ? '⚠' : '✓') : '!'}
-              valueColor={status?.ceklisPagi ? (status.ceklisPagi.is_late ? 'text-yellow-600' : 'text-green-600') : 'text-red-500'}
-              label="Ceklis Pagi"
-              note={status?.ceklisPagi
-                ? (status.ceklisPagi.is_late ? 'Terlambat' : new Date(status.ceklisPagi.submitted_at).toLocaleTimeString('id-ID', {hour:'2-digit',minute:'2-digit'}) + ' WIB')
-                : 'Belum diisi'}
-              noteColor={status?.ceklisPagi ? '' : 'text-red-500'}
-            />
-            <StatusCard
-              value={status?.ceklisMalam ? '✓' : '!'}
-              valueColor={status?.ceklisMalam ? 'text-green-600' : 'text-gray-400'}
-              label="Ceklis Malam"
-              note={status?.ceklisMalam ? 'Sudah' : 'Belum diisi'}
-              noteColor={status?.ceklisMalam ? '' : 'text-gray-400'}
-            />
-            <StatusCard
-              value={status?.laporan ? '✓' : '!'}
-              valueColor={status?.laporan ? 'text-green-600' : 'text-yellow-500'}
-              label={`Laporan ${new Date(yesterday).toLocaleDateString('id-ID', {day:'numeric',month:'short'})}`}
-              note={status?.laporan ? 'Submitted' : `Sisa ${sisaWaktuLaporan(yesterday)}`}
-              noteColor={status?.laporan ? '' : 'text-yellow-600'}
-            />
-            <StatusCard
-              value={status?.totalOpex > 0 ? fmtRp(status.totalOpex) : 'Rp 0'}
-              valueColor="text-primary-700"
-              label="Opex Hari Ini"
-              note=""
-              smallVal
-            />
-          </div>
-        )}
-
-        {/* Alert laporan belum submit */}
-        {status && !status.laporan && (
-          <div className="mt-3 bg-yellow-50 border border-yellow-200 rounded-xl p-3 flex gap-2 items-start text-sm text-yellow-800">
-            <span className="text-base flex-shrink-0">⏰</span>
-            <span>
-              Laporan harian <strong>{new Date(yesterday).toLocaleDateString('id-ID', {day:'numeric', month:'short'})}</strong> belum disubmit.
-              Sisa waktu: <strong>{sisaWaktuLaporan(yesterday)}</strong>
-            </span>
-          </div>
-        )}
-
-        {/* Menu */}
-        <p className="section-title">Menu Utama</p>
-        <div className="card overflow-hidden">
-          {isStoreLevel && (
-            <MenuRow to="/staff/ceklis" icon="✅" label="Ceklis Harian" sub="Pagi & Malam · Foto area" color="bg-green-50" />
-          )}
-          <MenuRow to="/staff/laporan" icon="📊" label="Laporan Harian" sub="Net sales, kunjungan, setoran" color="bg-blue-50" />
-          <MenuRow to="/staff/opex" icon="🧾" label="Beban Operasional" sub="Input pengeluaran dengan kode" color="bg-purple-50" last />
-        </div>
-
-        {/* Quick access for managers */}
-        {!isStoreLevel && (
-          <>
-            <p className="section-title">Dashboard Manajer</p>
-            <div className="card overflow-hidden">
-              <MenuRow to="/dm" icon="🏠" label="Dashboard" sub="Status semua toko" color="bg-primary-50" />
-              <MenuRow to="/dm/visit" icon="🏪" label="Daily Visit" sub="Audit & scoring toko" color="bg-green-50" />
-              <MenuRow to="/dm/approval" icon="✅" label="Approval Setoran" sub="Review & approve setoran" color="bg-yellow-50" last />
-            </div>
-          </>
-        )}
+        <span className={`rounded-full px-3 py-1.5 text-[11px] font-semibold ${toneClass[tone] || toneClass.slate}`}>
+          {tone === 'danger' ? 'Perlu cek' : tone === 'warn' ? 'Tertahan' : tone === 'ok' ? 'Aman' : 'Info'}
+        </span>
       </div>
-
-      <StaffBottomNav />
     </div>
   )
 }
 
-function StatusCard({ value, valueColor, label, note, noteColor = 'text-gray-400', smallVal }) {
-  return (
-    <div className="card p-4">
-      <div className={`font-bold leading-none mb-1 ${smallVal ? 'text-base' : 'text-2xl'} ${valueColor}`}>
-        {value}
-      </div>
-      <div className="text-xs font-medium text-gray-600">{label}</div>
-      {note && <div className={`text-[10px] mt-0.5 ${noteColor || 'text-gray-400'}`}>{note}</div>}
-    </div>
-  )
-}
-
-function MenuRow({ to, icon, label, sub, color, last }) {
-  return (
-    <Link
-      to={to}
-      className={`flex items-center gap-3 p-4 ${!last ? 'border-b border-gray-50' : ''} hover:bg-gray-50 transition-colors`}
-    >
-      <div className={`w-10 h-10 ${color} rounded-xl flex items-center justify-center text-xl flex-shrink-0`}>
-        {icon}
-      </div>
-      <div className="flex-1">
-        <div className="font-semibold text-sm text-gray-900">{label}</div>
-        <div className="text-xs text-gray-400 mt-0.5">{sub}</div>
-      </div>
-      <svg className="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-      </svg>
-    </Link>
-  )
+function getGreetingLabel() {
+  const hour = new Date(new Date().getTime() + 7 * 3600 * 1000).getUTCHours()
+  if (hour < 11) return 'Selamat pagi'
+  if (hour < 15) return 'Selamat siang'
+  if (hour < 18) return 'Selamat sore'
+  return 'Selamat malam'
 }

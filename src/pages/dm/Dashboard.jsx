@@ -8,8 +8,21 @@ import {
   requestBrowserNotificationPermission,
   showBrowserNotification,
 } from '../../lib/notifications'
-import Badge from '../../components/Badge'
 import { DMBottomNav } from '../../components/BottomNav'
+import {
+  ActionCard,
+  AppCanvas,
+  AppIcon,
+  EmptyPanel,
+  HeroCard,
+  InlineStat,
+  MetricCard,
+  SectionPanel,
+  SegmentedControl,
+  ShellHeader,
+  SoftButton,
+  ToneBadge,
+} from '../../components/ui/AppKit'
 
 const VISIT_PERIODS = [
   { key: 'day', label: 'Harian' },
@@ -618,13 +631,15 @@ export default function DMDashboard() {
   }
 
   const storeBadge = (store) => {
-    if (!store.ceklisPagi) return { variant: 'danger', label: 'Ceklis' }
-    if (!store.laporan) return { variant: 'warn', label: 'Laporan' }
-    if (store.setoran?.status === 'submitted') return { variant: 'warn', label: 'Setoran' }
-    if (store.setoran?.status === 'rejected') return { variant: 'danger', label: 'Rejected' }
-    if (!store.setoran) return { variant: 'warn', label: 'Setoran' }
-    if (store.selectedBudget?.actualRatio != null && store.selectedBudget.actualRatio > 0.03) return { variant: 'danger', label: 'BOH > 3%' }
-    return { variant: 'ok', label: 'OK' }
+    if (!store.ceklisPagi) return { tone: 'danger', label: 'Ceklis pagi belum masuk' }
+    if (!store.laporan) return { tone: 'warn', label: 'Laporan harian tertahan' }
+    if (store.setoran?.status === 'submitted') return { tone: 'warn', label: 'Menunggu approval setoran' }
+    if (store.setoran?.status === 'rejected') return { tone: 'danger', label: 'Setoran ditolak' }
+    if (!store.setoran) return { tone: 'warn', label: 'Belum submit setoran' }
+    if (store.selectedBudget?.actualRatio != null && store.selectedBudget.actualRatio > 0.03) {
+      return { tone: 'danger', label: 'BOH melewati batas 3%' }
+    }
+    return { tone: 'ok', label: 'Operasional aman' }
   }
 
   const shortName = profile?.full_name?.split(' ')[0] || '-'
@@ -642,10 +657,85 @@ export default function DMDashboard() {
   const districtOptions = Array.from(new Set(stores.map((store) => store.district).filter(Boolean))).sort()
   const areaOptions = Array.from(new Set(stores.map((store) => store.area).filter(Boolean))).sort()
   const accountRoleOptions = [...STORE_ROLE_OPTIONS, ...MANAGER_ROLE_OPTIONS]
+  const todayLabel = new Date().toLocaleDateString('id-ID', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+  const criticalAlertCount = alerts.filter((item) => ['danger', 'warn'].includes(item.level)).length
+  const healthyStoreCount = stores.filter((store) => storeBadge(store).tone === 'ok').length
+  const pendingStoreIssues = stores.length - healthyStoreCount
+  const visitCoveragePct = Math.round((visitSummary.coveragePct || 0) * 100)
+  const overviewCards = [
+    {
+      title: 'Ceklis Pagi',
+      value: summary.ceklisOK,
+      total: summary.total,
+      note: summary.total === summary.ceklisOK ? 'Semua toko sudah mengirim ceklis pagi.' : `${summary.total - summary.ceklisOK} toko masih perlu diingatkan.`,
+      icon: 'checklist',
+      tone: 'orange',
+    },
+    {
+      title: 'Laporan H-1',
+      value: summary.laporanOK,
+      total: summary.total,
+      note: summary.laporanOK === summary.total ? 'Semua laporan harian sudah masuk.' : `${summary.total - summary.laporanOK} laporan masih tertahan.`,
+      icon: 'chart',
+      tone: 'primary',
+    },
+    {
+      title: 'Visit Periode',
+      value: visitSummary.visitedCount,
+      total: summary.total,
+      note: `${visitSummary.totalVisits} kunjungan tercatat untuk periode ${visitSummary.label || 'aktif'}.`,
+      icon: 'map',
+      tone: 'violet',
+    },
+    {
+      title: 'Setoran Pending',
+      value: summary.pendingSetoran,
+      note: summary.pendingSetoran > 0 ? 'Masih ada approval yang perlu ditindaklanjuti.' : 'Tidak ada antrean approval setoran.',
+      icon: 'finance',
+      tone: summary.pendingSetoran > 0 ? 'rose' : 'emerald',
+    },
+  ]
+  const snapshotStats = [
+    { label: 'Outlet Aman', value: healthyStoreCount, tone: 'emerald' },
+    { label: 'Butuh Follow Up', value: pendingStoreIssues, tone: pendingStoreIssues > 0 ? 'amber' : 'slate' },
+    { label: 'Coverage Visit', value: `${visitCoveragePct}%`, tone: visitCoveragePct >= 80 ? 'emerald' : 'primary' },
+    { label: 'BOH Over Budget', value: opexSummary.overBudget, tone: opexSummary.overBudget > 0 ? 'rose' : 'slate' },
+  ]
+  const insightItems = [
+    {
+      icon: criticalAlertCount > 0 ? 'warning' : 'spark',
+      title: criticalAlertCount > 0 ? `${criticalAlertCount} alert prioritas menunggu follow up` : 'Tidak ada alert prioritas saat ini',
+      body: criticalAlertCount > 0
+        ? 'Fokuskan tindak lanjut ke toko yang belum isi ceklis, laporan, atau masih tertahan setorannya.'
+        : 'Kondisi operasional inti relatif aman. Kamu bisa lanjut cek performa visit dan BOH.',
+      tone: criticalAlertCount > 0 ? 'danger' : 'ok',
+    },
+    {
+      icon: 'chart',
+      title: `${opexSummary.withinBudget} toko masih di jalur BOH`,
+      body: opexSummary.overBudget > 0
+        ? `${opexSummary.overBudget} toko sedang melewati ambang 3% dan perlu dipantau lebih dekat.`
+        : 'Tidak ada toko yang melewati ambang BOH 3% pada bulan aktif.',
+      tone: opexSummary.overBudget > 0 ? 'warn' : 'info',
+    },
+    {
+      icon: 'map',
+      title: `${visitSummary.visitedCount} dari ${summary.total} outlet sudah tersentuh visit`,
+      body: isOpsManager
+        ? 'Gunakan monitoring per manager untuk melihat siapa yang masih tertinggal coverage-nya.'
+        : 'Pantau daftar toko yang belum kamu kunjungi agar coverage periode ini cepat naik.',
+      tone: visitCoveragePct >= 80 ? 'ok' : 'info',
+    },
+  ]
 
   return (
-    <div className="page-shell">
-      <header className="bg-primary-600 text-white px-4 pt-5 pb-6">
+    <AppCanvas>
+      <header className="hidden bg-primary-600 text-white px-4 pt-5 pb-6">
         <div className="flex items-start justify-between">
           <div>
             <p className="text-primary-200 text-sm">{roleName}</p>
@@ -662,7 +752,64 @@ export default function DMDashboard() {
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto pb-24 px-4 -mt-2">
+      <ShellHeader
+        brandTitle="Bagi Kopi Operations"
+        brandSubtitle="Operational Control"
+        profileName={profile?.full_name || shortName}
+        profileRole={roleName}
+        primaryAction={
+          <button
+            onClick={signOut}
+            className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500 shadow-[0_18px_45px_-34px_rgba(15,23,42,0.35)] transition-colors hover:border-primary-200 hover:text-primary-700"
+            aria-label="Keluar"
+          >
+            <AppIcon name="logout" size={18} />
+          </button>
+        }
+      />
+
+      <main className="mx-auto max-w-7xl px-4 pb-36 pt-4 sm:px-6 lg:px-8 lg:pb-32 lg:pt-8">
+        <HeroCard
+          eyebrow={roleName}
+          title={`Halo, ${shortName}. Operasional ${summary.total || 0} toko siap dipantau.`}
+          description="Aku jadikan halaman ini sebagai blueprint visual baru: lebih lega, lebih cepat dipindai, dan tetap menjaga alur kerja approval, visit, serta kontrol biaya."
+          meta={
+            <>
+              <ToneBadge tone="info">
+                <AppIcon name="calendar" size={14} />
+                {todayLabel}
+              </ToneBadge>
+              <ToneBadge tone={criticalAlertCount > 0 ? 'danger' : 'ok'}>
+                <AppIcon name={criticalAlertCount > 0 ? 'warning' : 'spark'} size={14} />
+                {criticalAlertCount > 0 ? `${criticalAlertCount} alert prioritas` : 'Tidak ada alert kritis'}
+              </ToneBadge>
+              <ToneBadge tone={summary.pendingSetoran > 0 ? 'warn' : 'ok'}>
+                <AppIcon name="finance" size={14} />
+                {summary.pendingSetoran > 0 ? `${summary.pendingSetoran} setoran pending` : 'Approval setoran bersih'}
+              </ToneBadge>
+            </>
+          }
+          actions={
+            <>
+              <SoftButton tone="light" icon="refresh" onClick={fetchDashboard}>
+                Refresh
+              </SoftButton>
+              {isOpsManager && (
+                <SoftButton tone="light" icon="plus" onClick={openCreateAccountModal}>
+                  Tambah Akun
+                </SoftButton>
+              )}
+            </>
+          }
+        >
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {snapshotStats.map((item) => (
+              <InlineStat key={item.label} label={item.label} value={item.value} tone={item.tone} />
+            ))}
+          </div>
+        </HeroCard>
+
+        <div className="mt-6">
         {loading ? (
           <div className="flex justify-center py-12">
             <div className="animate-spin w-8 h-8 border-2 border-primary-600 border-t-transparent rounded-full" />
@@ -670,297 +817,312 @@ export default function DMDashboard() {
         ) : (
           <>
             {notifPermission !== 'granted' && (
-              <div className="bg-primary-50 border border-primary-100 rounded-xl p-3 mb-3 flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-sm font-semibold text-primary-700">Aktifkan notifikasi browser</div>
-                  <div className="text-xs text-primary-500 mt-1">
-                    Event baru dan reminder penting akan muncul otomatis saat dashboard terbuka.
-                  </div>
+              <SectionPanel
+                className="mb-6"
+                eyebrow="Notification Layer"
+                title="Aktifkan notifikasi browser"
+                description="Reminder dan update terbaru akan muncul otomatis saat dashboard sedang terbuka, jadi kamu tidak perlu terus memantau manual."
+                actions={
+                  notifPermission === 'unsupported' ? (
+                    <ToneBadge tone="slate">Browser tidak mendukung</ToneBadge>
+                  ) : (
+                    <SoftButton tone="white" icon="bell" onClick={enableBrowserNotifications}>
+                      Aktifkan
+                    </SoftButton>
+                  )
+                }
+              >
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <InlineStat label="Alert Prioritas" value={criticalAlertCount} tone={criticalAlertCount > 0 ? 'rose' : 'slate'} />
+                  <InlineStat label="Aktivitas Hari Ini" value={activities.length} tone="primary" />
+                  <InlineStat label="Pending Approval" value={summary.pendingSetoran} tone={summary.pendingSetoran > 0 ? 'amber' : 'slate'} />
                 </div>
-                {notifPermission === 'unsupported' ? (
-                  <span className="text-xs font-semibold text-gray-500">Browser tidak mendukung</span>
-                ) : (
-                  <button onClick={enableBrowserNotifications} className="px-3 py-2 rounded-xl bg-primary-600 text-white text-xs font-semibold">
-                    Aktifkan
-                  </button>
-                )}
-              </div>
+              </SectionPanel>
             )}
 
-            <div className="grid grid-cols-2 gap-3 mb-3">
-              <StatCard
-                label="Ceklis Pagi"
-                value={`${summary.ceklisOK}/${summary.total}`}
-                pct={summary.total ? summary.ceklisOK / summary.total : 0}
-                color={summary.ceklisOK === summary.total ? 'text-green-600' : 'text-yellow-600'}
-              />
-              <StatCard
-                label="Laporan H-1"
-                value={`${summary.laporanOK}/${summary.total}`}
-                pct={summary.total ? summary.laporanOK / summary.total : 0}
-                color={summary.laporanOK === summary.total ? 'text-green-600' : 'text-yellow-600'}
-              />
-              <StatCard
-                label="Visit Periode"
-                value={`${visitSummary.visitedCount}/${summary.total}`}
-                pct={visitSummary.coveragePct}
-                color={visitSummary.coveragePct === 1 ? 'text-green-600' : 'text-primary-600'}
-              />
-              <StatCard
-                label="Setoran Pending"
-                value={summary.pendingSetoran}
-                pct={0}
-                color={summary.pendingSetoran > 0 ? 'text-yellow-600' : 'text-green-600'}
-              />
+            <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              {overviewCards.map((card) => (
+                <MetricCard
+                  key={card.title}
+                  title={card.title}
+                  value={card.value}
+                  total={card.total}
+                  note={card.note}
+                  icon={card.icon}
+                  tone={card.tone}
+                  onClick={() => {
+                    if (card.title === 'Visit Periode') {
+                      setActiveTab('kunjungan')
+                      return
+                    }
+                    setActiveTab('toko')
+                  }}
+                />
+              ))}
+            </div>
+
+            <div className="mb-6 grid gap-4 xl:grid-cols-3">
+              {insightItems.map((item) => (
+                <InsightCard key={item.title} item={item} />
+              ))}
             </div>
 
             {summary.pendingSetoran > 0 && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 mb-3 flex gap-2 items-start">
-                <span className="text-sm text-yellow-800">
-                  <strong>{summary.pendingSetoran} setoran</strong> menunggu approval.
-                  <Link to="/dm/approval" className="text-primary-600 font-semibold ml-1">Review {'->'}</Link>
-                </span>
+              <div className="mb-6 rounded-[24px] border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800 shadow-[0_18px_48px_-36px_rgba(217,119,6,0.6)]">
+                <strong>{summary.pendingSetoran} setoran</strong> menunggu approval.
+                <Link to="/dm/approval" className="ml-2 font-semibold text-primary-700">
+                  Review sekarang
+                </Link>
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-3 mb-3">
-              <Link to="/dm/visit" className="card p-4 flex items-center gap-3 hover:shadow-md transition-shadow">
-                <span className="text-2xl">Visit</span>
-                <div>
-                  <div className="font-semibold text-sm">Daily Visit</div>
-                  <div className="text-xs text-gray-400">Audit toko</div>
-                </div>
-              </Link>
-              <Link to="/dm/approval" className="card p-4 flex items-center gap-3 hover:shadow-md transition-shadow">
-                <span className="text-2xl">Approval</span>
-                <div>
-                  <div className="font-semibold text-sm">Approval</div>
-                  <div className="text-xs text-gray-400">Setoran pending</div>
-                </div>
-              </Link>
-            </div>
+            <SectionPanel
+              className="mb-6"
+              eyebrow="Workflow"
+              title="Akses Cepat"
+              description="Pintasan ke alur yang paling sering kamu buka untuk follow up operasional."
+            >
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                <ActionCard
+                  to="/dm/visit"
+                  icon="map"
+                  title="Daily Visit"
+                  description="Audit outlet, isi skor, dan lihat log kunjungan."
+                  accent="violet"
+                />
+                <ActionCard
+                  to="/dm/approval"
+                  icon="approval"
+                  title="Approval Setoran"
+                  description="Review setoran pending dan tindak lanjuti kas harian."
+                  accent="emerald"
+                />
+                {isOpsManager && (
+                  <ActionCard
+                    to="/finance"
+                    icon="finance"
+                    title="Finance Audit"
+                    description="Pantau audit setoran lintas area, district, dan toko."
+                    accent="amber"
+                  />
+                )}
+                {isOpsManager && (
+                  <ActionCard
+                    to="/opex"
+                    icon="opex"
+                    title="Opex Overview"
+                    description="Bandingkan BOH dan pantau pengajuan biaya operasional."
+                    accent="primary"
+                  />
+                )}
+              </div>
+            </SectionPanel>
 
             {isOpsManager && (
-              <button
-                onClick={openCreateAccountModal}
-                className="card w-full p-4 mb-3 flex items-center justify-between gap-3 text-left hover:shadow-md transition-shadow"
+              <SectionPanel
+                className="mb-6"
+                eyebrow="Control Center"
+                title="Manajemen Akun"
+                description="Dien bisa menambahkan akun toko, manager, atau finance supervisor langsung dari dashboard."
+                actions={
+                  <SoftButton tone="primary" icon="plus" onClick={openCreateAccountModal}>
+                    Tambah Akun
+                  </SoftButton>
+                }
               >
-                <div>
-                  <div className="font-semibold text-sm text-gray-900">Tambah Akun Baru</div>
-                  <div className="text-xs text-gray-400 mt-1">Dien bisa bikin email login, role, cabang, dan password awal dari sini.</div>
+                <div className="rounded-[24px] border border-dashed border-slate-200 bg-slate-50 px-5 py-4 text-sm leading-6 text-slate-500">
+                  Composer akun sudah terhubung ke flow pembuatan profile, role, scope, dan password awal.
                 </div>
-                <span className="text-primary-700 text-sm font-bold">+ Akun</span>
-              </button>
+              </SectionPanel>
             )}
 
             {accountSubmitSuccess && (
-              <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 mb-3 text-sm text-green-700">
+              <div className="mb-6 rounded-[24px] border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-700 shadow-[0_16px_50px_-36px_rgba(5,150,105,0.55)]">
                 {accountSubmitSuccess}
               </div>
             )}
 
-            <div className="flex bg-primary-100 rounded-xl p-1 mb-3 gap-1">
-              <button
-                onClick={() => setActiveTab('toko')}
-                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${activeTab === 'toko' ? 'bg-white text-primary-700 shadow-sm' : 'text-primary-400'}`}
-              >
-                Status Toko
-              </button>
-              <button
-                onClick={() => setActiveTab('kunjungan')}
-                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${activeTab === 'kunjungan' ? 'bg-white text-primary-700 shadow-sm' : 'text-primary-400'}`}
-              >
-                Monitoring Visit
-              </button>
-            </div>
-
-            {activeTab === 'toko' && (
-              <>
-                <div className="grid grid-cols-3 gap-3 mb-3">
-                  <VisitMetricCard label="BOH Aman" value={opexSummary.withinBudget} tone="text-green-600" />
-                  <VisitMetricCard label="BOH > 3%" value={opexSummary.overBudget} tone="text-red-600" />
-                  <VisitMetricCard label="Menunggu Laporan" value={opexSummary.pendingReport} tone="text-yellow-600" />
-                </div>
-
-                <p className="section-title">Notifikasi Prioritas</p>
-                <div className="card overflow-hidden mb-3">
-                  {alerts.length === 0 ? (
-                    <div className="px-4 py-5 text-sm text-gray-500 text-center">Semua toko dalam kondisi aman saat ini.</div>
-                  ) : (
-                    alerts.map((alert, index) => (
-                      <NotificationRow
-                        key={alert.id}
-                        item={alert}
-                        bordered={index < alerts.length - 1}
-                      />
-                    ))
-                  )}
-                </div>
-
-                <p className="section-title">Aktivitas Terbaru</p>
-                <div className="card overflow-hidden mb-3">
-                  {activities.length === 0 ? (
-                    <div className="px-4 py-5 text-sm text-gray-500 text-center">Belum ada aktivitas terbaru.</div>
-                  ) : (
-                    activities.map((item, index) => (
-                      <NotificationRow
-                        key={item.id}
-                        item={item}
-                        bordered={index < activities.length - 1}
-                      />
-                    ))
-                  )}
-                </div>
-
-                <div className="mb-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="section-title mb-0">Kontrol BOH vs Net Sales Bulanan</p>
-                    <div className="flex items-center gap-2">
-                      {availableMonths.length > 0 && (
-                        <select
-                          value={budgetMonth}
-                          onChange={(event) => setBudgetMonth(event.target.value)}
-                          className="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white text-gray-700"
-                        >
-                          {availableMonths.map((month) => (
-                            <option key={month.key} value={month.key}>
-                              {month.label}
-                            </option>
-                          ))}
-                        </select>
-                      )}
-                      <button
-                        onClick={() => setShowBudgetSection((current) => !current)}
-                        className="text-xs font-semibold text-primary-700 px-3 py-1.5 rounded-lg bg-primary-50 border border-primary-100"
-                      >
-                        {showBudgetSection ? 'Sembunyikan' : 'Tampilkan'}
-                      </button>
-                    </div>
+            <SectionPanel
+              className="mb-6"
+              eyebrow="Workspace"
+              title="Mode Pantau"
+              description="Pilih fokus kerja yang ingin kamu lihat lebih detail di bawah."
+              actions={
+                <SegmentedControl
+                  options={[
+                    { key: 'toko', label: 'Status Toko' },
+                    { key: 'kunjungan', label: 'Monitoring Visit' },
+                  ]}
+                  value={activeTab}
+                  onChange={setActiveTab}
+                />
+              }
+            >
+              {activeTab === 'toko' && (
+                <div className="space-y-6">
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <InlineStat label="BOH Aman" value={opexSummary.withinBudget} tone="emerald" />
+                    <InlineStat label="BOH > 3%" value={opexSummary.overBudget} tone="rose" />
+                    <InlineStat label="Menunggu Laporan" value={opexSummary.pendingReport} tone="amber" />
                   </div>
 
-                  {showBudgetSection ? (
-                    <div className="card overflow-hidden mt-2">
-                      {opexRows.length === 0 ? (
-                        <div className="px-4 py-5 text-sm text-gray-500 text-center">Belum ada data BOH yang bisa dibandingkan.</div>
-                      ) : (
-                        opexRows.map((row, index) => (
-                          <OpexBudgetRow
-                            key={row.id}
-                            row={row}
-                            onOpenDetail={() => setSelectedBudgetDetail(row)}
-                            bordered={index < opexRows.length - 1}
-                          />
-                        ))
-                      )}
-                    </div>
-                  ) : (
-                    <div className="card mt-2 px-4 py-4">
-                      <div className="text-sm font-semibold text-gray-800">Panel BOH sedang diringkas</div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        Ketuk <span className="font-semibold text-primary-700">Tampilkan</span> kalau mau melihat daftar BOH semua toko untuk bulan yang dipilih.
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="mb-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="section-title mb-0">Status Toko</p>
-                    <button
-                      onClick={() => setShowStoreSection((current) => !current)}
-                      className="text-xs font-semibold text-primary-700 px-3 py-1.5 rounded-lg bg-primary-50 border border-primary-100"
+                  <div className="grid gap-6 xl:grid-cols-2">
+                    <SectionPanel
+                      eyebrow="Urgensi"
+                      title="Notifikasi Prioritas"
+                      description="Daftar toko yang paling perlu follow up sekarang."
+                      className="border-slate-100 bg-slate-50/70 shadow-none"
+                      actions={<ToneBadge tone={criticalAlertCount > 0 ? 'danger' : 'ok'}>{criticalAlertCount > 0 ? `${criticalAlertCount} prioritas` : 'Aman'}</ToneBadge>}
                     >
-                      {showStoreSection ? 'Sembunyikan' : 'Tampilkan'}
-                    </button>
+                      {alerts.length === 0 ? (
+                        <EmptyPanel
+                          title="Semua toko dalam kondisi aman"
+                          description="Saat ini tidak ada alert yang perlu kamu kejar. Kamu bisa cek aktivitas terbaru atau buka monitoring visit."
+                        />
+                      ) : (
+                        <div className="space-y-3">
+                          {alerts.map((alert) => (
+                            <FeedCard key={alert.id} item={alert} />
+                          ))}
+                        </div>
+                      )}
+                    </SectionPanel>
+
+                    <SectionPanel
+                      eyebrow="Pulse"
+                      title="Aktivitas Terbaru"
+                      description="Semua update penting yang baru masuk dari toko."
+                      className="border-slate-100 bg-slate-50/70 shadow-none"
+                      actions={<ToneBadge tone="info">{activities.length} event</ToneBadge>}
+                    >
+                      {activities.length === 0 ? (
+                        <EmptyPanel
+                          title="Belum ada aktivitas terbaru"
+                          description="Saat data baru masuk dari toko, update checklists, laporan, setoran, dan OPEX akan muncul di sini."
+                        />
+                      ) : (
+                        <div className="space-y-3">
+                          {activities.map((item) => (
+                            <FeedCard key={item.id} item={item} />
+                          ))}
+                        </div>
+                      )}
+                    </SectionPanel>
                   </div>
 
-                  {showStoreSection ? (
-                    <div className="card overflow-hidden mt-2">
-                      {stores.map((store, index) => {
-                        const badge = storeBadge(store)
-                        return (
-                          <div key={store.id} className={`flex items-center gap-3 px-4 py-3 ${index < stores.length - 1 ? 'border-b border-gray-50' : ''}`}>
-                            <div className="w-9 h-9 bg-primary-50 rounded-xl flex items-center justify-center text-primary-700 text-xs font-bold flex-shrink-0">
-                              {store.store_id?.split('-')[1] || '??'}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="text-sm font-semibold text-gray-900 truncate">{store.name.replace('Bagi Kopi ', '')}</div>
-                              <div className="text-[10px] text-gray-400 mt-0.5 flex gap-1.5 flex-wrap">
-                                <span className={store.ceklisPagi ? 'text-green-600' : 'text-red-500'}>
-                                  {store.ceklisPagi ? 'OK' : 'Miss'} Ceklis
-                                </span>
-                                <span className={store.laporan ? 'text-green-600' : 'text-gray-400'}>
-                                  {store.laporan ? 'OK' : '-'} Laporan
-                                </span>
-                                <span className={store.setoran?.status === 'approved' ? 'text-green-600' : store.setoran ? 'text-yellow-600' : 'text-gray-400'}>
-                                  {store.setoran?.status === 'approved' ? 'OK' : store.setoran ? 'Pending' : '-'} Setoran
-                                </span>
-                                <span className={store.opexTodayCount > 0 ? 'text-primary-600' : 'text-gray-400'}>
-                                  {store.opexTodayCount > 0 ? `${store.opexTodayCount} OPEX` : 'Belum OPEX'}
-                                </span>
-                                {store.selectedBudget?.actualRatio != null && (
-                                  <span className={store.selectedBudget.actualRatio > 0.03 ? 'text-red-500' : 'text-green-600'}>
-                                    BOH {formatRatio(store.selectedBudget.actualRatio)}
-                                  </span>
-                                )}
-                                {store.visitPeriod && (
-                                  <span className="text-primary-600">
-                                    Visit {store.visitPeriod.total_score}/{store.visitPeriod.max_score}
-                                  </span>
-                                )}
-                              </div>
-                              {!isOpsManager && (
-                                <div className="text-[10px] mt-1 text-primary-600">
-                                  {store.myLastVisit
-                                    ? `Visit terakhir saya: ${formatVisitDate(store.myLastVisit.tanggal)}`
-                                    : 'Belum pernah saya visit'}
-                                </div>
-                              )}
-                            </div>
-                            <Badge variant={badge.variant}>{badge.label}</Badge>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  ) : (
-                    <div className="card mt-2 px-4 py-4">
-                      <div className="text-sm font-semibold text-gray-800">Panel status toko sedang diringkas</div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        Ketuk <span className="font-semibold text-primary-700">Tampilkan</span> kalau mau melihat daftar kondisi semua toko.
+                  <SectionPanel
+                    eyebrow="Kontrol Biaya"
+                    title="BOH vs Net Sales Bulanan"
+                    description="Pantau rasio BOH per toko sekaligus proyeksi aman 3% untuk bulan yang dipilih."
+                    actions={
+                      <div className="flex flex-wrap items-center gap-2">
+                        {availableMonths.length > 0 && (
+                          <select
+                            value={budgetMonth}
+                            onChange={(event) => setBudgetMonth(event.target.value)}
+                            className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600"
+                          >
+                            {availableMonths.map((month) => (
+                              <option key={month.key} value={month.key}>
+                                {month.label}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                        <SoftButton tone="white" icon={showBudgetSection ? 'chevronDown' : 'chevronRight'} onClick={() => setShowBudgetSection((current) => !current)}>
+                          {showBudgetSection ? 'Sembunyikan' : 'Tampilkan'}
+                        </SoftButton>
                       </div>
-                    </div>
-                  )}
+                    }
+                  >
+                    {showBudgetSection ? (
+                      opexRows.length === 0 ? (
+                        <EmptyPanel
+                          title="Belum ada data BOH yang bisa dibandingkan"
+                          description="Begitu laporan harian dan pengeluaran masuk, kontrol BOH bulanan akan otomatis muncul di sini."
+                        />
+                      ) : (
+                        <div className="space-y-3">
+                          {opexRows.map((row) => (
+                            <OpexBudgetRow key={row.id} row={row} onOpenDetail={() => setSelectedBudgetDetail(row)} />
+                          ))}
+                        </div>
+                      )
+                    ) : (
+                      <EmptyPanel
+                        title="Panel BOH sedang diringkas"
+                        description="Tekan tampilkan untuk membuka daftar BOH semua toko dan masuk ke detail bila kamu butuh drilldown."
+                        actionLabel="Tampilkan BOH"
+                        onAction={() => setShowBudgetSection(true)}
+                      />
+                    )}
+                  </SectionPanel>
+
+                  <SectionPanel
+                    eyebrow="Kesehatan Outlet"
+                    title="Status Toko"
+                    description="Snapshot operasional per outlet, lengkap dengan visit terakhir dan sinyal masalah utama."
+                    actions={
+                      <SoftButton tone="white" icon={showStoreSection ? 'chevronDown' : 'chevronRight'} onClick={() => setShowStoreSection((current) => !current)}>
+                        {showStoreSection ? 'Sembunyikan' : 'Tampilkan'}
+                      </SoftButton>
+                    }
+                  >
+                    {showStoreSection ? (
+                      <div className="grid gap-4 md:grid-cols-2">
+                        {stores.map((store) => (
+                          <StoreHealthCard
+                            key={store.id}
+                            store={store}
+                            isOpsManager={isOpsManager}
+                            badge={storeBadge(store)}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <EmptyPanel
+                        title="Panel status toko sedang diringkas"
+                        description="Tekan tampilkan kalau kamu mau membuka seluruh daftar kondisi toko tanpa meninggalkan dashboard."
+                        actionLabel="Tampilkan Status"
+                        onAction={() => setShowStoreSection(true)}
+                      />
+                    )}
+                  </SectionPanel>
                 </div>
-              </>
-            )}
+              )}
 
             {activeTab === 'kunjungan' && (
-              <>
-                <div className="flex bg-white rounded-xl p-1 mb-3 gap-1 border border-gray-100">
-                  {VISIT_PERIODS.map((period) => (
-                    <button
-                      key={period.key}
-                      onClick={() => setVisitPeriod(period.key)}
-                      className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${visitPeriod === period.key ? 'bg-primary-600 text-white shadow-sm' : 'text-gray-500'}`}
-                    >
-                      {period.label}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="text-xs text-gray-500 mb-3">{visitSummary.label}</div>
-
-                <div className="grid grid-cols-2 gap-3 mb-3">
-                  <VisitMetricCard label="Total Kunjungan" value={visitSummary.totalVisits} tone="text-primary-700" />
-                  <VisitMetricCard label="Outlet Terkunjungi" value={`${visitSummary.visitedCount}/${summary.total}`} tone="text-green-600" />
-                  <VisitMetricCard label="Outlet Belum" value={visitSummary.unvisitedCount} tone="text-red-600" />
-                  <VisitMetricCard label="Coverage" value={`${Math.round(visitSummary.coveragePct * 100)}%`} tone="text-primary-600" />
-                </div>
+              <div className="space-y-6">
+                <SectionPanel
+                  eyebrow="Visit Analytics"
+                  title={`Coverage ${visitSummary.label || 'Aktif'}`}
+                  description="Ringkasan kunjungan outlet selama periode yang dipilih."
+                  className="border-slate-100 bg-slate-50/70 shadow-none"
+                  actions={
+                    <SegmentedControl
+                      options={VISIT_PERIODS}
+                      value={visitPeriod}
+                      onChange={setVisitPeriod}
+                    />
+                  }
+                >
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <InlineStat label="Total Kunjungan" value={visitSummary.totalVisits} tone="primary" />
+                    <InlineStat label="Terkunjungi" value={`${visitSummary.visitedCount}/${summary.total}`} tone="emerald" />
+                    <InlineStat label="Belum Dikunjungi" value={visitSummary.unvisitedCount} tone={visitSummary.unvisitedCount > 0 ? 'rose' : 'slate'} />
+                    <InlineStat label="Coverage" value={`${visitCoveragePct}%`} tone={visitCoveragePct >= 80 ? 'emerald' : 'primary'} />
+                  </div>
+                </SectionPanel>
 
                 {isOpsManager && managerCoverage.length > 0 && (
-                  <>
-                    <p className="section-title">Progress Per Manager</p>
-                    <div className="space-y-3 mb-3">
+                  <SectionPanel
+                    eyebrow="Team Performance"
+                    title="Progress Per Manager"
+                    description="Pantau coverage visit tiap District Manager dan Area Manager."
+                    className="border-slate-100 bg-slate-50/70 shadow-none"
+                    actions={<ToneBadge tone="info">{managerCoverage.length} manager</ToneBadge>}
+                  >
+                    <div className="space-y-3">
                       {managerCoverage.map((manager) => (
                         <ManagerCoverageCard
                           key={manager.id}
@@ -970,66 +1132,79 @@ export default function DMDashboard() {
                         />
                       ))}
                     </div>
-                  </>
+                  </SectionPanel>
                 )}
 
                 {storesWithoutVisit.length > 0 && (
-                  <>
-                    <p className="section-title">Toko Belum Dikunjungi</p>
-                    <div className="card overflow-hidden mb-3">
-                      {storesWithoutVisit.map((store, index) => (
+                  <SectionPanel
+                    eyebrow="Gap Alert"
+                    title="Toko Belum Dikunjungi"
+                    description="Outlet berikut belum punya visit di periode ini."
+                    className="border-slate-100 bg-slate-50/70 shadow-none"
+                    actions={<ToneBadge tone="danger">{storesWithoutVisit.length} outlet</ToneBadge>}
+                  >
+                    <div className="space-y-2">
+                      {storesWithoutVisit.map((store) => (
                         <StoreVisitRow
                           key={store.id}
                           store={store}
                           subtitle={isOpsManager ? `${store.district} · ${store.area}` : store.myLastVisit ? `Visit terakhir saya: ${formatVisitDate(store.myLastVisit.tanggal)}` : 'Belum pernah saya visit'}
                           statusLabel="Belum dikunjungi"
-                          statusClass="bg-red-50 text-red-600"
-                          bordered={index < storesWithoutVisit.length - 1}
+                          statusTone="danger"
                         />
                       ))}
                     </div>
-                  </>
+                  </SectionPanel>
                 )}
 
                 {!isOpsManager && (
-                  <>
-                    <p className="section-title">Riwayat Visit Saya</p>
-                    <div className="card overflow-hidden mb-3">
-                      {stores.map((store, index) => (
+                  <SectionPanel
+                    eyebrow="My Coverage"
+                    title="Riwayat Visit Saya"
+                    description="Status kunjungan semua toko dalam scope kamu."
+                    className="border-slate-100 bg-slate-50/70 shadow-none"
+                  >
+                    <div className="space-y-2">
+                      {stores.map((store) => (
                         <StoreVisitRow
                           key={store.id}
                           store={store}
                           subtitle={store.myLastVisit ? `Visit terakhir saya: ${formatVisitDate(store.myLastVisit.tanggal)}` : 'Belum pernah saya visit'}
-                          statusLabel={store.visitPeriod ? `Periode ini: ${formatVisitDate(store.visitPeriod.tanggal)}` : 'Belum ada visit di periode ini'}
-                          statusClass={store.visitPeriod ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'}
-                          bordered={index < stores.length - 1}
+                          statusLabel={store.visitPeriod ? `Periode ini: ${formatVisitDate(store.visitPeriod.tanggal)}` : 'Belum ada visit'}
+                          statusTone={store.visitPeriod ? 'ok' : 'slate'}
                         />
                       ))}
                     </div>
-                  </>
+                  </SectionPanel>
                 )}
 
-                <p className="section-title">Log Kunjungan</p>
-                {visits.length === 0 ? (
-                  <div className="text-center py-12 text-gray-400">
-                    <div className="text-4xl mb-3">Visit</div>
-                    <p className="font-medium">Belum ada kunjungan pada periode ini</p>
-                    <Link to="/dm/visit" className="text-primary-600 text-sm font-semibold mt-2 block">
-                      Mulai Visit {'->'}
-                    </Link>
-                  </div>
-                ) : (
-                  <div className="card overflow-hidden">
-                    {visits.map((visit, index) => (
-                      <VisitHistoryCard key={visit.id} visit={visit} bordered={index < visits.length - 1} />
-                    ))}
-                  </div>
-                )}
-              </>
+                <SectionPanel
+                  eyebrow="Activity Log"
+                  title="Log Kunjungan"
+                  description="Semua kunjungan tercatat selama periode aktif, diurutkan terbaru."
+                  className="border-slate-100 bg-slate-50/70 shadow-none"
+                  actions={<ToneBadge tone="info">{visits.length} visit</ToneBadge>}
+                >
+                  {visits.length === 0 ? (
+                    <EmptyPanel
+                      title="Belum ada kunjungan pada periode ini"
+                      description="Mulai isi audit toko dari halaman Daily Visit untuk mencatat kunjungan."
+                    />
+                  ) : (
+                    <div className="space-y-3">
+                      {visits.map((visit) => (
+                        <VisitHistoryCard key={visit.id} visit={visit} />
+                      ))}
+                    </div>
+                  )}
+                </SectionPanel>
+              </div>
             )}
+            </SectionPanel>
           </>
         )}
       </div>
+      </main>
 
       {selectedBudgetDetail && (
         <BudgetDetailModal
@@ -1055,7 +1230,7 @@ export default function DMDashboard() {
       )}
 
       <DMBottomNav />
-    </div>
+    </AppCanvas>
   )
 }
 
@@ -1504,155 +1679,240 @@ function scorePercent(visit) {
   return Math.round((Number(visit.total_score || 0) / Number(visit.max_score)) * 100)
 }
 
-function StatCard({ label, value, pct, color }) {
-  const width = Math.min(Math.max(pct * 100, 0), 100)
+function FeedCard({ item }) {
+  const tone = item.level === 'danger'
+    ? 'danger'
+    : item.level === 'warn'
+      ? 'warn'
+      : item.level === 'ok'
+        ? 'ok'
+        : 'info'
+
+  const icon = item.level === 'danger'
+    ? 'warning'
+    : item.level === 'warn'
+      ? 'bell'
+      : item.level === 'ok'
+        ? 'checklist'
+        : 'spark'
 
   return (
-    <div className="card p-4">
-      <div className={`text-xl font-bold ${color}`}>{value}</div>
-      <div className="text-xs text-gray-500 mt-1">{label}</div>
-      <div className="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-        <div className="h-full bg-primary-500 rounded-full transition-all" style={{ width: `${width}%` }} />
+    <article className="rounded-[24px] border border-white/85 bg-white px-4 py-4 shadow-[0_16px_42px_-34px_rgba(15,23,42,0.35)]">
+      <div className="flex items-start gap-3">
+        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-600">
+          <AppIcon name={icon} size={18} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="min-w-0">
+              <div className="text-sm font-semibold text-slate-900">{item.title}</div>
+              <div className="mt-1 text-sm leading-6 text-slate-500">{item.subtitle}</div>
+            </div>
+            <ToneBadge tone={tone}>{item.timeLabel}</ToneBadge>
+          </div>
+        </div>
       </div>
-    </div>
+    </article>
   )
 }
 
-function VisitMetricCard({ label, value, tone }) {
-  return (
-    <div className="card p-4">
-      <div className={`text-2xl font-bold ${tone}`}>{value}</div>
-      <div className="text-xs text-gray-500 mt-1">{label}</div>
-    </div>
-  )
-}
+function InsightCard({ item }) {
+  const tone = item.tone === 'danger'
+    ? 'danger'
+    : item.tone === 'warn'
+      ? 'warn'
+      : item.tone === 'ok'
+        ? 'ok'
+        : 'info'
 
-function NotificationRow({ item, bordered }) {
-  const toneMap = {
-    danger: 'bg-red-50 text-red-600',
-    warn: 'bg-yellow-50 text-yellow-700',
-    info: 'bg-primary-50 text-primary-600',
-    ok: 'bg-green-50 text-green-700',
-  }
+  const accent = tone === 'danger'
+    ? 'bg-rose-50 text-rose-700'
+    : tone === 'warn'
+      ? 'bg-amber-50 text-amber-700'
+      : tone === 'ok'
+        ? 'bg-emerald-50 text-emerald-700'
+        : 'bg-primary-50 text-primary-700'
 
   return (
-    <div className={`px-4 py-3 flex items-start gap-3 ${bordered ? 'border-b border-gray-50' : ''}`}>
-      <span className={`text-[10px] font-bold px-2 py-1 rounded-full mt-0.5 flex-shrink-0 ${toneMap[item.level] || toneMap.info}`}>
-        {item.level === 'danger' ? 'Urgent' : item.level === 'warn' ? 'Perlu cek' : item.level === 'ok' ? 'Update' : 'Info'}
-      </span>
-      <div className="flex-1 min-w-0">
-        <div className="text-sm font-semibold text-gray-900">{item.title}</div>
-        <div className="text-xs text-gray-500 mt-1">{item.subtitle}</div>
+    <article className="rounded-[24px] border border-white/80 bg-white px-5 py-5 shadow-[0_18px_55px_-38px_rgba(15,23,42,0.3)]">
+      <div className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl ${accent}`}>
+        <AppIcon name={item.icon} size={20} />
       </div>
-      <div className="text-[10px] text-gray-400 flex-shrink-0 text-right">{item.timeLabel}</div>
-    </div>
+      <div className="mt-4 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-base font-semibold text-slate-950">{item.title}</div>
+          <div className="mt-2 text-sm leading-6 text-slate-500">{item.body}</div>
+        </div>
+        <ToneBadge tone={tone}>{tone === 'danger' ? 'Prioritas' : tone === 'warn' ? 'Pantau' : 'Insight'}</ToneBadge>
+      </div>
+    </article>
   )
 }
 
-function OpexBudgetRow({ row, bordered, onOpenDetail }) {
-  const statusClass = row.status === 'over'
-    ? 'bg-red-50 text-red-600'
-    : row.status === 'pending'
-      ? 'bg-yellow-50 text-yellow-700'
-      : 'bg-green-50 text-green-700'
+function StoreHealthCard({ store, isOpsManager, badge }) {
+  const visitScore = store.visitPeriod ? scorePercent(store.visitPeriod) : null
+  const budgetRatio = store.selectedBudget?.actualRatio ?? store.selectedBudget?.projectedRatio ?? null
+  const shortName = store.name.replace('Bagi Kopi ', '')
+  const setoranTone = store.setoran?.status === 'approved'
+    ? 'ok'
+    : store.setoran?.status === 'submitted'
+      ? 'warn'
+      : store.setoran?.status === 'rejected'
+        ? 'danger'
+        : 'slate'
 
-  const statusLabel = row.status === 'over'
-    ? 'Over 3%'
-    : row.status === 'pending'
-      ? 'Pending'
-      : 'Aman'
+  const setoranLabel = store.setoran?.status === 'approved'
+    ? 'Setoran approved'
+    : store.setoran?.status === 'submitted'
+      ? 'Setoran pending'
+      : store.setoran?.status === 'rejected'
+        ? 'Setoran rejected'
+        : 'Setoran belum masuk'
 
   return (
-    <div className={`px-4 py-3 ${bordered ? 'border-b border-gray-50' : ''}`}>
+    <article className="rounded-[24px] border border-white/85 bg-white p-5 shadow-[0_18px_55px_-38px_rgba(15,23,42,0.28)]">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-sm font-semibold text-gray-900 truncate">{row.name.replace('Bagi Kopi ', '')}</div>
-          <div className="text-xs text-gray-500 mt-1">
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-50 text-primary-700">
+              <span className="text-sm font-bold">{store.store_id?.replace('BK-', '') || '--'}</span>
+            </div>
+            <div className="min-w-0">
+              <div className="truncate text-lg font-semibold text-slate-950">{shortName}</div>
+              <div className="mt-1 text-sm text-slate-500">
+                {isOpsManager ? `${store.district} / ${store.area}` : badge.label}
+              </div>
+            </div>
+          </div>
+        </div>
+        <ToneBadge tone={badge.tone}>{badge.label}</ToneBadge>
+      </div>
+
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        <div className="rounded-2xl bg-slate-50 px-4 py-3">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Ceklis Pagi</div>
+          <div className="mt-2 text-sm font-semibold text-slate-900">{store.ceklisPagi ? 'Sudah masuk' : 'Belum masuk'}</div>
+        </div>
+        <div className="rounded-2xl bg-slate-50 px-4 py-3">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Laporan H-1</div>
+          <div className="mt-2 text-sm font-semibold text-slate-900">{store.laporan ? fmtRp(store.laporan.net_sales || 0) : 'Belum masuk'}</div>
+        </div>
+        <div className="rounded-2xl bg-slate-50 px-4 py-3">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Visit Periode</div>
+          <div className="mt-2 text-sm font-semibold text-slate-900">
+            {store.visitPeriod ? `${formatVisitDate(store.visitPeriod.tanggal)} - ${visitScore}%` : 'Belum ada visit'}
+          </div>
+        </div>
+        <div className="rounded-2xl bg-slate-50 px-4 py-3">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">BOH Bulan Aktif</div>
+          <div className="mt-2 text-sm font-semibold text-slate-900">
+            {budgetRatio == null ? 'Belum cukup data' : formatRatio(budgetRatio)}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        <ToneBadge tone={store.ceklisPagi ? 'ok' : 'danger'}>{store.ceklisPagi ? 'Ceklis aman' : 'Ceklis kosong'}</ToneBadge>
+        <ToneBadge tone={store.laporan ? 'ok' : 'warn'}>{store.laporan ? 'Laporan masuk' : 'Laporan tertahan'}</ToneBadge>
+        <ToneBadge tone={setoranTone}>{setoranLabel}</ToneBadge>
+        <ToneBadge tone={store.opexTodayCount > 0 ? 'info' : 'slate'}>
+          {store.opexTodayCount > 0 ? `${store.opexTodayCount} OPEX hari ini` : 'Belum ada OPEX hari ini'}
+        </ToneBadge>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4 text-sm text-slate-500">
+        <div>
+          {store.myLastVisit
+            ? `Visit terakhir saya: ${formatVisitDate(store.myLastVisit.tanggal)}`
+            : 'Belum pernah saya visit'}
+        </div>
+        {store.selectedBudget?.estimatedBudgetCap > 0 && (
+          <div className="font-medium text-slate-700">
+            Budget 3%: {fmtRp(store.selectedBudget.estimatedBudgetCap)}
+          </div>
+        )}
+      </div>
+    </article>
+  )
+}
+
+function OpexBudgetRow({ row, onOpenDetail }) {
+  const tone = row.status === 'over' ? 'danger' : row.status === 'pending' ? 'warn' : 'ok'
+  const statusLabel = row.status === 'over' ? 'Over 3%' : row.status === 'pending' ? 'Pending' : 'Aman'
+
+  return (
+    <article className="rounded-[24px] border border-white/85 bg-white p-5 shadow-[0_16px_42px_-34px_rgba(15,23,42,0.28)]">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="truncate text-base font-semibold text-slate-950">{row.name.replace('Bagi Kopi ', '')}</div>
+          <div className="mt-1 text-sm text-slate-500">
             {row.monthKey ? `${formatMonthKey(row.monthKey)} · ${row.note}` : row.note}
           </div>
         </div>
-        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full flex-shrink-0 ${statusClass}`}>
-          {statusLabel}
-        </span>
+        <ToneBadge tone={tone}>{statusLabel}</ToneBadge>
       </div>
-      <div className="grid grid-cols-3 gap-2 mt-3 text-xs">
-        <div className="bg-gray-50 rounded-lg px-3 py-2">
-          <div className="text-gray-400">Total BOH</div>
-          <div className="font-semibold text-gray-900 mt-1">{fmtRp(row.bohAmount)}</div>
+      <div className="mt-4 grid grid-cols-3 gap-3">
+        <div className="rounded-[20px] bg-slate-50 px-3 py-3">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Total BOH</div>
+          <div className="mt-2 text-sm font-semibold text-slate-900">{fmtRp(row.bohAmount)}</div>
         </div>
-        <div className="bg-gray-50 rounded-lg px-3 py-2">
-          <div className="text-gray-400">Net Sales Input</div>
-          <div className="font-semibold text-gray-900 mt-1">{fmtRp(row.netSales)}</div>
+        <div className="rounded-[20px] bg-slate-50 px-3 py-3">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Net Sales</div>
+          <div className="mt-2 text-sm font-semibold text-slate-900">{fmtRp(row.netSales)}</div>
         </div>
-        <div className="bg-gray-50 rounded-lg px-3 py-2">
-          <div className="text-gray-400">Rasio Aktual</div>
-          <div className={`font-semibold mt-1 ${row.status === 'over' ? 'text-red-600' : row.status === 'pending' ? 'text-yellow-700' : 'text-green-600'}`}>
+        <div className="rounded-[20px] bg-slate-50 px-3 py-3">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Rasio</div>
+          <div className={`mt-2 text-sm font-semibold ${row.status === 'over' ? 'text-rose-600' : row.status === 'pending' ? 'text-amber-700' : 'text-emerald-700'}`}>
             {row.ratio == null ? '-' : formatRatio(row.ratio)}
           </div>
         </div>
       </div>
-      <div className="mt-3 flex items-center justify-between gap-3">
-        <div className="text-xs text-primary-600">
-          Estimasi sales {fmtRp(row.estimatedNetSales)} · budget {fmtRp(row.budgetCap)}
+      <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
+        <div className="text-sm text-slate-500">
+          Estimasi {fmtRp(row.estimatedNetSales)} · budget {fmtRp(row.budgetCap)}
         </div>
         <button
           onClick={onOpenDetail}
-          className="text-xs font-semibold text-primary-700 px-3 py-1.5 rounded-full bg-primary-50 border border-primary-100"
+          className="rounded-full border border-primary-100 bg-primary-50 px-3 py-1.5 text-xs font-semibold text-primary-700"
         >
           Detail
         </button>
       </div>
-    </div>
+    </article>
   )
 }
 
 function BudgetDetailModal({ row, onClose }) {
   return (
-    <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[1px] flex items-end justify-center px-4 py-6">
-      <div className="w-full max-w-[430px] bg-white rounded-3xl shadow-2xl overflow-hidden">
-        <div className="px-4 py-4 border-b border-gray-100 flex items-start justify-between gap-3">
+    <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/40 px-4 py-6 backdrop-blur-[2px]">
+      <div className="w-full max-w-[480px] overflow-hidden rounded-[32px] bg-white shadow-2xl">
+        <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-5 py-5">
           <div>
-            <div className="text-lg font-bold text-gray-900">{row.name.replace('Bagi Kopi ', '')}</div>
-            <div className="text-xs text-gray-500 mt-1">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Detail BOH</div>
+            <div className="mt-1 text-lg font-semibold text-slate-950">{row.name.replace('Bagi Kopi ', '')}</div>
+            <div className="mt-1 text-sm text-slate-500">
               {row.monthKey ? formatMonthKey(row.monthKey) : 'Belum ada periode'} · {row.note}
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-9 h-9 rounded-full bg-gray-100 text-gray-500 text-lg leading-none"
+            className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 text-slate-500 hover:border-primary-200 hover:text-primary-700"
           >
             ×
           </button>
         </div>
 
-        <div className="p-4 space-y-3 max-h-[70vh] overflow-y-auto">
-          <div className="grid grid-cols-2 gap-3 text-xs">
-            <MetricBox label="Total BOH" value={fmtRp(row.bohAmount)} tone="gray" />
-            <MetricBox label="Net Sales Input" value={fmtRp(row.netSales)} tone="gray" />
-            <MetricBox label="Rasio Aktual" value={row.ratio == null ? '-' : formatRatio(row.ratio)} tone={row.status === 'over' ? 'danger' : 'ok'} />
-            <MetricBox label="Estimasi Sales" value={fmtRp(row.estimatedNetSales)} tone="primary" />
-            <MetricBox label="Budget BOH 3%" value={fmtRp(row.budgetCap)} tone="primary" />
-            <MetricBox label="Rasio Estimasi" value={row.projectedRatio == null ? '-' : formatRatio(row.projectedRatio)} tone="primary" />
+        <div className="max-h-[70vh] space-y-3 overflow-y-auto p-5">
+          <div className="grid grid-cols-2 gap-3">
+            <InlineStat label="Total BOH" value={fmtRp(row.bohAmount)} tone="slate" />
+            <InlineStat label="Net Sales Input" value={fmtRp(row.netSales)} tone="slate" />
+            <InlineStat label="Rasio Aktual" value={row.ratio == null ? '-' : formatRatio(row.ratio)} tone={row.status === 'over' ? 'rose' : 'emerald'} />
+            <InlineStat label="Estimasi Sales" value={fmtRp(row.estimatedNetSales)} tone="primary" />
+            <InlineStat label="Budget BOH 3%" value={fmtRp(row.budgetCap)} tone="primary" />
+            <InlineStat label="Rasio Estimasi" value={row.projectedRatio == null ? '-' : formatRatio(row.projectedRatio)} tone="primary" />
           </div>
         </div>
       </div>
-    </div>
-  )
-}
-
-function MetricBox({ label, value, tone }) {
-  const toneClass = tone === 'danger'
-    ? 'bg-red-50 text-red-600'
-    : tone === 'ok'
-      ? 'bg-green-50 text-green-700'
-      : tone === 'primary'
-        ? 'bg-primary-50 text-primary-700'
-        : 'bg-gray-50 text-gray-900'
-
-  return (
-    <div className={`rounded-xl px-3 py-3 ${toneClass}`}>
-      <div className="text-[11px] opacity-70">{label}</div>
-      <div className="font-semibold mt-1">{value}</div>
     </div>
   )
 }
@@ -1833,64 +2093,63 @@ function CreateAccountModal({
 
 function ManagerCoverageCard({ manager, expanded, onToggle }) {
   const coverage = manager.totalStores ? manager.visitedCount / manager.totalStores : 0
-  const statusTone = coverage >= 0.8 ? 'text-green-600' : coverage > 0 ? 'text-yellow-600' : 'text-red-600'
+  const coverageTone = coverage >= 0.8 ? 'ok' : coverage > 0 ? 'warn' : 'danger'
 
   return (
-    <div className="card overflow-hidden">
-      <button onClick={onToggle} className="w-full p-4 text-left">
-        <div className="flex items-start gap-3">
-          <div className="w-11 h-11 rounded-full bg-primary-50 text-primary-700 flex items-center justify-center font-bold flex-shrink-0">
+    <article className="rounded-[26px] border border-white/85 bg-white shadow-[0_18px_55px_-38px_rgba(15,23,42,0.3)]">
+      <button onClick={onToggle} className="w-full px-5 py-5 text-left transition-colors hover:bg-slate-50/50">
+        <div className="flex items-start gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary-50 text-primary-700 text-sm font-bold">
             {(manager.name || '?').slice(0, 1).toUpperCase()}
           </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <div className="font-semibold text-gray-900">{manager.name}</div>
-                <div className="text-xs text-gray-500 mt-0.5">{manager.roleLabel} · {manager.scopeLabel}</div>
+                <div className="text-base font-semibold text-slate-950">{manager.name}</div>
+                <div className="mt-1 text-sm text-slate-500">{manager.roleLabel} · {manager.scopeLabel}</div>
               </div>
-              <div className="text-right flex-shrink-0">
-                <div className={`text-lg font-bold ${statusTone}`}>{Math.round(coverage * 100)}%</div>
-                <div className="text-xs text-gray-500">{manager.visitedCount}/{manager.totalStores} toko</div>
+              <div className="shrink-0 text-right">
+                <ToneBadge tone={coverageTone}>{Math.round(coverage * 100)}%</ToneBadge>
+                <div className="mt-2 text-sm text-slate-500">{manager.visitedCount}/{manager.totalStores} toko</div>
               </div>
             </div>
-            <div className="mt-3 h-2 bg-gray-100 rounded-full overflow-hidden">
-              <div className="h-full bg-primary-500 rounded-full transition-all" style={{ width: `${Math.round(coverage * 100)}%` }} />
+            <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
+              <div className="h-full rounded-full bg-primary-500 transition-all" style={{ width: `${Math.round(coverage * 100)}%` }} />
             </div>
-            <div className="mt-3 flex items-center justify-between text-xs">
-              <span className="text-green-600">{manager.visitedCount} toko dikunjungi</span>
-              <span className="text-red-500">{manager.unvisitedStores.length} belum</span>
-              <span className="text-primary-600">{manager.totalVisits} visit · avg {manager.averagePct}%</span>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <ToneBadge tone="ok">{manager.visitedCount} dikunjungi</ToneBadge>
+              {manager.unvisitedStores.length > 0 && (
+                <ToneBadge tone="danger">{manager.unvisitedStores.length} belum</ToneBadge>
+              )}
+              <ToneBadge tone="primary">{manager.totalVisits} visit · avg {manager.averagePct}%</ToneBadge>
             </div>
           </div>
         </div>
       </button>
 
       {expanded && (
-        <div className="border-t border-gray-100 px-4 py-3 space-y-3 bg-gray-50">
+        <div className="space-y-4 border-t border-slate-100 px-5 py-5">
           {manager.unvisitedStores.length > 0 && (
             <div>
-              <div className="text-xs font-bold text-red-600 mb-2">Belum dikunjungi</div>
+              <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-rose-500">Belum dikunjungi</div>
               <div className="flex flex-wrap gap-2">
                 {manager.unvisitedStores.map((store) => (
-                  <span key={store.id} className="text-xs bg-white border border-red-100 text-red-600 px-2 py-1 rounded-full">
-                    {store.name.replace('Bagi Kopi ', '')}
-                  </span>
+                  <ToneBadge key={store.id} tone="danger">{store.name.replace('Bagi Kopi ', '')}</ToneBadge>
                 ))}
               </div>
             </div>
           )}
-
           {manager.visitedStores.length > 0 && (
             <div>
-              <div className="text-xs font-bold text-green-700 mb-2">Sudah dikunjungi</div>
+              <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-600">Sudah dikunjungi</div>
               <div className="space-y-2">
                 {manager.visitedStores.map((store) => (
-                  <div key={store.id} className="flex items-center justify-between text-xs bg-white rounded-lg px-3 py-2 border border-gray-100">
+                  <div key={store.id} className="flex items-center justify-between rounded-[20px] bg-slate-50 px-4 py-3">
                     <div>
-                      <div className="font-medium text-gray-800">{store.name.replace('Bagi Kopi ', '')}</div>
-                      <div className="text-gray-500">{formatVisitDate(store.tanggal)}</div>
+                      <div className="text-sm font-semibold text-slate-900">{store.name.replace('Bagi Kopi ', '')}</div>
+                      <div className="mt-1 text-sm text-slate-500">{formatVisitDate(store.tanggal)}</div>
                     </div>
-                    <div className="font-semibold text-primary-700">{store.scorePct}%</div>
+                    <ToneBadge tone="primary">{store.scorePct}%</ToneBadge>
                   </div>
                 ))}
               </div>
@@ -1898,49 +2157,47 @@ function ManagerCoverageCard({ manager, expanded, onToggle }) {
           )}
         </div>
       )}
-    </div>
+    </article>
   )
 }
 
-function StoreVisitRow({ store, subtitle, statusLabel, statusClass, bordered }) {
+function StoreVisitRow({ store, subtitle, statusLabel, statusTone }) {
   return (
-    <div className={`px-4 py-3 flex items-center gap-3 ${bordered ? 'border-b border-gray-50' : ''}`}>
-      <div className="w-9 h-9 bg-primary-50 rounded-xl flex items-center justify-center text-primary-700 text-xs font-bold flex-shrink-0">
+    <div className="flex items-center gap-4 rounded-[22px] bg-slate-50/85 px-4 py-4">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary-50 text-primary-700 text-sm font-bold">
         {store.store_id?.split('-')[1] || '??'}
       </div>
-      <div className="flex-1 min-w-0">
-        <div className="text-sm font-semibold text-gray-900 truncate">{store.name.replace('Bagi Kopi ', '')}</div>
-        <div className="text-xs text-gray-500 mt-0.5 truncate">{subtitle}</div>
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-sm font-semibold text-slate-950">{store.name.replace('Bagi Kopi ', '')}</div>
+        <div className="mt-1 truncate text-sm text-slate-500">{subtitle}</div>
       </div>
-      <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full flex-shrink-0 ${statusClass}`}>
-        {statusLabel}
-      </span>
+      <ToneBadge tone={statusTone || 'slate'}>{statusLabel}</ToneBadge>
     </div>
   )
 }
 
-function VisitHistoryCard({ visit, bordered }) {
+function VisitHistoryCard({ visit }) {
   const grade = visitGrade(visit.total_score, visit.max_score)
+  const pct = visit.max_score ? Math.round((Number(visit.total_score) / Number(visit.max_score)) * 100) : 0
+  const tone = pct >= 85 ? 'ok' : pct >= 70 ? 'warn' : 'danger'
 
   return (
-    <div className={`flex items-center gap-3 px-4 py-3 ${bordered ? 'border-b border-gray-50' : ''}`}>
-      <div className="w-10 h-10 bg-primary-50 rounded-xl flex items-center justify-center text-primary-700 text-xs font-bold flex-shrink-0">
+    <article className="flex items-center gap-4 rounded-[22px] bg-slate-50/85 px-4 py-4">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary-50 text-primary-700 text-sm font-bold">
         {visit.branch?.store_id?.split('-')[1] || '??'}
       </div>
-      <div className="flex-1 min-w-0">
-        <div className="text-sm font-semibold text-gray-900 truncate">
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-sm font-semibold text-slate-950">
           {visit.branch?.name?.replace('Bagi Kopi ', '') || '-'}
         </div>
-        <div className="text-[10px] text-gray-400 mt-0.5">
+        <div className="mt-1 text-sm text-slate-500">
           {formatVisitDate(visit.tanggal)} · oleh {visit.auditor?.full_name?.split(' ')[0] || '-'}
         </div>
       </div>
-      <div className="text-right flex-shrink-0">
-        <div className="font-bold text-sm text-primary-700">{visit.total_score}/{visit.max_score}</div>
-        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${grade.bg} ${grade.color}`}>
-          {grade.label}
-        </span>
+      <div className="shrink-0 text-right">
+        <div className="text-sm font-semibold text-primary-700">{visit.total_score}/{visit.max_score}</div>
+        <ToneBadge tone={tone}>{grade.label}</ToneBadge>
       </div>
-    </div>
+    </article>
   )
 }
