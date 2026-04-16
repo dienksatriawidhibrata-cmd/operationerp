@@ -37,6 +37,9 @@ export function DMBottomNav() {
       <NavItem to="/dm/visit" icon="🏪" label="Visit" active={pathname.startsWith('/dm/visit')} />
       <NavItem to="/dm/approval" icon="✅" label="Approval" active={pathname.startsWith('/dm/approval')} />
       {profile?.role === 'ops_manager' && (
+        <NavItem to="/opex" icon="🧾" label="Opex" active={pathname.startsWith('/opex')} />
+      )}
+      {profile?.role === 'ops_manager' && (
         <NavItem to="/finance" icon="💰" label="Finance" active={pathname.startsWith('/finance')} />
       )}
     </nav>
@@ -49,6 +52,7 @@ export function FinanceBottomNav() {
   return (
     <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white border-t border-gray-100 flex shadow-lg z-20">
       <NavItem to="/finance" icon="💰" label="Audit Setoran" active={pathname === '/finance'} />
+      <NavItem to="/opex" icon="🧾" label="Opex" active={pathname.startsWith('/opex')} />
     </nav>
   )
 }
