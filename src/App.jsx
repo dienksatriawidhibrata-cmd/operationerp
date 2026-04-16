@@ -13,6 +13,7 @@ const DailyVisit = lazy(() => import('./pages/dm/DailyVisit'))
 const ApprovalSetoran = lazy(() => import('./pages/dm/ApprovalSetoran'))
 const AuditSetoran   = lazy(() => import('./pages/finance/AuditSetoran'))
 const OpexOverview  = lazy(() => import('./pages/OpexOverview'))
+const KPIReport     = lazy(() => import('./pages/kpi/KPIReport'))
 
 function RootRedirect() {
   const { user, profile, loading, profileError } = useAuth()
@@ -135,6 +136,12 @@ export default function App() {
       <Route path="/opex" element={
         <RequireAuth roles={[...FINANCE_ROLES, 'ops_manager']}>
           <OpexOverview />
+        </RequireAuth>
+      } />
+
+      <Route path="/kpi" element={
+        <RequireAuth roles={[...ALL_MANAGER, ...FINANCE_ROLES]}>
+          <KPIReport />
         </RequireAuth>
       } />
 
