@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { fmtRp, fmtDateShort, todayWIB, downloadCsv } from '../lib/utils'
 import Alert from '../components/Alert'
-import { DMBottomNav, FinanceBottomNav } from '../components/BottomNav'
+import { DMBottomNav, FinanceBottomNav, OpsBottomNav } from '../components/BottomNav'
 
 const PERIODS = [
   { key: 'day',   label: 'Harian' },
@@ -200,7 +200,7 @@ export default function OpexOverview() {
     return Object.values(map).sort((a, b) => b.total - a.total)
   }, [filtered])
 
-  const BottomNav = isFinance ? FinanceBottomNav : DMBottomNav
+  const BottomNav = isFinance ? FinanceBottomNav : profile?.role === 'ops_manager' ? OpsBottomNav : DMBottomNav
 
   return (
     <div className="page-shell">

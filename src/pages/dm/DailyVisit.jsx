@@ -7,7 +7,7 @@ import ScoreDots from '../../components/ScoreDots'
 import PhotoUpload from '../../components/PhotoUpload'
 import PhotoViewer from '../../components/PhotoViewer'
 import Alert from '../../components/Alert'
-import { DMBottomNav } from '../../components/BottomNav'
+import { DMBottomNav, OpsBottomNav } from '../../components/BottomNav'
 import {
   HeroCard,
   InlineStat,
@@ -203,7 +203,7 @@ export default function DailyVisit() {
       title="Daily Visit / Audit"
       subtitle={today}
       eyebrow="Store Audit"
-      footer={<DMBottomNav />}
+      footer={profile?.role === 'ops_manager' ? <OpsBottomNav /> : <DMBottomNav />}
     >
       <SectionPanel
         eyebrow="Outlet Picker"

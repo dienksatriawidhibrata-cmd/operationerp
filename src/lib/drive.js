@@ -6,7 +6,7 @@
 const SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL
 const MAX_UPLOAD_BYTES = 200 * 1024
 const MAX_DIMENSION = 1600
-const MIN_DIMENSION = 720
+const MIN_DIMENSION = 480
 const JPEG_MIME = 'image/jpeg'
 
 function readFileAsDataUrl(file) {
@@ -98,7 +98,7 @@ async function compressImage(file) {
     context.drawImage(image, 0, 0, width, height)
 
     quality = 0.86
-    while (quality >= 0.42) {
+    while (quality >= 0.20) {
       const blob = await canvasToBlob(canvas, quality)
       if (blob.size <= MAX_UPLOAD_BYTES) {
         finalBlob = blob
@@ -110,6 +110,17 @@ async function compressImage(file) {
 
     if (finalBlob?.size <= MAX_UPLOAD_BYTES) break
     dimensionLimit -= 180
+  }
+
+  // Final emergency pass: force 320px at lowest quality to guarantee < 200KB
+  if (!finalBlob || finalBlob.size > MAX_UPLOAD_BYTES) {
+    const { width, height } = fitSize(image.width, image.height, 320)
+    canvas.width = width
+    canvas.height = height
+    context.fillStyle = '#ffffff'
+    context.fillRect(0, 0, width, height)
+    context.drawImage(image, 0, 0, width, height)
+    finalBlob = await canvasToBlob(canvas, 0.70)
   }
 
   const safeBlob = finalBlob || await canvasToBlob(canvas, quality)
@@ -205,13 +216,20 @@ export async function uploadMultiple(files, folder = 'general') {
 
 /**
  * Convert berbagai format Google Drive URL ke URL embed langsung
- * supaya bisa ditampilkan di <img> tag.
- * Format yang didukung:
- *   https://drive.google.com/file/d/FILE_ID/view
- *   https://drive.google.com/open?id=FILE_ID
- *   https://drive.google.com/uc?id=FILE_ID
+ * supaya bisa ditampilkan di <img> tag (thumbnail kecil untuk grid).
  */
 export function toEmbedUrl(driveUrl) {
   if (!driveUrl) return null
   return buildPreviewUrl(driveUrl)
+}
+
+/**
+ * URL langsung (full resolution) untuk lightbox.
+ * Menggunakan uc?export=view agar gambar langsung tampil tanpa redirect ke Drive.
+ */
+export function toFullUrl(driveUrl) {
+  if (!driveUrl) return null
+  const fileId = extractFileId(driveUrl)
+  if (!fileId) return driveUrl
+  return `https://drive.google.com/uc?export=view&id=${fileId}`
 }

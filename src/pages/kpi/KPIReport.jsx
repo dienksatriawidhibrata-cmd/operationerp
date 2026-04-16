@@ -11,7 +11,7 @@ import {
   ToneBadge,
   EmptyPanel,
 } from '../../components/ui/AppKit'
-import { DMBottomNav } from '../../components/BottomNav'
+import { OpsBottomNav } from '../../components/BottomNav'
 
 // ─── KPI item labels and improvement copy ────────────────────────────────────
 
@@ -362,7 +362,7 @@ export default function KPIReport() {
       title="KPI Report 2026"
       subtitle={`Data per ${activeMon} 2026 · Updated ${lastUpdated}`}
       eyebrow="Performance Report"
-      footer={<DMBottomNav />}
+      footer={<OpsBottomNav />}
     >
       {/* Hero summary */}
       <HeroCard

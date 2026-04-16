@@ -14,6 +14,7 @@ const ApprovalSetoran = lazy(() => import('./pages/dm/ApprovalSetoran'))
 const AuditSetoran   = lazy(() => import('./pages/finance/AuditSetoran'))
 const OpexOverview  = lazy(() => import('./pages/OpexOverview'))
 const KPIReport       = lazy(() => import('./pages/kpi/KPIReport'))
+const OpsHub         = lazy(() => import('./pages/ops/Hub'))
 const SCDashboard    = lazy(() => import('./pages/sc/Dashboard'))
 const SCNewOrder     = lazy(() => import('./pages/sc/NewOrder'))
 const SCOrderDetail  = lazy(() => import('./pages/sc/OrderDetail'))
@@ -31,7 +32,8 @@ function RootRedirect() {
 
   const role = profile.role
   if (['staff', 'asst_head_store', 'head_store'].includes(role)) return <Navigate to="/staff" replace />
-  if (['district_manager', 'area_manager', 'ops_manager'].includes(role)) return <Navigate to="/dm" replace />
+  if (['district_manager', 'area_manager'].includes(role)) return <Navigate to="/dm" replace />
+  if (role === 'ops_manager') return <Navigate to="/ops" replace />
   if (role === 'finance_supervisor') return <Navigate to="/finance" replace />
   if (role === 'picking_spv') return <Navigate to="/sc/picking" replace />
   if (role === 'qc_spv') return <Navigate to="/sc/qc" replace />
@@ -120,6 +122,12 @@ export default function App() {
       <Route path="/staff/opex" element={
         <RequireAuth roles={[...STORE_ROLES, ...ALL_MANAGER]}>
           <BebanOperasional />
+        </RequireAuth>
+      } />
+
+      <Route path="/ops" element={
+        <RequireAuth roles={['ops_manager']}>
+          <OpsHub />
         </RequireAuth>
       } />
 
