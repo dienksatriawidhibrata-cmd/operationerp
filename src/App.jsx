@@ -15,6 +15,7 @@ const AuditSetoran   = lazy(() => import('./pages/finance/AuditSetoran'))
 const OpexOverview  = lazy(() => import('./pages/OpexOverview'))
 const KPIReport       = lazy(() => import('./pages/kpi/KPIReport'))
 const OpsHub         = lazy(() => import('./pages/ops/Hub'))
+const OpsVisitMonitor = lazy(() => import('./pages/ops/VisitMonitor'))
 const SCDashboard    = lazy(() => import('./pages/sc/Dashboard'))
 const SCNewOrder     = lazy(() => import('./pages/sc/NewOrder'))
 const SCOrderDetail  = lazy(() => import('./pages/sc/OrderDetail'))
@@ -128,6 +129,11 @@ export default function App() {
       <Route path="/ops" element={
         <RequireAuth roles={['ops_manager']}>
           <OpsHub />
+        </RequireAuth>
+      } />
+      <Route path="/ops/visits" element={
+        <RequireAuth roles={['ops_manager']}>
+          <OpsVisitMonitor />
         </RequireAuth>
       } />
 

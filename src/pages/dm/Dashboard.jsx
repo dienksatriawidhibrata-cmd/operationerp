@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
-import { createDetachedSupabaseClient, supabase } from '../../lib/supabase'
+import { supabase } from '../../lib/supabase'
 import { fmtRp, todayWIB, yesterdayWIB, visitGrade } from '../../lib/utils'
 import {
   getBrowserNotificationPermission,
@@ -60,28 +60,6 @@ const SALES_SAFETY_FACTOR = 0.925
 const BOH_SECTION_STORAGE_KEY = 'dm_boh_section_visible'
 const STORE_SECTION_STORAGE_KEY = 'dm_store_section_visible'
 
-const ACCOUNT_FORM_DEFAULT = {
-  fullName: '',
-  email: '',
-  password: '',
-  role: 'staff',
-  branchId: '',
-  managedDistricts: [],
-  managedAreas: [],
-}
-
-const STORE_ROLE_OPTIONS = [
-  { value: 'staff', label: 'Staff' },
-  { value: 'asst_head_store', label: 'Asst Head Store' },
-  { value: 'head_store', label: 'Head Store' },
-]
-
-const MANAGER_ROLE_OPTIONS = [
-  { value: 'district_manager', label: 'District Manager' },
-  { value: 'area_manager', label: 'Area Manager' },
-  { value: 'finance_supervisor', label: 'Finance Supervisor' },
-  { value: 'sc_supervisor', label: 'SC Supervisor' },
-]
 
 function readSectionPreference() {
   if (typeof window === 'undefined') return true
@@ -122,11 +100,6 @@ export default function DMDashboard() {
   const [showBudgetSection, setShowBudgetSection] = useState(readSectionPreference)
   const [showStoreSection, setShowStoreSection] = useState(readStoreSectionPreference)
   const [selectedBudgetDetail, setSelectedBudgetDetail] = useState(null)
-  const [showCreateAccountModal, setShowCreateAccountModal] = useState(false)
-  const [accountForm, setAccountForm] = useState(ACCOUNT_FORM_DEFAULT)
-  const [accountSubmitting, setAccountSubmitting] = useState(false)
-  const [accountSubmitError, setAccountSubmitError] = useState('')
-  const [accountSubmitSuccess, setAccountSubmitSuccess] = useState('')
   const [activeTab, setActiveTab] = useState('toko')
   const [visitPeriod, setVisitPeriod] = useState('week')
   const [visitSummary, setVisitSummary] = useState(EMPTY_VISIT_SUMMARY)
@@ -501,135 +474,6 @@ export default function DMDashboard() {
     setNotifPermission(result)
   }
 
-  const resetAccountComposer = () => {
-    setAccountForm(ACCOUNT_FORM_DEFAULT)
-    setAccountSubmitError('')
-  }
-
-  const openCreateAccountModal = () => {
-    resetAccountComposer()
-    setAccountSubmitSuccess('')
-    setShowCreateAccountModal(true)
-  }
-
-  const closeCreateAccountModal = () => {
-    setShowCreateAccountModal(false)
-    setAccountSubmitting(false)
-    setAccountSubmitError('')
-  }
-
-  const updateAccountField = (field, value) => {
-    setAccountForm((current) => {
-      const next = { ...current, [field]: value }
-
-      if (field === 'role') {
-        if (!['staff', 'asst_head_store', 'head_store'].includes(value)) {
-          next.branchId = ''
-        }
-        if (value !== 'district_manager') {
-          next.managedDistricts = []
-        }
-        if (value !== 'area_manager') {
-          next.managedAreas = []
-        }
-      }
-
-      return next
-    })
-  }
-
-  const toggleAccountScope = (field, value) => {
-    setAccountForm((current) => ({
-      ...current,
-      [field]: current[field].includes(value)
-        ? current[field].filter((item) => item !== value)
-        : [...current[field], value],
-    }))
-  }
-
-  const handleCreateAccount = async (event) => {
-    event.preventDefault()
-    setAccountSubmitError('')
-    setAccountSubmitSuccess('')
-
-    if (!accountForm.fullName.trim()) {
-      setAccountSubmitError('Nama lengkap wajib diisi.')
-      return
-    }
-
-    if (!accountForm.email.trim()) {
-      setAccountSubmitError('Email wajib diisi.')
-      return
-    }
-
-    if (accountForm.password.trim().length < 6) {
-      setAccountSubmitError('Password sementara minimal 6 karakter.')
-      return
-    }
-
-    if (['staff', 'asst_head_store', 'head_store'].includes(accountForm.role) && !accountForm.branchId) {
-      setAccountSubmitError('Pilih cabang untuk akun toko.')
-      return
-    }
-
-    if (accountForm.role === 'district_manager' && accountForm.managedDistricts.length === 0) {
-      setAccountSubmitError('Pilih minimal satu district untuk DM.')
-      return
-    }
-
-    if (accountForm.role === 'area_manager' && accountForm.managedAreas.length === 0) {
-      setAccountSubmitError('Pilih minimal satu area untuk AM.')
-      return
-    }
-
-    setAccountSubmitting(true)
-
-    try {
-      const signupClient = createDetachedSupabaseClient(`bagikopi-ops-signup-${Date.now()}`)
-      const { data: authData, error: authError } = await signupClient.auth.signUp({
-        email: accountForm.email.trim().toLowerCase(),
-        password: accountForm.password,
-        options: {
-          data: {
-            full_name: accountForm.fullName.trim(),
-            role: accountForm.role,
-          },
-        },
-      })
-
-      if (authError) {
-        const msg = authError.message || ''
-        if (msg.toLowerCase().includes('already registered') || msg.toLowerCase().includes('already been registered')) {
-          throw new Error('Email ini sudah terdaftar di sistem auth. Jika akun baru saja dibuat tapi gagal dikonfigurasi, hubungi admin untuk set ulang profile-nya langsung di Supabase.')
-        }
-        throw authError
-      }
-      if (!authData.user?.id) {
-        throw new Error('Akun auth belum berhasil dibuat. Coba ulangi sekali lagi.')
-      }
-
-      const { error: configureError } = await supabase.rpc('ops_manager_configure_profile', {
-        target_user_id: authData.user.id,
-        target_full_name: accountForm.fullName.trim(),
-        target_role: accountForm.role,
-        target_branch_id: ['staff', 'asst_head_store', 'head_store'].includes(accountForm.role) ? accountForm.branchId : null,
-        target_managed_districts: accountForm.role === 'district_manager' ? accountForm.managedDistricts : [],
-        target_managed_areas: accountForm.role === 'area_manager' ? accountForm.managedAreas : [],
-      })
-
-      if (configureError) throw configureError
-
-      setAccountSubmitSuccess(`Akun ${accountForm.fullName.trim()} berhasil dibuat. Password awal sudah tersimpan sesuai input tadi.`)
-      setShowCreateAccountModal(false)
-      resetAccountComposer()
-      await fetchDashboard()
-    } catch (error) {
-      setAccountSubmitError(error.message || 'Gagal membuat akun baru.')
-    } finally {
-      setAccountSubmitting(false)
-    }
-  }
-
   const storeBadge = (store) => {
     if (!store.ceklisPagi) return { tone: 'danger', label: 'Ceklis pagi belum masuk' }
     if (!store.laporan) return { tone: 'warn', label: 'Laporan harian tertahan' }
@@ -650,13 +494,6 @@ export default function DMDashboard() {
       : 'Ops Manager'
 
   const storesWithoutVisit = stores.filter((store) => !store.visitPeriod)
-  const branchOptions = stores.map((store) => ({
-    value: store.id,
-    label: store.name.replace('Bagi Kopi ', ''),
-  }))
-  const districtOptions = Array.from(new Set(stores.map((store) => store.district).filter(Boolean))).sort()
-  const areaOptions = Array.from(new Set(stores.map((store) => store.area).filter(Boolean))).sort()
-  const accountRoleOptions = [...STORE_ROLE_OPTIONS, ...MANAGER_ROLE_OPTIONS]
   const todayLabel = new Date().toLocaleDateString('id-ID', {
     weekday: 'long',
     day: 'numeric',
@@ -790,16 +627,9 @@ export default function DMDashboard() {
             </>
           }
           actions={
-            <>
-              <SoftButton tone="light" icon="refresh" onClick={fetchDashboard}>
-                Refresh
-              </SoftButton>
-              {isOpsManager && (
-                <SoftButton tone="light" icon="plus" onClick={openCreateAccountModal}>
-                  Tambah Akun
-                </SoftButton>
-              )}
-            </>
+            <SoftButton tone="light" icon="refresh" onClick={fetchDashboard}>
+              Refresh
+            </SoftButton>
           }
         >
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -917,30 +747,6 @@ export default function DMDashboard() {
                 )}
               </div>
             </SectionPanel>
-
-            {isOpsManager && (
-              <SectionPanel
-                className="mb-6"
-                eyebrow="Control Center"
-                title="Manajemen Akun"
-                description="Dien bisa menambahkan akun toko, manager, atau finance supervisor langsung dari dashboard."
-                actions={
-                  <SoftButton tone="primary" icon="plus" onClick={openCreateAccountModal}>
-                    Tambah Akun
-                  </SoftButton>
-                }
-              >
-                <div className="rounded-[24px] border border-dashed border-slate-200 bg-slate-50 px-5 py-4 text-sm leading-6 text-slate-500">
-                  Composer akun sudah terhubung ke flow pembuatan profile, role, scope, dan password awal.
-                </div>
-              </SectionPanel>
-            )}
-
-            {accountSubmitSuccess && (
-              <div className="mb-6 rounded-[24px] border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-700 shadow-[0_16px_50px_-36px_rgba(5,150,105,0.55)]">
-                {accountSubmitSuccess}
-              </div>
-            )}
 
             <SectionPanel
               className="mb-6"
@@ -1210,22 +1016,6 @@ export default function DMDashboard() {
         <BudgetDetailModal
           row={selectedBudgetDetail}
           onClose={() => setSelectedBudgetDetail(null)}
-        />
-      )}
-
-      {showCreateAccountModal && (
-        <CreateAccountModal
-          form={accountForm}
-          roleOptions={accountRoleOptions}
-          branchOptions={branchOptions}
-          districtOptions={districtOptions}
-          areaOptions={areaOptions}
-          submitting={accountSubmitting}
-          errorMessage={accountSubmitError}
-          onClose={closeCreateAccountModal}
-          onSubmit={handleCreateAccount}
-          onFieldChange={updateAccountField}
-          onScopeToggle={toggleAccountScope}
         />
       )}
 
@@ -1912,180 +1702,6 @@ function BudgetDetailModal({ row, onClose }) {
             <InlineStat label="Rasio Estimasi" value={row.projectedRatio == null ? '-' : formatRatio(row.projectedRatio)} tone="primary" />
           </div>
         </div>
-      </div>
-    </div>
-  )
-}
-
-function CreateAccountModal({
-  form,
-  roleOptions,
-  branchOptions,
-  districtOptions,
-  areaOptions,
-  submitting,
-  errorMessage,
-  onClose,
-  onSubmit,
-  onFieldChange,
-  onScopeToggle,
-}) {
-  const isStoreRole = ['staff', 'asst_head_store', 'head_store'].includes(form.role)
-  const isDistrictManager = form.role === 'district_manager'
-  const isAreaManager = form.role === 'area_manager'
-
-  return (
-    <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[1px] flex items-end justify-center px-4 py-6">
-      <div className="w-full max-w-[430px] bg-white rounded-3xl shadow-2xl overflow-hidden">
-        <div className="px-4 py-4 border-b border-gray-100 flex items-start justify-between gap-3">
-          <div>
-            <div className="text-lg font-bold text-gray-900">Tambah Akun Baru</div>
-            <div className="text-xs text-gray-500 mt-1">
-              Ops Manager bisa membuat akun login baru beserta role dan akses awalnya.
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="w-9 h-9 rounded-full bg-gray-100 text-gray-500 text-lg leading-none"
-          >
-            ×
-          </button>
-        </div>
-
-        <form onSubmit={onSubmit} className="p-4 space-y-4 max-h-[75vh] overflow-y-auto">
-          <div>
-            <label className="text-xs font-semibold text-gray-600">Nama Lengkap</label>
-            <input
-              value={form.fullName}
-              onChange={(event) => onFieldChange('fullName', event.target.value)}
-              className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm"
-              placeholder="Nama karyawan"
-            />
-          </div>
-
-          <div>
-            <label className="text-xs font-semibold text-gray-600">Email Login</label>
-            <input
-              type="email"
-              value={form.email}
-              onChange={(event) => onFieldChange('email', event.target.value)}
-              className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm"
-              placeholder="nama@email.com"
-            />
-          </div>
-
-          <div>
-            <label className="text-xs font-semibold text-gray-600">Password Awal</label>
-            <input
-              type="password"
-              value={form.password}
-              onChange={(event) => onFieldChange('password', event.target.value)}
-              className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm"
-              placeholder="Minimal 6 karakter"
-            />
-            <div className="text-[11px] text-gray-400 mt-1">
-              Password ini dipakai sebagai password awal, nanti bisa kamu ganti lagi kalau perlu.
-            </div>
-          </div>
-
-          <div>
-            <label className="text-xs font-semibold text-gray-600">Role Akun</label>
-            <select
-              value={form.role}
-              onChange={(event) => onFieldChange('role', event.target.value)}
-              className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm bg-white"
-            >
-              {roleOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {isStoreRole && (
-            <div>
-              <label className="text-xs font-semibold text-gray-600">Cabang</label>
-              <select
-                value={form.branchId}
-                onChange={(event) => onFieldChange('branchId', event.target.value)}
-                className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm bg-white"
-              >
-                <option value="">Pilih cabang</option>
-                {branchOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {isDistrictManager && (
-            <div>
-              <label className="text-xs font-semibold text-gray-600">Wilayah District</label>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {districtOptions.map((district) => {
-                  const active = form.managedDistricts.includes(district)
-                  return (
-                    <button
-                      key={district}
-                      type="button"
-                      onClick={() => onScopeToggle('managedDistricts', district)}
-                      className={`px-3 py-2 rounded-full text-xs font-semibold border ${active ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-gray-600 border-gray-200'}`}
-                    >
-                      {district}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          {isAreaManager && (
-            <div>
-              <label className="text-xs font-semibold text-gray-600">Wilayah Area</label>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {areaOptions.map((area) => {
-                  const active = form.managedAreas.includes(area)
-                  return (
-                    <button
-                      key={area}
-                      type="button"
-                      onClick={() => onScopeToggle('managedAreas', area)}
-                      className={`px-3 py-2 rounded-full text-xs font-semibold border ${active ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-gray-600 border-gray-200'}`}
-                    >
-                      {area}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          {errorMessage && (
-            <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
-              {errorMessage}
-            </div>
-          )}
-
-          <div className="flex items-center gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 rounded-xl border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-600"
-            >
-              Batal
-            </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="flex-1 rounded-xl bg-primary-600 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
-            >
-              {submitting ? 'Membuat...' : 'Buat Akun'}
-            </button>
-          </div>
-        </form>
       </div>
     </div>
   )
