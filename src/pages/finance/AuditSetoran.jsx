@@ -1,76 +1,172 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
-import { fmtRp, fmtDateShort } from '../../lib/utils'
-import Header from '../../components/Header'
+import { fmtRp, fmtDateShort, roleLabel, todayWIB } from '../../lib/utils'
 import PhotoViewer from '../../components/PhotoViewer'
 import Alert from '../../components/Alert'
 import { FinanceBottomNav } from '../../components/BottomNav'
 
 const TABS = [
-  { key: 'pending',  label: 'Belum Diaudit' },
-  { key: 'audited',  label: 'Sudah Audit' },
-  { key: 'flagged',  label: 'Flagged' },
+  { key: 'pending', label: 'Belum Diaudit' },
+  { key: 'audited', label: 'Sudah Audit' },
+  { key: 'flagged', label: 'Flagged' },
+]
+
+const PERIODS = [
+  { key: 'day', label: 'Harian' },
+  { key: 'week', label: 'Mingguan' },
+  { key: 'month', label: 'Bulanan' },
+]
+
+const STATUS_FILTERS = [
+  { key: 'all', label: 'Semua' },
+  { key: 'selisih', label: 'Ada Selisih' },
+  { key: 'approved', label: 'Approved' },
+  { key: 'rejected', label: 'Rejected' },
 ]
 
 export default function AuditSetoran() {
   const { profile, signOut } = useAuth()
-  const [tab, setTab]         = useState('pending')
-  const [items, setItems]     = useState([])
+  const [tab, setTab] = useState('pending')
+  const [period, setPeriod] = useState('day')
+  const [anchorDate, setAnchorDate] = useState(todayWIB())
+  const [items, setItems] = useState([])
+  const [branches, setBranches] = useState([])
   const [loading, setLoading] = useState(true)
-  const [selected, setSelected] = useState(null)
-  const [notes, setNotes]     = useState('')
-  const [actioning, setActioning] = useState(false)
-  const [msg, setMsg]         = useState(null)
-  const [filter, setFilter]   = useState('all') // all | selisih | approved | rejected
+  const [selectedId, setSelectedId] = useState(null)
+  const [notesById, setNotesById] = useState({})
+  const [actioningId, setActioningId] = useState(null)
+  const [msg, setMsg] = useState(null)
+  const [filter, setFilter] = useState('all')
+  const [areaFilter, setAreaFilter] = useState('all')
+  const [districtFilter, setDistrictFilter] = useState('all')
+  const [branchFilter, setBranchFilter] = useState('all')
 
-  useEffect(() => { fetchSetoran() }, [tab])
+  useEffect(() => {
+    fetchBranches()
+  }, [profile?.id])
+
+  useEffect(() => {
+    fetchSetoran()
+  }, [tab, period, anchorDate])
+
+  const fetchBranches = async () => {
+    const { data } = await supabase
+      .from('branches')
+      .select('id,name,store_id,district,area')
+      .eq('is_active', true)
+      .order('name')
+
+    setBranches(data || [])
+  }
 
   const fetchSetoran = async () => {
     setLoading(true)
+    const range = getDateRange(period, anchorDate)
     const { data } = await supabase
       .from('daily_deposits')
-      .select('*, branch:branches(name,store_id,district,area)')
+      .select('*, branch:branches(id,name,store_id,district,area)')
       .eq('finance_status', tab)
       .in('status', ['approved', 'rejected', 'submitted'])
+      .gte('tanggal', range.start)
+      .lte('tanggal', range.end)
       .order('tanggal', { ascending: false })
+      .order('submitted_at', { ascending: false })
+
     setItems(data || [])
     setLoading(false)
   }
 
-  const markAudited = async (item, flagged = false) => {
-    setActioning(true)
-    const { error } = await supabase.from('daily_deposits').update({
-      finance_status: flagged ? 'flagged' : 'audited',
-      finance_audited_by: profile.id,
-      finance_audited_at: new Date().toISOString(),
-      finance_notes: notes || null,
-    }).eq('id', item.id)
-    if (error) { setMsg({ type: 'error', text: 'Gagal: ' + error.message }) }
-    else {
-      setMsg({ type: 'ok', text: flagged ? 'Setoran diflag untuk review lebih lanjut.' : 'Setoran selesai diaudit ✓' })
-      setSelected(null); setNotes(''); fetchSetoran()
+  const areaOptions = useMemo(() => {
+    return Array.from(new Set(branches.map((branch) => branch.area).filter(Boolean))).sort()
+  }, [branches])
+
+  const districtOptions = useMemo(() => {
+    return Array.from(
+      new Set(
+        branches
+          .filter((branch) => areaFilter === 'all' || branch.area === areaFilter)
+          .map((branch) => branch.district)
+          .filter(Boolean)
+      )
+    ).sort()
+  }, [branches, areaFilter])
+
+  const branchOptions = useMemo(() => {
+    return branches.filter((branch) => {
+      if (areaFilter !== 'all' && branch.area !== areaFilter) return false
+      if (districtFilter !== 'all' && branch.district !== districtFilter) return false
+      return true
+    })
+  }, [branches, areaFilter, districtFilter])
+
+  useEffect(() => {
+    if (districtFilter !== 'all' && !districtOptions.includes(districtFilter)) {
+      setDistrictFilter('all')
     }
-    setActioning(false)
+  }, [districtFilter, districtOptions])
+
+  useEffect(() => {
+    if (branchFilter !== 'all' && !branchOptions.some((branch) => branch.id === branchFilter)) {
+      setBranchFilter('all')
+    }
+  }, [branchFilter, branchOptions])
+
+  const filtered = useMemo(() => {
+    return items.filter((item) => {
+      if (filter === 'selisih' && Number(item.selisih) === 0) return false
+      if (filter === 'approved' && item.status !== 'approved') return false
+      if (filter === 'rejected' && item.status !== 'rejected') return false
+      if (areaFilter !== 'all' && item.branch?.area !== areaFilter) return false
+      if (districtFilter !== 'all' && item.branch?.district !== districtFilter) return false
+      if (branchFilter !== 'all' && item.branch_id !== branchFilter) return false
+      return true
+    })
+  }, [items, filter, areaFilter, districtFilter, branchFilter])
+
+  const totalSelisih = filtered.reduce((sum, item) => sum + Math.abs(Number(item.selisih || 0)), 0)
+  const selectedRange = getDateRange(period, anchorDate)
+
+  const markAudited = async (item, flagged = false) => {
+    setActioningId(item.id)
+    const { error } = await supabase
+      .from('daily_deposits')
+      .update({
+        finance_status: flagged ? 'flagged' : 'audited',
+        finance_audited_by: profile.id,
+        finance_audited_at: new Date().toISOString(),
+        finance_notes: notesById[item.id] || null,
+      })
+      .eq('id', item.id)
+
+    if (error) {
+      setMsg({ type: 'error', text: 'Gagal: ' + error.message })
+    } else {
+      setMsg({
+        type: 'ok',
+        text: flagged
+          ? 'Setoran diflag untuk review lebih lanjut.'
+          : 'Setoran selesai diaudit.',
+      })
+      setSelectedId(null)
+      setNotesById((current) => ({ ...current, [item.id]: '' }))
+      fetchSetoran()
+    }
+    setActioningId(null)
   }
 
-  // Filter items
-  const filtered = items.filter(item => {
-    if (filter === 'selisih') return Number(item.selisih) !== 0
-    if (filter === 'approved') return item.status === 'approved'
-    if (filter === 'rejected') return item.status === 'rejected'
-    return true
-  })
-
-  const totalSelisih = filtered.reduce((s, i) => s + Math.abs(Number(i.selisih)), 0)
+  const financeTitle = profile?.role === 'ops_manager'
+    ? 'Finance Audit - Ops Manager'
+    : roleLabel(profile?.role || 'finance_supervisor')
 
   return (
     <div className="page-shell">
       <header className="bg-primary-600 text-white px-4 pt-5 pb-4">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-primary-200 text-xs">Finance Supervisor</p>
+            <p className="text-primary-200 text-xs">{financeTitle}</p>
             <h1 className="text-lg font-bold mt-0.5">Audit Setoran</h1>
+            <p className="text-primary-300 text-[11px] mt-1">{selectedRange.label}</p>
           </div>
           <button onClick={signOut} className="text-primary-300 hover:text-white p-1">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -80,14 +176,16 @@ export default function AuditSetoran() {
         </div>
       </header>
 
-      {/* Finance tabs */}
       <div className="flex bg-white border-b border-gray-100 px-4 gap-1 sticky top-0 z-10">
-        {TABS.map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)}
+        {TABS.map((currentTab) => (
+          <button
+            key={currentTab.key}
+            onClick={() => setTab(currentTab.key)}
             className={`flex-1 py-3 text-xs font-bold border-b-2 transition-colors ${
-              tab === t.key ? 'border-primary-600 text-primary-600' : 'border-transparent text-gray-400'
-            }`}>
-            {t.label}
+              tab === currentTab.key ? 'border-primary-600 text-primary-600' : 'border-transparent text-gray-400'
+            }`}
+          >
+            {currentTab.label}
           </button>
         ))}
       </div>
@@ -95,7 +193,67 @@ export default function AuditSetoran() {
       <div className="flex-1 overflow-y-auto pb-24 px-4 pt-4 space-y-3">
         {msg && <Alert variant={msg.type === 'ok' ? 'ok' : 'error'}>{msg.text}</Alert>}
 
-        {/* Summary strip */}
+        <div className="grid grid-cols-3 gap-2">
+          {PERIODS.map((option) => (
+            <button
+              key={option.key}
+              onClick={() => setPeriod(option.key)}
+              className={`py-2 text-xs font-bold rounded-xl border transition-colors ${
+                period === option.key
+                  ? 'bg-primary-600 text-white border-primary-600'
+                  : 'bg-white text-gray-500 border-gray-200'
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="card p-3 space-y-3">
+          <div>
+            <label className="label">Tanggal Acuan</label>
+            <input
+              className="input"
+              type="date"
+              value={anchorDate}
+              onChange={(event) => setAnchorDate(event.target.value)}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="label">Area</label>
+              <select className="input" value={areaFilter} onChange={(event) => setAreaFilter(event.target.value)}>
+                <option value="all">Semua area</option>
+                {areaOptions.map((area) => (
+                  <option key={area} value={area}>{area}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="label">District</label>
+              <select className="input" value={districtFilter} onChange={(event) => setDistrictFilter(event.target.value)}>
+                <option value="all">Semua district</option>
+                {districtOptions.map((district) => (
+                  <option key={district} value={district}>{district}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="label">Toko</label>
+            <select className="input" value={branchFilter} onChange={(event) => setBranchFilter(event.target.value)}>
+              <option value="all">Semua toko</option>
+              {branchOptions.map((branch) => (
+                <option key={branch.id} value={branch.id}>
+                  {branch.name.replace('Bagi Kopi ', '')}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
         {!loading && filtered.length > 0 && (
           <div className="flex gap-2">
             <div className="card flex-1 p-3 text-center">
@@ -103,7 +261,9 @@ export default function AuditSetoran() {
               <div className="text-xs text-gray-400">Total</div>
             </div>
             <div className="card flex-1 p-3 text-center">
-              <div className="text-lg font-bold text-red-600">{filtered.filter(i => Number(i.selisih) !== 0).length}</div>
+              <div className="text-lg font-bold text-red-600">
+                {filtered.filter((item) => Number(item.selisih) !== 0).length}
+              </div>
               <div className="text-xs text-gray-400">Ada Selisih</div>
             </div>
             <div className="card flex-1 p-3 text-center">
@@ -113,20 +273,19 @@ export default function AuditSetoran() {
           </div>
         )}
 
-        {/* Filter chips */}
         {!loading && (
           <div className="flex gap-2 flex-wrap">
-            {[
-              { key: 'all',      label: 'Semua' },
-              { key: 'selisih',  label: '⚠ Ada Selisih' },
-              { key: 'approved', label: '✓ Approved' },
-              { key: 'rejected', label: '✗ Rejected' },
-            ].map(f => (
-              <button key={f.key} onClick={() => setFilter(f.key)}
+            {STATUS_FILTERS.map((statusFilter) => (
+              <button
+                key={statusFilter.key}
+                onClick={() => setFilter(statusFilter.key)}
                 className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
-                  filter === f.key ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-gray-600 border-gray-200'
-                }`}>
-                {f.label}
+                  filter === statusFilter.key
+                    ? 'bg-primary-600 text-white border-primary-600'
+                    : 'bg-white text-gray-600 border-gray-200'
+                }`}
+              >
+                {statusFilter.label}
               </button>
             ))}
           </div>
@@ -138,21 +297,21 @@ export default function AuditSetoran() {
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-12 text-gray-400">
-            <div className="text-4xl mb-3">📋</div>
-            <p className="font-medium">Tidak ada setoran di kategori ini</p>
+            <div className="text-4xl mb-3">-</div>
+            <p className="font-medium">Tidak ada setoran di filter ini</p>
           </div>
         ) : (
-          filtered.map(item => (
+          filtered.map((item) => (
             <FinanceCard
               key={item.id}
               item={item}
-              expanded={selected?.id === item.id}
-              onToggle={() => setSelected(selected?.id === item.id ? null : item)}
+              expanded={selectedId === item.id}
+              onToggle={() => setSelectedId(selectedId === item.id ? null : item.id)}
               onAudit={() => markAudited(item, false)}
               onFlag={() => markAudited(item, true)}
-              notes={notes}
-              onNotesChange={setNotes}
-              actioning={actioning}
+              notes={notesById[item.id] || ''}
+              onNotesChange={(value) => setNotesById((current) => ({ ...current, [item.id]: value }))}
+              actioning={actioningId === item.id}
               tab={tab}
             />
           ))
@@ -175,10 +334,11 @@ function FinanceCard({ item, expanded, onToggle, onAudit, onFlag, notes, onNotes
         </div>
         <div className="flex-1 text-left min-w-0">
           <div className="font-semibold text-sm text-gray-900 truncate">
-            {item.branch?.name?.replace('Bagi Kopi ','') || '—'}
+            {item.branch?.name?.replace('Bagi Kopi ', '') || '-'}
           </div>
-          <div className="text-xs text-gray-400">
-            {fmtDateShort(item.tanggal)} · {fmtRp(item.cash_disetorkan)}
+          <div className="text-[11px] text-gray-400">{`${item.branch?.district || '-'} - ${item.branch?.area || '-'}`}</div>
+          <div className="text-xs text-gray-400 mt-0.5">
+            {`${fmtDateShort(item.tanggal)} - ${fmtRp(item.cash_disetorkan)}`}
             {selisih !== 0 && <span className="text-red-500 ml-1.5 font-semibold">Selisih {fmtRp(Math.abs(selisih))}</span>}
           </div>
         </div>
@@ -189,8 +349,12 @@ function FinanceCard({ item, expanded, onToggle, onAudit, onFlag, notes, onNotes
           }`}>
             {item.status === 'approved' ? 'DM Approved' : item.status === 'rejected' ? 'DM Rejected' : 'Pending DM'}
           </span>
-          <svg className={`w-4 h-4 text-gray-300 transition-transform ${expanded ? 'rotate-180' : ''}`}
-            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg
+            className={`w-4 h-4 text-gray-300 transition-transform ${expanded ? 'rotate-180' : ''}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
         </div>
@@ -221,34 +385,43 @@ function FinanceCard({ item, expanded, onToggle, onAudit, onFlag, notes, onNotes
             </div>
           )}
 
-          {/* FOTO BUKTI — viewable inline */}
           <div>
-            <p className="label mb-2">📸 Foto Bukti Setoran</p>
+            <p className="label mb-2">Foto Bukti Setoran</p>
             <PhotoViewer urls={item.foto_bukti || []} emptyText="Tidak ada foto bukti" />
           </div>
 
           <div className="text-xs text-gray-400 space-y-0.5">
-            <div>Submit: {item.submitted_at ? new Date(item.submitted_at).toLocaleString('id-ID') : '—'}</div>
+            <div>Submit: {item.submitted_at ? new Date(item.submitted_at).toLocaleString('id-ID') : '-'}</div>
             {item.approved_at && <div>Approved by DM: {new Date(item.approved_at).toLocaleString('id-ID')}</div>}
             {item.finance_notes && <div className="mt-1 text-primary-600">Catatan audit: {item.finance_notes}</div>}
           </div>
 
-          {/* Audit actions */}
           {tab === 'pending' && (
             <>
               <div>
                 <label className="label">Catatan Audit Finance</label>
-                <input className="input" type="text" value={notes} onChange={e => onNotesChange(e.target.value)}
-                  placeholder="Catatan untuk rekap (opsional)..." />
+                <input
+                  className="input"
+                  type="text"
+                  value={notes}
+                  onChange={(event) => onNotesChange(event.target.value)}
+                  placeholder="Catatan untuk rekap (opsional)..."
+                />
               </div>
               <div className="flex gap-2">
-                <button onClick={onFlag} disabled={actioning}
-                  className="flex-1 py-2.5 rounded-xl bg-yellow-50 border border-yellow-200 text-yellow-700 text-sm font-semibold">
-                  {actioning ? '...' : '🚩 Flag'}
+                <button
+                  onClick={onFlag}
+                  disabled={actioning}
+                  className="flex-1 py-2.5 rounded-xl bg-yellow-50 border border-yellow-200 text-yellow-700 text-sm font-semibold"
+                >
+                  {actioning ? '...' : 'Flag'}
                 </button>
-                <button onClick={onAudit} disabled={actioning}
-                  className="flex-1 py-2.5 rounded-xl bg-primary-600 text-white text-sm font-semibold">
-                  {actioning ? '...' : '✓ Selesai Diaudit'}
+                <button
+                  onClick={onAudit}
+                  disabled={actioning}
+                  className="flex-1 py-2.5 rounded-xl bg-primary-600 text-white text-sm font-semibold"
+                >
+                  {actioning ? '...' : 'Selesai Diaudit'}
                 </button>
               </div>
             </>
@@ -257,4 +430,46 @@ function FinanceCard({ item, expanded, onToggle, onAudit, onFlag, notes, onNotes
       )}
     </div>
   )
+}
+
+function getDateRange(period, anchorDate) {
+  const [year, month, day] = anchorDate.split('-').map(Number)
+  const base = new Date(Date.UTC(year, month - 1, day))
+
+  if (period === 'day') {
+    return {
+      start: anchorDate,
+      end: anchorDate,
+      label: `Harian - ${formatRangeDate(anchorDate, { day: 'numeric', month: 'long', year: 'numeric' })}`,
+    }
+  }
+
+  if (period === 'month') {
+    const start = `${year}-${String(month).padStart(2, '0')}-01`
+    const endDate = new Date(Date.UTC(year, month, 0))
+    const end = `${year}-${String(month).padStart(2, '0')}-${String(endDate.getUTCDate()).padStart(2, '0')}`
+    return {
+      start,
+      end,
+      label: `Bulanan - ${formatRangeDate(start, { month: 'long', year: 'numeric' })}`,
+    }
+  }
+
+  const weekDay = base.getUTCDay()
+  const diff = weekDay === 0 ? 6 : weekDay - 1
+  base.setUTCDate(base.getUTCDate() - diff)
+  const end = new Date(base)
+  end.setUTCDate(base.getUTCDate() + 6)
+  const startIso = base.toISOString().split('T')[0]
+  const endIso = end.toISOString().split('T')[0]
+
+  return {
+    start: startIso,
+    end: endIso,
+    label: `Mingguan - ${formatRangeDate(startIso, { day: 'numeric', month: 'short' })} - ${formatRangeDate(endIso, { day: 'numeric', month: 'short', year: 'numeric' })}`,
+  }
+}
+
+function formatRangeDate(date, options) {
+  return new Date(date).toLocaleDateString('id-ID', options)
 }
