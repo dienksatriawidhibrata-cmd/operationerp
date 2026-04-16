@@ -105,15 +105,15 @@ export function FinanceBottomNav() {
 export function OpsBottomNav() {
   const { pathname } = useLocation()
 
-  const tokoActive = pathname.startsWith('/ops') || pathname.startsWith('/dm/approval') || pathname.startsWith('/staff/ceklis')
-  const visitActive = pathname.startsWith('/dm/visit')
+  const tokoActive = (pathname === '/ops' || pathname.startsWith('/dm/approval') || pathname.startsWith('/staff/ceklis') || pathname.startsWith('/dm')) && !pathname.startsWith('/ops/visits')
+  const visitActive = pathname.startsWith('/ops/visits')
   const scActive = pathname.startsWith('/sc')
   const perfActive = pathname.startsWith('/kpi') || pathname.startsWith('/opex')
 
   return (
     <Dock>
       <NavItem to="/ops" icon="home" label="Toko" active={tokoActive} />
-      <NavItem to="/dm/visit" icon="map" label="Visit" active={visitActive} />
+      <NavItem to="/ops/visits" icon="map" label="Visit" active={visitActive} />
       <NavItem to="/sc" icon="checklist" label="Supply Chain" active={scActive} />
       <NavItem to="/kpi" icon="chart" label="Performance" active={perfActive} />
     </Dock>
