@@ -69,6 +69,38 @@ export function DMBottomNav() {
   )
 }
 
+export function SCBottomNav() {
+  const { pathname } = useLocation()
+  const { profile }  = useAuth()
+
+  const role = profile?.role
+  const isWarehouse  = ['warehouse_admin','warehouse_spv','sc_supervisor','ops_manager','purchasing_admin'].includes(role)
+  const isPicking    = role === 'picking_spv'
+  const isQC         = role === 'qc_spv'
+  const isDist       = role === 'distribution_spv'
+
+  return (
+    <Dock>
+      <NavItem to="/sc" icon="home" label="Dashboard" active={pathname === '/sc'} />
+      {isWarehouse && (
+        <NavItem to="/sc/orders/new" icon="opex" label="Order" active={pathname.startsWith('/sc/orders/new')} />
+      )}
+      {(isPicking || isWarehouse) && (
+        <NavItem to="/sc/picking" icon="checklist" label="Picking" active={pathname === '/sc/picking'} />
+      )}
+      {(isQC || isWarehouse) && (
+        <NavItem to="/sc/qc" icon="checklist" label="QC" active={pathname === '/sc/qc'} />
+      )}
+      {(isDist || isWarehouse) && (
+        <NavItem to="/sc/distribution" icon="map" label="Distribusi" active={pathname === '/sc/distribution'} />
+      )}
+      {isWarehouse && (
+        <NavItem to="/sc/sj" icon="finance" label="SJ" active={pathname.startsWith('/sc/sj')} />
+      )}
+    </Dock>
+  )
+}
+
 export function FinanceBottomNav() {
   const { pathname } = useLocation()
 
