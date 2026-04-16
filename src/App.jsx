@@ -13,7 +13,14 @@ const DailyVisit = lazy(() => import('./pages/dm/DailyVisit'))
 const ApprovalSetoran = lazy(() => import('./pages/dm/ApprovalSetoran'))
 const AuditSetoran   = lazy(() => import('./pages/finance/AuditSetoran'))
 const OpexOverview  = lazy(() => import('./pages/OpexOverview'))
-const KPIReport     = lazy(() => import('./pages/kpi/KPIReport'))
+const KPIReport       = lazy(() => import('./pages/kpi/KPIReport'))
+const SCDashboard    = lazy(() => import('./pages/sc/Dashboard'))
+const SCNewOrder     = lazy(() => import('./pages/sc/NewOrder'))
+const SCOrderDetail  = lazy(() => import('./pages/sc/OrderDetail'))
+const SCPicking      = lazy(() => import('./pages/sc/PickingPage'))
+const SCQC           = lazy(() => import('./pages/sc/QCPage'))
+const SCDistribution = lazy(() => import('./pages/sc/DistributionPage'))
+const SCSuratJalan   = lazy(() => import('./pages/sc/SuratJalan'))
 
 function RootRedirect() {
   const { user, profile, loading, profileError } = useAuth()
@@ -26,6 +33,10 @@ function RootRedirect() {
   if (['staff', 'asst_head_store', 'head_store'].includes(role)) return <Navigate to="/staff" replace />
   if (['district_manager', 'area_manager', 'ops_manager'].includes(role)) return <Navigate to="/dm" replace />
   if (role === 'finance_supervisor') return <Navigate to="/finance" replace />
+  if (role === 'picking_spv') return <Navigate to="/sc/picking" replace />
+  if (role === 'qc_spv') return <Navigate to="/sc/qc" replace />
+  if (role === 'distribution_spv') return <Navigate to="/sc/distribution" replace />
+  if (SC_ROLES.includes(role)) return <Navigate to="/sc" replace />
 
   return <NoRouteScreen role={role} />
 }
@@ -83,6 +94,7 @@ const STORE_ROLES   = ['staff', 'asst_head_store', 'head_store']
 const MANAGER_ROLES = ['district_manager', 'area_manager', 'ops_manager']
 const FINANCE_ROLES = ['finance_supervisor']
 const ALL_MANAGER   = [...MANAGER_ROLES, 'ops_manager']
+const SC_ROLES      = ['purchasing_admin', 'warehouse_admin', 'picking_spv', 'qc_spv', 'distribution_spv', 'warehouse_spv', 'sc_supervisor']
 
 export default function App() {
   return (
@@ -142,6 +154,43 @@ export default function App() {
       <Route path="/kpi" element={
         <RequireAuth roles={[...ALL_MANAGER, ...FINANCE_ROLES]}>
           <KPIReport />
+        </RequireAuth>
+      } />
+
+      {/* ── Supply Chain ── */}
+      <Route path="/sc" element={
+        <RequireAuth roles={[...SC_ROLES, 'ops_manager']}>
+          <SCDashboard />
+        </RequireAuth>
+      } />
+      <Route path="/sc/orders/new" element={
+        <RequireAuth roles={['warehouse_admin','purchasing_admin','ops_manager','sc_supervisor']}>
+          <SCNewOrder />
+        </RequireAuth>
+      } />
+      <Route path="/sc/orders/:id" element={
+        <RequireAuth roles={[...SC_ROLES, 'ops_manager']}>
+          <SCOrderDetail />
+        </RequireAuth>
+      } />
+      <Route path="/sc/picking" element={
+        <RequireAuth roles={['picking_spv','warehouse_admin','warehouse_spv','ops_manager','sc_supervisor']}>
+          <SCPicking />
+        </RequireAuth>
+      } />
+      <Route path="/sc/qc" element={
+        <RequireAuth roles={['qc_spv','warehouse_admin','warehouse_spv','ops_manager','sc_supervisor']}>
+          <SCQC />
+        </RequireAuth>
+      } />
+      <Route path="/sc/distribution" element={
+        <RequireAuth roles={['distribution_spv','warehouse_admin','warehouse_spv','ops_manager','sc_supervisor']}>
+          <SCDistribution />
+        </RequireAuth>
+      } />
+      <Route path="/sc/sj" element={
+        <RequireAuth roles={['warehouse_admin','warehouse_spv','distribution_spv','ops_manager','sc_supervisor']}>
+          <SCSuratJalan />
         </RequireAuth>
       } />
 
