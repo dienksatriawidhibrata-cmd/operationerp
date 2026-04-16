@@ -15,3 +15,14 @@ export const supabase = createClient(url, key, {
     storageKey: 'bagikopi-ops-auth',
   }
 })
+
+export function createDetachedSupabaseClient(storageKey = `bagikopi-ops-detached-${Date.now()}`) {
+  return createClient(url, key, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+      storageKey,
+    },
+  })
+}
