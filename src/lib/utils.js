@@ -109,3 +109,31 @@ export function isStoreRole(role) {
 export function isManagerRole(role) {
   return ['district_manager', 'area_manager', 'ops_manager'].includes(role)
 }
+
+/**
+ * Download data as a UTF-8 CSV file (with BOM so Excel opens correctly).
+ * @param {string} filename - e.g. "opex_april_2026.csv"
+ * @param {string[]} headers - column headers
+ * @param {Array<Array<string|number|null>>} rows - array of row arrays
+ */
+export function downloadCsv(filename, headers, rows) {
+  const escape = (val) => {
+    if (val == null) return ''
+    const str = String(val)
+    return str.includes(',') || str.includes('"') || str.includes('\n')
+      ? '"' + str.replace(/"/g, '""') + '"'
+      : str
+  }
+  const lines = [headers.map(escape).join(',')]
+  rows.forEach(row => lines.push(row.map(escape).join(',')))
+  // \uFEFF = UTF-8 BOM — makes Excel on Windows recognise Indonesian characters
+  const blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' })
+  const url  = URL.createObjectURL(blob)
+  const a    = document.createElement('a')
+  a.href     = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}

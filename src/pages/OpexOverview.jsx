@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import { fmtRp, fmtDateShort, todayWIB } from '../lib/utils'
+import { fmtRp, fmtDateShort, todayWIB, downloadCsv } from '../lib/utils'
 import Alert from '../components/Alert'
 import { DMBottomNav, FinanceBottomNav } from '../components/BottomNav'
 
@@ -153,6 +153,29 @@ export default function OpexOverview() {
   const storeCount     = new Set(filtered.map(i => i.branch_id)).size
   const range          = getDateRange(period, anchorDate)
 
+  const handleDownload = () => {
+    const filename = `opex_${range.start}_${range.end}.csv`
+    const headers = [
+      'Tanggal', 'Toko', 'District', 'Area',
+      'Kode', 'Kategori', 'Item', 'Detail',
+      'Qty', 'Harga Satuan', 'Total',
+    ]
+    const rows = filtered.map(item => [
+      item.tanggal,
+      item.branch?.name || '',
+      item.branch?.district || '',
+      item.branch?.area || '',
+      item.code,
+      item.category,
+      item.item_name,
+      item.detail || '',
+      item.qty,
+      item.harga_satuan,
+      item.total,
+    ])
+    downloadCsv(filename, headers, rows)
+  }
+
   // Group by store
   const byStore = useMemo(() => {
     const map = {}
@@ -262,20 +285,33 @@ export default function OpexOverview() {
 
         {/* Summary cards */}
         {!loading && filtered.length > 0 && (
-          <div className="grid grid-cols-3 gap-2">
-            <div className="card p-3 text-center">
-              <div className="text-base font-bold text-primary-700">{fmtRp(totalOpex)}</div>
-              <div className="text-[10px] text-gray-400 mt-0.5">Total Opex</div>
+          <>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="card p-3 text-center">
+                <div className="text-base font-bold text-primary-700">{fmtRp(totalOpex)}</div>
+                <div className="text-[10px] text-gray-400 mt-0.5">Total Opex</div>
+              </div>
+              <div className="card p-3 text-center">
+                <div className="text-lg font-bold text-gray-800">{filtered.length}</div>
+                <div className="text-[10px] text-gray-400 mt-0.5">Transaksi</div>
+              </div>
+              <div className="card p-3 text-center">
+                <div className="text-lg font-bold text-gray-800">{storeCount}</div>
+                <div className="text-[10px] text-gray-400 mt-0.5">Toko</div>
+              </div>
             </div>
-            <div className="card p-3 text-center">
-              <div className="text-lg font-bold text-gray-800">{filtered.length}</div>
-              <div className="text-[10px] text-gray-400 mt-0.5">Transaksi</div>
-            </div>
-            <div className="card p-3 text-center">
-              <div className="text-lg font-bold text-gray-800">{storeCount}</div>
-              <div className="text-[10px] text-gray-400 mt-0.5">Toko</div>
-            </div>
-          </div>
+
+            <button
+              onClick={handleDownload}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-primary-200 bg-primary-50 text-primary-700 text-sm font-semibold active:scale-95 transition-transform"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Download CSV ({filtered.length} baris)
+            </button>
+          </>
         )}
 
         {/* View mode tabs */}

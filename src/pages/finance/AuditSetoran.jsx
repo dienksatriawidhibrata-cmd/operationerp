@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
-import { fmtRp, fmtDateShort, roleLabel, todayWIB } from '../../lib/utils'
+import { fmtRp, fmtDateShort, roleLabel, todayWIB, downloadCsv } from '../../lib/utils'
 import PhotoViewer from '../../components/PhotoViewer'
 import Alert from '../../components/Alert'
 import { FinanceBottomNav } from '../../components/BottomNav'
@@ -163,6 +163,33 @@ export default function AuditSetoran() {
     ? 'Finance Audit - Ops Manager'
     : roleLabel(profile?.role || 'finance_supervisor')
 
+  const handleDownload = () => {
+    const range = getDateRange(period, anchorDate)
+    const filename = `setoran_${range.start}_${range.end}.csv`
+    const headers = [
+      'Tanggal', 'Toko', 'District', 'Area',
+      'Cash POS', 'Cash Disetorkan', 'Selisih',
+      'Alasan Selisih', 'Status DM', 'Status Finance',
+      'Submitted At', 'DM Action At', 'Catatan Finance',
+    ]
+    const rows = filtered.map(item => [
+      item.tanggal,
+      item.branch?.name || '',
+      item.branch?.district || '',
+      item.branch?.area || '',
+      item.cash_pos,
+      item.cash_disetorkan,
+      item.selisih,
+      item.alasan_selisih || '',
+      item.status,
+      item.finance_status,
+      item.submitted_at ? new Date(item.submitted_at).toLocaleString('id-ID') : '',
+      item.approved_at  ? new Date(item.approved_at).toLocaleString('id-ID')  : '',
+      item.finance_notes || '',
+    ])
+    downloadCsv(filename, headers, rows)
+  }
+
   return (
     <div className="page-shell">
       <header className="bg-primary-600 text-white px-4 pt-5 pb-4">
@@ -259,22 +286,35 @@ export default function AuditSetoran() {
         </div>
 
         {!loading && filtered.length > 0 && (
-          <div className="flex gap-2">
-            <div className="card flex-1 p-3 text-center">
-              <div className="text-lg font-bold text-primary-700">{filtered.length}</div>
-              <div className="text-xs text-gray-400">Total</div>
-            </div>
-            <div className="card flex-1 p-3 text-center">
-              <div className="text-lg font-bold text-red-600">
-                {filtered.filter((item) => Number(item.selisih) !== 0).length}
+          <>
+            <div className="flex gap-2">
+              <div className="card flex-1 p-3 text-center">
+                <div className="text-lg font-bold text-primary-700">{filtered.length}</div>
+                <div className="text-xs text-gray-400">Total</div>
               </div>
-              <div className="text-xs text-gray-400">Ada Selisih</div>
+              <div className="card flex-1 p-3 text-center">
+                <div className="text-lg font-bold text-red-600">
+                  {filtered.filter((item) => Number(item.selisih) !== 0).length}
+                </div>
+                <div className="text-xs text-gray-400">Ada Selisih</div>
+              </div>
+              <div className="card flex-1 p-3 text-center">
+                <div className="text-base font-bold text-red-600">{fmtRp(totalSelisih)}</div>
+                <div className="text-xs text-gray-400">Total Selisih</div>
+              </div>
             </div>
-            <div className="card flex-1 p-3 text-center">
-              <div className="text-base font-bold text-red-600">{fmtRp(totalSelisih)}</div>
-              <div className="text-xs text-gray-400">Total Selisih</div>
-            </div>
-          </div>
+
+            <button
+              onClick={handleDownload}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-primary-200 bg-primary-50 text-primary-700 text-sm font-semibold active:scale-95 transition-transform"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Download CSV ({filtered.length} baris)
+            </button>
+          </>
         )}
 
         {!loading && (
