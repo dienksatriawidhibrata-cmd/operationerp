@@ -305,7 +305,7 @@ export default function KPIReport() {
   const { profile } = useAuth()
 
   // Gate: demo for Dien only
-  if (profile?.email !== 'dksatriaw@gmail.com') {
+  if (profile?.email !== 'dkwcoffeeindonesia@gmail.com') {
     return (
       <SubpageShell
         title="KPI Report"
