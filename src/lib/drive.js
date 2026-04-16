@@ -4,6 +4,137 @@
  */
 
 const SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL
+const MAX_UPLOAD_BYTES = 200 * 1024
+const MAX_DIMENSION = 1600
+const MIN_DIMENSION = 720
+const JPEG_MIME = 'image/jpeg'
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = (event) => resolve(event.target?.result || '')
+    reader.onerror = () => reject(new Error('Gagal membaca file'))
+    reader.readAsDataURL(file)
+  })
+}
+
+function loadImage(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const image = new Image()
+    image.onload = () => resolve(image)
+    image.onerror = () => reject(new Error('Gagal memproses gambar'))
+    image.src = dataUrl
+  })
+}
+
+function canvasToBlob(canvas, quality) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          reject(new Error('Gagal membuat blob gambar'))
+          return
+        }
+        resolve(blob)
+      },
+      JPEG_MIME,
+      quality
+    )
+  })
+}
+
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const result = event.target?.result || ''
+      const base64 = String(result).split(',')[1]
+      resolve(base64)
+    }
+    reader.onerror = () => reject(new Error('Gagal mengubah gambar terkompres'))
+    reader.readAsDataURL(blob)
+  })
+}
+
+function fitSize(width, height, limit) {
+  if (width <= limit && height <= limit) return { width, height }
+
+  const ratio = Math.min(limit / width, limit / height)
+  return {
+    width: Math.max(1, Math.round(width * ratio)),
+    height: Math.max(1, Math.round(height * ratio)),
+  }
+}
+
+async function compressImage(file) {
+  if (!file.type.startsWith('image/')) {
+    const base64 = (await readFileAsDataUrl(file)).split(',')[1]
+    return {
+      base64,
+      mimeType: file.type || 'application/octet-stream',
+      fileName: file.name,
+      size: file.size,
+      compressed: false,
+    }
+  }
+
+  const dataUrl = await readFileAsDataUrl(file)
+  const image = await loadImage(dataUrl)
+  const canvas = document.createElement('canvas')
+  const context = canvas.getContext('2d', { alpha: false })
+
+  if (!context) throw new Error('Browser tidak mendukung kompresi gambar')
+
+  let dimensionLimit = MAX_DIMENSION
+  let quality = 0.86
+  let finalBlob = null
+
+  while (dimensionLimit >= MIN_DIMENSION) {
+    const { width, height } = fitSize(image.width, image.height, dimensionLimit)
+    canvas.width = width
+    canvas.height = height
+    context.fillStyle = '#ffffff'
+    context.fillRect(0, 0, width, height)
+    context.drawImage(image, 0, 0, width, height)
+
+    quality = 0.86
+    while (quality >= 0.42) {
+      const blob = await canvasToBlob(canvas, quality)
+      if (blob.size <= MAX_UPLOAD_BYTES) {
+        finalBlob = blob
+        break
+      }
+      finalBlob = blob
+      quality -= 0.08
+    }
+
+    if (finalBlob?.size <= MAX_UPLOAD_BYTES) break
+    dimensionLimit -= 180
+  }
+
+  const safeBlob = finalBlob || await canvasToBlob(canvas, quality)
+  const originalBaseName = file.name?.replace(/\.[^.]+$/, '') || 'foto'
+
+  return {
+    base64: await blobToBase64(safeBlob),
+    mimeType: JPEG_MIME,
+    fileName: `${originalBaseName}.jpg`,
+    size: safeBlob.size,
+    compressed: safeBlob.size < file.size,
+  }
+}
+
+function extractFileId(url) {
+  if (!url) return null
+  const match = String(url).match(/[-\w]{25,}/)
+  return match ? match[0] : null
+}
+
+export function buildPreviewUrl(urlOrFileId) {
+  const fileId = extractFileId(urlOrFileId) || urlOrFileId
+  if (!fileId) return ''
+  return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1600`
+}
 
 /**
  * Upload satu file ke Drive.
@@ -12,39 +143,31 @@ const SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL
  * @returns {Promise<{url: string, fileId: string}>}
  */
 export async function uploadToDrive(file, folder = 'general') {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
+  const compressed = await compressImage(file)
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+  const fileName = `${folder}/${timestamp}_${compressed.fileName}`
 
-    reader.onload = async (e) => {
-      try {
-        const base64 = e.target.result.split(',')[1]
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-        const fileName = `${folder}/${timestamp}_${file.name}`
-
-        const res = await fetch(SCRIPT_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain' }, // Apps Script quirk
-          body: JSON.stringify({
-            fileName,
-            mimeType: file.type,
-            data: base64,
-            folder,
-          }),
-        })
-
-        const json = await res.json()
-
-        if (!json.success) throw new Error(json.error || 'Upload gagal')
-
-        resolve({ url: json.url, fileId: json.fileId })
-      } catch (err) {
-        reject(err)
-      }
-    }
-
-    reader.onerror = () => reject(new Error('Gagal membaca file'))
-    reader.readAsDataURL(file)
+  const res = await fetch(SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' }, // Apps Script quirk
+    body: JSON.stringify({
+      fileName,
+      mimeType: compressed.mimeType,
+      data: compressed.base64,
+      folder,
+    }),
   })
+
+  const json = await res.json()
+
+  if (!json.success) throw new Error(json.error || 'Upload gagal')
+
+  return {
+    url: json.url || `https://drive.google.com/uc?id=${json.fileId}&export=view`,
+    fileId: json.fileId,
+    originalSize: file.size,
+    uploadedSize: compressed.size,
+  }
 }
 
 /**
@@ -70,8 +193,5 @@ export async function uploadMultiple(files, folder = 'general') {
  */
 export function toEmbedUrl(driveUrl) {
   if (!driveUrl) return null
-  // Extract file ID (26 chars alphanumeric dengan - dan _)
-  const match = driveUrl.match(/[-\w]{25,}/)
-  if (!match) return driveUrl
-  return `https://drive.google.com/uc?id=${match[0]}&export=view`
+  return buildPreviewUrl(driveUrl)
 }

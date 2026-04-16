@@ -1,9 +1,10 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
 const AuthContext = createContext(null)
 const PROFILE_TIMEOUT_MS = 20000
 const PROFILE_CACHE_KEY = 'bagikopi_ops_profile_cache'
+const SESSION_TIMEOUT_MS = 8000
 
 function readCachedProfile(userId) {
   if (typeof window === 'undefined' || !userId) return null
@@ -38,6 +39,12 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [profileError, setProfileError] = useState('')
+  const currentUserIdRef = useRef(null)
+  const profileRef = useRef(null)
+
+  useEffect(() => {
+    profileRef.current = profile
+  }, [profile])
 
   const fetchProfile = async (userId) => {
     const { data, error } = await supabase
@@ -59,15 +66,27 @@ export function AuthProvider({ children }) {
     ])
   }
 
+  const getSessionWithTimeout = async () => {
+    return await Promise.race([
+      supabase.auth.getSession(),
+      new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Timeout memeriksa sesi login.')), SESSION_TIMEOUT_MS)
+      }),
+    ])
+  }
+
   const hydrateSession = async (session) => {
     setUser(session?.user ?? null)
     setProfileError('')
 
     if (!session?.user) {
+      currentUserIdRef.current = null
       setProfile(null)
       setLoading(false)
       return
     }
+
+    currentUserIdRef.current = session.user.id
 
     try {
       const profileData = await fetchProfileWithTimeout(session.user.id)
@@ -91,13 +110,31 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      await hydrateSession(session)
-    }).catch(() => setLoading(false))
+    getSessionWithTimeout()
+      .then(async ({ data: { session } }) => {
+        await hydrateSession(session)
+      })
+      .catch(async () => {
+        const cachedProfile = readCachedProfile(currentUserIdRef.current)
+        if (cachedProfile) {
+          setProfile(cachedProfile)
+          setLoading(false)
+          return
+        }
+        setLoading(false)
+      })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setLoading(true)
+      async (event, session) => {
+        const nextUserId = session?.user?.id ?? null
+        const sameUser = currentUserIdRef.current && currentUserIdRef.current === nextUserId
+        const hasUsableProfile = !!profileRef.current || !!readCachedProfile(nextUserId)
+        const keepScreenStable = sameUser && hasUsableProfile && event === 'TOKEN_REFRESHED'
+
+        if (!keepScreenStable) {
+          setLoading(true)
+        }
+
         await hydrateSession(session)
       }
     )

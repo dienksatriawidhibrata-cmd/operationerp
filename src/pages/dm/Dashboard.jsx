@@ -45,6 +45,7 @@ const BROWSER_NOTIFICATION_LIMIT = 4
 const REFETCH_INTERVAL_MS = 5 * 60 * 1000
 const SALES_SAFETY_FACTOR = 0.925
 const BOH_SECTION_STORAGE_KEY = 'dm_boh_section_visible'
+const STORE_SECTION_STORAGE_KEY = 'dm_store_section_visible'
 
 const ACCOUNT_FORM_DEFAULT = {
   fullName: '',
@@ -80,6 +81,17 @@ function readSectionPreference() {
   }
 }
 
+function readStoreSectionPreference() {
+  if (typeof window === 'undefined') return true
+
+  try {
+    const saved = window.localStorage.getItem(STORE_SECTION_STORAGE_KEY)
+    return saved ? saved === 'true' : true
+  } catch {
+    return true
+  }
+}
+
 export default function DMDashboard() {
   const { profile, signOut } = useAuth()
   const today = todayWIB()
@@ -95,6 +107,7 @@ export default function DMDashboard() {
   const [budgetMonth, setBudgetMonth] = useState(getMonthKey(today))
   const [loading, setLoading] = useState(true)
   const [showBudgetSection, setShowBudgetSection] = useState(readSectionPreference)
+  const [showStoreSection, setShowStoreSection] = useState(readStoreSectionPreference)
   const [selectedBudgetDetail, setSelectedBudgetDetail] = useState(null)
   const [showCreateAccountModal, setShowCreateAccountModal] = useState(false)
   const [accountForm, setAccountForm] = useState(ACCOUNT_FORM_DEFAULT)
@@ -129,6 +142,11 @@ export default function DMDashboard() {
     if (typeof window === 'undefined') return
     window.localStorage.setItem(BOH_SECTION_STORAGE_KEY, String(showBudgetSection))
   }, [showBudgetSection])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.localStorage.setItem(STORE_SECTION_STORAGE_KEY, String(showStoreSection))
+  }, [showStoreSection])
 
   useEffect(() => {
     if (!profile?.id) return undefined
@@ -828,53 +846,73 @@ export default function DMDashboard() {
                   )}
                 </div>
 
-                <p className="section-title">Status Toko</p>
-                <div className="card overflow-hidden">
-                  {stores.map((store, index) => {
-                    const badge = storeBadge(store)
-                    return (
-                      <div key={store.id} className={`flex items-center gap-3 px-4 py-3 ${index < stores.length - 1 ? 'border-b border-gray-50' : ''}`}>
-                        <div className="w-9 h-9 bg-primary-50 rounded-xl flex items-center justify-center text-primary-700 text-xs font-bold flex-shrink-0">
-                          {store.store_id?.split('-')[1] || '??'}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-semibold text-gray-900 truncate">{store.name.replace('Bagi Kopi ', '')}</div>
-                          <div className="text-[10px] text-gray-400 mt-0.5 flex gap-1.5 flex-wrap">
-                            <span className={store.ceklisPagi ? 'text-green-600' : 'text-red-500'}>
-                              {store.ceklisPagi ? 'OK' : 'Miss'} Ceklis
-                            </span>
-                            <span className={store.laporan ? 'text-green-600' : 'text-gray-400'}>
-                              {store.laporan ? 'OK' : '-'} Laporan
-                            </span>
-                            <span className={store.setoran?.status === 'approved' ? 'text-green-600' : store.setoran ? 'text-yellow-600' : 'text-gray-400'}>
-                              {store.setoran?.status === 'approved' ? 'OK' : store.setoran ? 'Pending' : '-'} Setoran
-                            </span>
-                            <span className={store.opexTodayCount > 0 ? 'text-primary-600' : 'text-gray-400'}>
-                              {store.opexTodayCount > 0 ? `${store.opexTodayCount} OPEX` : 'Belum OPEX'}
-                            </span>
-                            {store.selectedBudget?.actualRatio != null && (
-                              <span className={store.selectedBudget.actualRatio > 0.03 ? 'text-red-500' : 'text-green-600'}>
-                                BOH {formatRatio(store.selectedBudget.actualRatio)}
-                              </span>
-                            )}
-                            {store.visitPeriod && (
-                              <span className="text-primary-600">
-                                Visit {store.visitPeriod.total_score}/{store.visitPeriod.max_score}
-                              </span>
-                            )}
-                          </div>
-                          {!isOpsManager && (
-                            <div className="text-[10px] mt-1 text-primary-600">
-                              {store.myLastVisit
-                                ? `Visit terakhir saya: ${formatVisitDate(store.myLastVisit.tanggal)}`
-                                : 'Belum pernah saya visit'}
+                <div className="mb-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="section-title mb-0">Status Toko</p>
+                    <button
+                      onClick={() => setShowStoreSection((current) => !current)}
+                      className="text-xs font-semibold text-primary-700 px-3 py-1.5 rounded-lg bg-primary-50 border border-primary-100"
+                    >
+                      {showStoreSection ? 'Sembunyikan' : 'Tampilkan'}
+                    </button>
+                  </div>
+
+                  {showStoreSection ? (
+                    <div className="card overflow-hidden mt-2">
+                      {stores.map((store, index) => {
+                        const badge = storeBadge(store)
+                        return (
+                          <div key={store.id} className={`flex items-center gap-3 px-4 py-3 ${index < stores.length - 1 ? 'border-b border-gray-50' : ''}`}>
+                            <div className="w-9 h-9 bg-primary-50 rounded-xl flex items-center justify-center text-primary-700 text-xs font-bold flex-shrink-0">
+                              {store.store_id?.split('-')[1] || '??'}
                             </div>
-                          )}
-                        </div>
-                        <Badge variant={badge.variant}>{badge.label}</Badge>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-semibold text-gray-900 truncate">{store.name.replace('Bagi Kopi ', '')}</div>
+                              <div className="text-[10px] text-gray-400 mt-0.5 flex gap-1.5 flex-wrap">
+                                <span className={store.ceklisPagi ? 'text-green-600' : 'text-red-500'}>
+                                  {store.ceklisPagi ? 'OK' : 'Miss'} Ceklis
+                                </span>
+                                <span className={store.laporan ? 'text-green-600' : 'text-gray-400'}>
+                                  {store.laporan ? 'OK' : '-'} Laporan
+                                </span>
+                                <span className={store.setoran?.status === 'approved' ? 'text-green-600' : store.setoran ? 'text-yellow-600' : 'text-gray-400'}>
+                                  {store.setoran?.status === 'approved' ? 'OK' : store.setoran ? 'Pending' : '-'} Setoran
+                                </span>
+                                <span className={store.opexTodayCount > 0 ? 'text-primary-600' : 'text-gray-400'}>
+                                  {store.opexTodayCount > 0 ? `${store.opexTodayCount} OPEX` : 'Belum OPEX'}
+                                </span>
+                                {store.selectedBudget?.actualRatio != null && (
+                                  <span className={store.selectedBudget.actualRatio > 0.03 ? 'text-red-500' : 'text-green-600'}>
+                                    BOH {formatRatio(store.selectedBudget.actualRatio)}
+                                  </span>
+                                )}
+                                {store.visitPeriod && (
+                                  <span className="text-primary-600">
+                                    Visit {store.visitPeriod.total_score}/{store.visitPeriod.max_score}
+                                  </span>
+                                )}
+                              </div>
+                              {!isOpsManager && (
+                                <div className="text-[10px] mt-1 text-primary-600">
+                                  {store.myLastVisit
+                                    ? `Visit terakhir saya: ${formatVisitDate(store.myLastVisit.tanggal)}`
+                                    : 'Belum pernah saya visit'}
+                                </div>
+                              )}
+                            </div>
+                            <Badge variant={badge.variant}>{badge.label}</Badge>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <div className="card mt-2 px-4 py-4">
+                      <div className="text-sm font-semibold text-gray-800">Panel status toko sedang diringkas</div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        Ketuk <span className="font-semibold text-primary-700">Tampilkan</span> kalau mau melihat daftar kondisi semua toko.
                       </div>
-                    )
-                  })}
+                    </div>
+                  )}
                 </div>
               </>
             )}
