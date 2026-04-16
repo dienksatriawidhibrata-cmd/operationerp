@@ -50,13 +50,17 @@ export default function CeklisHarian() {
   }, [activeShift, existing])
 
   const fetchExisting = async () => {
-    const { data } = await supabase
+    const { data, error: fetchErr } = await supabase
       .from('daily_checklists')
       .select('*')
       .eq('branch_id', branchId)
       .eq('tanggal', today)
       .in('shift', ['pagi', 'malam'])
 
+    if (fetchErr) {
+      setError('Gagal memuat data ceklis: ' + fetchErr.message)
+      return
+    }
     if (data) {
       const map = { pagi: null, malam: null }
       data.forEach(d => { map[d.shift] = d })

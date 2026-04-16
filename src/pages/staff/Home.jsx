@@ -57,7 +57,7 @@ export default function StaffHome() {
   const isStoreLevel = ['staff', 'asst_head_store', 'head_store'].includes(profile?.role)
 
   const greeting = () => {
-    const h = new Date().getHours()
+    const h = new Date(new Date().getTime() + 7 * 3600 * 1000).getUTCHours()
     if (h < 11) return 'Selamat pagi'
     if (h < 15) return 'Selamat siang'
     if (h < 18) return 'Selamat sore'

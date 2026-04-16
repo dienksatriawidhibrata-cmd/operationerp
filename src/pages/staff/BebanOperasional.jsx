@@ -34,7 +34,7 @@ export default function BebanOperasional() {
   useEffect(() => {
     if (!branchId) return
     fetchHistory()
-  }, [branchId, done])
+  }, [branchId])
 
   const fetchHistory = async () => {
     const { data } = await supabase
@@ -56,6 +56,7 @@ export default function BebanOperasional() {
   const total = Number(qty) * Number(harga)
 
   const handleSubmit = async () => {
+    if (!branchId) { setError('Akun ini tidak terhubung ke cabang manapun.'); return }
     if (!selected) { setError('Pilih kode item terlebih dahulu.'); return }
     if (!qty || !harga) { setError('Qty dan harga satuan wajib diisi.'); return }
     if (fotoBukti.length === 0) { setError('Foto bukti wajib dilampirkan.'); return }
@@ -80,6 +81,7 @@ export default function BebanOperasional() {
       setSelected(null); setQuery('')
       setQty(''); setHarga(''); setDetail(''); setFotoBukti([])
       setTimeout(() => setDone(false), 3000)
+      fetchHistory()
     }
     setSaving(false)
   }
@@ -103,6 +105,7 @@ export default function BebanOperasional() {
               value={query}
               onChange={e => { setQuery(e.target.value); setShowDrop(true) }}
               onFocus={() => setShowDrop(true)}
+              onBlur={() => setTimeout(() => setShowDrop(false), 150)}
               placeholder="Ketik kode atau nama, contoh: es batu"
             />
             {showDrop && filtered.length > 0 && (

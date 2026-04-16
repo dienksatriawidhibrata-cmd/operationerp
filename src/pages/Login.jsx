@@ -22,6 +22,8 @@ export default function Login() {
         navigate('/dm', { replace: true })
       else if (role === 'finance_supervisor')
         navigate('/finance', { replace: true })
+      else
+        navigate('/', { replace: true })  // fallback → NoRouteScreen
       return
     }
 
