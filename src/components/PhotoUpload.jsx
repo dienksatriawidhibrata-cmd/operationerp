@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { uploadToDrive } from '../lib/drive'
+import { toEmbedUrl, uploadToDrive } from '../lib/drive'
 
 /**
  * Komponen upload foto ke Google Drive via Apps Script.
@@ -22,6 +22,7 @@ export default function PhotoUpload({
 }) {
   const [uploading, setUploading] = useState(false)
   const [error, setError]         = useState(null)
+  const [uploadSummary, setUploadSummary] = useState('')
   const inputRef = useRef(null)
 
   const handleFiles = async (files) => {
@@ -32,12 +33,19 @@ export default function PhotoUpload({
     }
     setUploading(true)
     setError(null)
+    setUploadSummary('')
     try {
       const uploads = await Promise.all(
         Array.from(files).map(f => uploadToDrive(f, folder))
       )
       const newUrls = uploads.map(u => u.url)
+      const originalBytes = uploads.reduce((sum, item) => sum + Number(item.originalSize || 0), 0)
+      const uploadedBytes = uploads.reduce((sum, item) => sum + Number(item.uploadedSize || 0), 0)
       onChange?.([...value, ...newUrls])
+
+      if (originalBytes > 0 && uploadedBytes > 0) {
+        setUploadSummary(`Foto dikompres ${formatKb(originalBytes)} -> ${formatKb(uploadedBytes)}`)
+      }
     } catch (e) {
       setError('Upload gagal: ' + e.message)
     } finally {
@@ -58,7 +66,7 @@ export default function PhotoUpload({
           {value.map((url, idx) => (
             <div key={idx} className="relative w-20 h-20 rounded-xl overflow-hidden border border-primary-200 group">
               <img
-                src={toDriveEmbed(url)}
+                src={toEmbedUrl(url)}
                 alt={`foto ${idx + 1}`}
                 className="w-full h-full object-cover"
                 onError={e => { e.target.src = '' }}
@@ -111,6 +119,7 @@ export default function PhotoUpload({
       )}
 
       {error && <p className="text-xs text-red-600">{error}</p>}
+      {!error && uploadSummary && <p className="text-xs text-green-600">{uploadSummary}</p>}
 
       <input
         ref={inputRef}
@@ -125,9 +134,6 @@ export default function PhotoUpload({
   )
 }
 
-function toDriveEmbed(url) {
-  if (!url) return ''
-  const match = url.match(/[-\w]{25,}/)
-  if (!match) return url
-  return `https://drive.google.com/uc?id=${match[0]}&export=view`
+function formatKb(bytes) {
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`
 }

@@ -32,16 +32,26 @@ function doPost(e) {
     const blob  = Utilities.newBlob(bytes, mimeType, fileName);
     const file  = folder.createFile(blob);
 
-    // Set sharing: siapapun dengan link bisa lihat (untuk embed di app)
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-
     const fileId = file.getId();
+    let shared = false;
+    let sharingError = null;
+
+    try {
+      // Set sharing: siapapun dengan link bisa lihat (untuk embed di app)
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      shared = true;
+    } catch (shareErr) {
+      sharingError = shareErr.message;
+    }
 
     return jsonResponse({
       success: true,
       fileId:  fileId,
-      url:     `https://drive.google.com/uc?id=${fileId}`,      // embed URL
-      viewUrl: `https://drive.google.com/file/d/${fileId}/view`, // view URL
+      url:     `https://drive.google.com/uc?id=${fileId}&export=view`,
+      viewUrl: `https://drive.google.com/file/d/${fileId}/view`,
+      previewUrl: getPreviewUrl(fileId),
+      shared: shared,
+      sharingError: sharingError,
     });
 
   } catch (err) {
@@ -51,6 +61,16 @@ function doPost(e) {
 
 // GET juga didukung untuk test
 function doGet(e) {
+  if (e && e.parameter && e.parameter.action === 'preview' && e.parameter.id) {
+    return HtmlService
+      .createHtmlOutput(
+        `<html><body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh;">
+          <img src="${getDriveViewUrl(e.parameter.id)}" style="max-width:100%;max-height:100vh;object-fit:contain;" />
+        </body></html>`
+      )
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
+
   return jsonResponse({ status: 'ok', message: 'Bagi Kopi Drive Uploader' });
 }
 
@@ -85,6 +105,14 @@ function generateFileName(original) {
   const ts   = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
   const rand = Math.random().toString(36).slice(2, 7);
   return `${ts}_${rand}.${ext}`;
+}
+
+function getDriveViewUrl(fileId) {
+  return `https://drive.google.com/uc?id=${fileId}&export=view`;
+}
+
+function getPreviewUrl(fileId) {
+  return ScriptApp.getService().getUrl() + `?action=preview&id=${fileId}`;
 }
 
 /**
