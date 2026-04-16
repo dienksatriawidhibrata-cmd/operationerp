@@ -15,7 +15,7 @@
 // ── KONFIGURASI ──────────────────────────────────────────
 // Buat folder di Google Drive, klik kanan → Get Link
 // Ambil bagian ID-nya: drive.google.com/drive/folders/FOLDER_ID_INI
-const ROOT_FOLDER_ID = 'YOUR_GOOGLE_DRIVE_FOLDER_ID_HERE';
+const ROOT_FOLDER_ID = '1zsX4nKXk4xCzrwAgIlO135Zix8H13G_e';
 
 // ── HANDLER ───────────────────────────────────────────────
 

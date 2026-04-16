@@ -5,6 +5,20 @@ const AuthContext = createContext(null)
 const PROFILE_TIMEOUT_MS = 20000
 const PROFILE_CACHE_KEY = 'bagikopi_ops_profile_cache'
 const SESSION_TIMEOUT_MS = 8000
+const AUTH_STORAGE_KEY = 'bagikopi-ops-auth'
+
+function readCachedSessionUser() {
+  if (typeof window === 'undefined') return null
+
+  try {
+    const raw = window.localStorage.getItem(AUTH_STORAGE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    return parsed?.user || parsed?.currentSession?.user || null
+  } catch {
+    return null
+  }
+}
 
 function readCachedProfile(userId) {
   if (typeof window === 'undefined' || !userId) return null
@@ -35,11 +49,11 @@ function writeCachedProfile(profile) {
 }
 
 export function AuthProvider({ children }) {
-  const [user, setUser]       = useState(null)
-  const [profile, setProfile] = useState(null)
+  const [user, setUser]       = useState(() => readCachedSessionUser())
+  const [profile, setProfile] = useState(() => readCachedProfile(readCachedSessionUser()?.id))
   const [loading, setLoading] = useState(true)
   const [profileError, setProfileError] = useState('')
-  const currentUserIdRef = useRef(null)
+  const currentUserIdRef = useRef(readCachedSessionUser()?.id || null)
   const profileRef = useRef(null)
 
   useEffect(() => {
@@ -110,6 +124,15 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
+    const cachedUser = readCachedSessionUser()
+    const cachedProfile = readCachedProfile(cachedUser?.id)
+    if (cachedUser && cachedProfile) {
+      setUser(cachedUser)
+      setProfile(cachedProfile)
+      currentUserIdRef.current = cachedUser.id
+      setLoading(false)
+    }
+
     getSessionWithTimeout()
       .then(async ({ data: { session } }) => {
         await hydrateSession(session)
