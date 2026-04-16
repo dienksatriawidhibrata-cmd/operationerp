@@ -1,20 +1,22 @@
+import { Suspense, lazy } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext'
 
 import Login from './pages/Login'
-import StaffHome from './pages/staff/Home'
-import CeklisHarian from './pages/staff/CeklisHarian'
-import LaporanHarian from './pages/staff/LaporanHarian'
-import BebanOperasional from './pages/staff/BebanOperasional'
-import DMDashboard from './pages/dm/Dashboard'
-import DailyVisit from './pages/dm/DailyVisit'
-import ApprovalSetoran from './pages/dm/ApprovalSetoran'
-import AuditSetoran from './pages/finance/AuditSetoran'
+
+const StaffHome = lazy(() => import('./pages/staff/Home'))
+const CeklisHarian = lazy(() => import('./pages/staff/CeklisHarian'))
+const LaporanHarian = lazy(() => import('./pages/staff/LaporanHarian'))
+const BebanOperasional = lazy(() => import('./pages/staff/BebanOperasional'))
+const DMDashboard = lazy(() => import('./pages/dm/Dashboard'))
+const DailyVisit = lazy(() => import('./pages/dm/DailyVisit'))
+const ApprovalSetoran = lazy(() => import('./pages/dm/ApprovalSetoran'))
+const AuditSetoran = lazy(() => import('./pages/finance/AuditSetoran'))
 
 function RootRedirect() {
   const { user, profile, loading, profileError } = useAuth()
 
-  if (loading) return <AuthScreen message="Menyiapkan sesi login..." />
+  if (loading && !user) return <AuthScreen message="Menyiapkan sesi login..." />
   if (!user) return <Navigate to="/login" replace />
   if (!profile) return <AuthScreen message={profileError || 'Menghubungkan data profil...'} />
 
@@ -29,12 +31,12 @@ function RootRedirect() {
 function RequireAuth({ children, roles }) {
   const { user, profile, loading, profileError } = useAuth()
 
-  if (loading) return <AuthScreen message="Menyiapkan sesi login..." />
+  if (loading && (!user || !profile)) return <AuthScreen message="Menyiapkan sesi login..." />
   if (!user) return <Navigate to="/login" replace />
   if (!profile) return <AuthScreen message={profileError || 'Menghubungkan data profil...'} />
   if (roles && !roles.includes(profile.role)) return <Navigate to="/" replace />
 
-  return children
+  return <Suspense fallback={<PageLoader />}>{children}</Suspense>
 }
 
 function AuthScreen({ message }) {
@@ -45,6 +47,14 @@ function AuthScreen({ message }) {
         <div className="text-sm font-semibold text-gray-800">Sesi masih aktif</div>
         <div className="text-xs text-gray-500 mt-2">{message}</div>
       </div>
+    </div>
+  )
+}
+
+function PageLoader() {
+  return (
+    <div className="min-h-screen bg-primary-50 flex items-center justify-center px-6">
+      <div className="animate-spin w-8 h-8 border-2 border-primary-600 border-t-transparent rounded-full" />
     </div>
   )
 }

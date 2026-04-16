@@ -200,7 +200,10 @@ export default function DMDashboard() {
   }
 
   const fetchDashboard = async () => {
-    setLoading(true)
+    const shouldBlockScreen = stores.length === 0
+    if (shouldBlockScreen) {
+      setLoading(true)
+    }
     const monthWindowStart = getMonthStart(addMonths(today, -5))
 
     let branchQuery = supabase.from('branches').select('*').eq('is_active', true)
