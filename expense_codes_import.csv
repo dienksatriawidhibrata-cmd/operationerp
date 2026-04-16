@@ -1,0 +1,140 @@
+﻿id,code,name,category,is_active,sort_order
+717a3cee-57f5-446e-aded-be9ba1bcb3f1,BBA-101,Admin,Beban Biaya Admin,true,1
+49051730-72ed-43b5-9600-a8df05224350,BBA-102,Pajak Bunga,Beban Biaya Admin,true,2
+a56e57b2-8b25-4121-8b0e-467e2bf608ac,BBA-103,Bunga Bank,Beban Biaya Admin,true,3
+cdef904d-906c-4353-bb37-f548ab6fa00d,BGO-101,Tumpeng,Beban General Opening,true,4
+7044b446-f901-4327-95f4-17a1332f37b3,BGO-102,Nasi Box,Beban General Opening,true,5
+5ca08d81-2826-449a-b9c7-75f7525a27f8,BGO-103,Ustad,Beban General Opening,true,6
+1fde6a61-3db1-4dcc-a3f1-d6654e66dc3c,BGO-104,Pengajian,Beban General Opening,true,7
+a5206c04-9aa3-4715-8da6-202555c5bfd1,BGO-105,Santunan,Beban General Opening,true,8
+000a67c1-44de-442f-ab00-3fec590ed830,BLA-101,Listrik - Token,Beban Listrik dan Air,true,9
+a52aff82-ad3e-4793-b538-31ca74f55faa,BLA-102,PDAM,Beban Listrik dan Air,true,10
+cd91d7bd-24a7-4a17-a18d-6f302b753d1f,BMB-101,Jasa Maintenance,Beban Maintenance Bangunan,true,11
+e5758ca6-a2ab-4a19-951f-4f9d9d6108cc,BMB-102,Material Maintenance,Beban Maintenance Bangunan,true,12
+c91230bc-7846-4421-8492-0bb770f2e535,BMP-101,Maintenance Peralatan,Beban Maintenance Peralatan,true,13
+a4357250-6713-4e14-8522-00f0a96b46b8,BOH-101,Es Batu,Beban Operasional Harian,true,14
+8cbd95f1-1fdb-4fea-9a9f-e18973a29a6a,BOH-102,Gas 5Kg - Isi Ulang,Beban Operasional Harian,true,15
+ac5f6738-bb19-494e-ba52-ad89b0ceb1f9,BOH-103,Gas 12Kg - Isi Ulang,Beban Operasional Harian,true,16
+0ba9b224-623d-4228-a96b-b6c60343a35e,BOH-104,Galon - Isi Ulang,Beban Operasional Harian,true,17
+305e8201-8fed-48e6-83d2-da79a4bf2935,BOH-105,Iuran Sampah,Beban Operasional Harian,true,18
+e2d4156a-f46c-497a-8d2f-1704eb25c55b,BOH-106,Iuran Kebersihan / Tukang,Beban Operasional Harian,true,19
+6a92db4e-eb56-4341-843c-a4e118bfbb50,BOH-107,Pewangi Ruangan,Beban Operasional Harian,true,20
+43401bc5-8af4-4a23-be86-984e0f6c6438,BOH-108,Cairan atau Bubuk Pembersih,Beban Operasional Harian,true,21
+90d03f71-2aaf-4d66-8104-7ca13e4d578f,BOH-109,Konsumsi General Cleaning,Beban Operasional Harian,true,22
+26acc8ba-1a1a-4f66-b633-116cbf13a4e5,BOH-110,P3K,Beban Operasional Harian,true,23
+89076e27-39c0-4428-bc8d-0e4f17c89b35,BOH-111,ATK,Beban Operasional Harian,true,24
+3f61b736-a9ec-4a11-bf75-20c9cf59d6d5,BOH-112,Print Materi,Beban Operasional Harian,true,25
+fbf7d6b9-e186-47e4-9496-f68d47839e05,BOH-113,Biaya Parkir,Beban Operasional Harian,true,26
+cad42e02-d04f-437e-ba55-99af4bdf0ae1,BOH-114,Laundry,Beban Operasional Harian,true,27
+bc13d881-8f3c-47d0-92ce-3aa6b1ffab2f,BOH-115,Refill Kertas Lem Lalat,Beban Operasional Harian,true,28
+e3791579-362d-4e3c-be2b-81a3a8be79c9,BOH-116,Gaji OB,Beban Operasional Harian,true,29
+8d4df628-7830-484c-bac0-e60eb40900e6,BOH-117,Plastik Klip,Beban Operasional Harian,true,30
+73e44e3d-cd60-41c5-b593-fe0f7567f6ef,BOH-118,Subscribe Layanan Digital,Beban Operasional Harian,true,31
+c9c689c9-fca5-4ff3-9110-a8c1f55c8272,PBB-101,Bagi Espresso,Beban Pembelian Bahan Baku,true,32
+9f558191-2e5b-433c-a2fa-27769a221bea,PBB-102,Bagi Golden,Beban Pembelian Bahan Baku,true,33
+d2aaaf56-820d-4fad-ad6b-c627e48b0dae,PBB-103,Bagi Rawon,Beban Pembelian Bahan Baku,true,34
+3eb61273-98f7-4010-b18d-4cb81ea582df,PBB-104,Bagi Signature,Beban Pembelian Bahan Baku,true,35
+0cf13493-c22c-464e-a21d-f28bdf795650,PBB-105,Bawang Bombay,Beban Pembelian Bahan Baku,true,36
+c66f9773-7706-4291-a842-cbf7eba7d5f4,PBB-106,Bawang Merah,Beban Pembelian Bahan Baku,true,37
+a2444c37-3ba4-4655-b658-4018e89ed1a8,PBB-107,Bawang Putih,Beban Pembelian Bahan Baku,true,38
+f4cfd537-2d8c-4d81-a7a3-ae85ea519a9a,PBB-108,Beans Arabica Signature,Beban Pembelian Bahan Baku,true,39
+cd47df0e-74f8-48c3-8557-2871267b971b,PBB-109,Biji Selasih,Beban Pembelian Bahan Baku,true,40
+c8eb034c-000a-4df8-8e1f-373a891ae9fb,PBB-110,Biji Wijen,Beban Pembelian Bahan Baku,true,41
+ef498403-4d5f-47d2-8de0-6751dc3c8359,PBB-111,Black Tea,Beban Pembelian Bahan Baku,true,42
+ace4c307-94d7-4b6d-8dd1-5ce0117d28f3,PBB-112,Bon Cabe,Beban Pembelian Bahan Baku,true,43
+447f1310-c4ed-4256-ab7f-5fc654c33f0b,PBB-113,Buah Lemon,Beban Pembelian Bahan Baku,true,44
+5bbbc956-6df1-4c3b-917d-c16a0928100d,PBB-114,Buah Strawberry,Beban Pembelian Bahan Baku,true,45
+9e68c550-f28e-41b7-8fa2-e65d3a460294,PBB-115,Cabai Merah Keriting,Beban Pembelian Bahan Baku,true,46
+26b5ed31-6ce8-45ba-9f69-1f3c9f5b7838,PBB-116,Cabai Rawit Hijau,Beban Pembelian Bahan Baku,true,47
+b3125758-e160-4483-a2ed-1ba97aa75f6d,PBB-117,Cabai Rawit Merah,Beban Pembelian Bahan Baku,true,48
+05587c7a-e192-49b2-b34b-b81e38e91bc4,PBB-118,Caramel Sauce,Beban Pembelian Bahan Baku,true,49
+459af5df-1ab2-4282-9156-d6c9fdaadbc0,PBB-119,Cleo Eco Green 400ML,Beban Pembelian Bahan Baku,true,50
+8dfca8bc-5b35-4a3c-a9f0-fd7f39e32e9c,PBB-120,Mineral Water Small,Beban Pembelian Bahan Baku,true,51
+83dd8b7f-cf8d-4b4e-99b3-4b2a58859b5b,PBB-121,Mineral Water Large,Beban Pembelian Bahan Baku,true,52
+1c0bc98f-83c6-4ff9-98bc-a86d96c0cbbc,PBB-122,Creamer Gold,Beban Pembelian Bahan Baku,true,53
+bdd1b48c-0cb9-46b3-842b-b2e4869f4b3e,PBB-123,Creamer Monalisa,Beban Pembelian Bahan Baku,true,54
+c0c053de-bcc3-4977-8416-872e4456a163,PBB-124,Cuka,Beban Pembelian Bahan Baku,true,55
+e1a4c091-6bd7-4a95-b4c4-1dd4516f2ea3,PBB-125,Cup PET 12Oz,Beban Pembelian Bahan Baku,true,56
+ec797f6e-5b68-4ebc-8715-862da2626ee6,PBB-126,Cup PET 16Oz,Beban Pembelian Bahan Baku,true,57
+50745cc2-5d53-407b-aa1c-dec22ec6c3fa,PBB-127,Daun Bawang,Beban Pembelian Bahan Baku,true,58
+13d6e1e5-bc13-4ee9-a35b-26cfc8039c23,PBB-128,Daun Jeruk,Beban Pembelian Bahan Baku,true,59
+34d96e4c-3dfb-4944-8cd1-ec6559a22e32,PBB-129,Fiber Creme,Beban Pembelian Bahan Baku,true,60
+e285e5af-fdc6-4b8c-8b8b-3d13b6509a92,PBB-130,Freshmilk,Beban Pembelian Bahan Baku,true,61
+1fb18eac-dea3-4785-9762-532457096753,PBB-131,Garam,Beban Pembelian Bahan Baku,true,62
+a2f5a13a-2e22-4a98-963b-3e6cadc3b5dc,PBB-132,Garlic Powder,Beban Pembelian Bahan Baku,true,63
+c00ec3a1-f5a9-4703-9027-312a412fd554,PBB-133,Gimbori,Beban Pembelian Bahan Baku,true,64
+86dcc901-8eea-40d9-9660-40629195de8f,PBB-134,Gula Halus,Beban Pembelian Bahan Baku,true,65
+48e5c446-a890-4fe4-9c95-9a169a234796,PBB-135,Hot Cup,Beban Pembelian Bahan Baku,true,66
+0ed98554-555f-4670-ad9c-8e8b6ebfa03c,PBB-136,Indomie Ayam Bawang,Beban Pembelian Bahan Baku,true,67
+655c4876-9293-4349-af8f-dcec39c19338,PBB-137,Indomie Goreng Jumbo,Beban Pembelian Bahan Baku,true,68
+b44c9c72-b626-4ada-a152-0bc03291610c,PBB-138,Katsuo Bushi,Beban Pembelian Bahan Baku,true,69
+18de9534-b5e3-4c37-bebf-f5afd80e0c30,PBB-139,Kecap Manis,Beban Pembelian Bahan Baku,true,70
+be316dc0-3927-4f54-81c2-3a74b6f3d2fd,PBB-140,Kentang,Beban Pembelian Bahan Baku,true,71
+1ac178b5-c81d-48cc-bd34-c40cfb3a0345,PBB-141,Kerupuk Udang,Beban Pembelian Bahan Baku,true,72
+7b907152-d482-4805-a374-181c49bcc651,PBB-142,Knorr Chicken Powder,Beban Pembelian Bahan Baku,true,73
+27696ae6-3def-4533-b4cd-2c74157d6122,PBB-143,Kol,Beban Pembelian Bahan Baku,true,74
+aefab4bb-798b-44b0-b820-0f9219c302d6,PBB-144,Kornet,Beban Pembelian Bahan Baku,true,75
+4d8012ae-7063-4701-9657-3accf9a0c50e,PBB-145,Lada Putih,Beban Pembelian Bahan Baku,true,76
+e94362e4-508e-4648-8730-72ed64591f4d,PBB-146,Lid Cup PET,Beban Pembelian Bahan Baku,true,77
+83a218ee-f5cf-4015-b7ee-6a30a116ee46,PBB-147,Magic Powder,Beban Pembelian Bahan Baku,true,78
+42fc788b-8155-47e4-9174-e1913aad8bfb,PBB-148,Marinate Fillet Nasi Goreng,Beban Pembelian Bahan Baku,true,79
+40f0b96f-06be-40ad-be0e-b9e8728156fe,PBB-149,Marinate Fillet Paha Ayam Teriyaki,Beban Pembelian Bahan Baku,true,80
+0a428beb-7e24-4861-bfad-c695ca3c5fea,PBB-150,Marinate Fillet Paha Indomie,Beban Pembelian Bahan Baku,true,81
+22b7a574-2518-4bd0-a222-5f99c800d1bb,PBB-151,Marinate Fillet Paha Ricebowl,Beban Pembelian Bahan Baku,true,82
+713fac03-a258-41c4-80cc-7ab6b5f851d5,PBB-152,Mayonnaise Kewpie,Beban Pembelian Bahan Baku,true,83
+7c634d17-fb60-483a-bcd7-e58da5761bae,PBB-153,Mayonnaise Salad,Beban Pembelian Bahan Baku,true,84
+1473873a-74a4-4fe6-bde9-54263efc4de8,PBB-154,Mentega,Beban Pembelian Bahan Baku,true,85
+dd68008c-8cbc-452c-87f0-59a4d5dc41f7,PBB-155,Minyak Goreng,Beban Pembelian Bahan Baku,true,86
+d8afbd25-8757-4846-bb9e-7155ebea0b50,PBB-156,MSG,Beban Pembelian Bahan Baku,true,87
+c858528c-103c-423a-a3fb-eb081d72323a,PBB-157,Nasi,Beban Pembelian Bahan Baku,true,88
+5fa7dc23-7dff-4807-903d-a08db6811c8b,PBB-158,Oatly Barista,Beban Pembelian Bahan Baku,true,89
+e91c1e77-2e6b-4c82-9c5c-14ca0bb7e24d,PBB-159,Paper Bowl + Tutup,Beban Pembelian Bahan Baku,true,90
+6d429dff-90aa-45ee-98d3-69a3fbe5a051,PBB-160,Paper Food,Beban Pembelian Bahan Baku,true,91
+a64246f1-3361-4ffd-9485-162e9e8a8d90,PBB-161,Parsley,Beban Pembelian Bahan Baku,true,92
+1e5a8439-203d-4320-b699-2ccf540d179e,PBB-162,Plastik 10,Beban Pembelian Bahan Baku,true,93
+672c63ff-7cff-4c98-a26c-eeadd3b9fd3c,PBB-163,Plastik Cup Sealer,Beban Pembelian Bahan Baku,true,94
+813bfc14-4a25-48b9-a4d0-218a36cdcab4,PBB-164,Pro Chiz,Beban Pembelian Bahan Baku,true,95
+883855b1-26a5-4321-8670-068708351186,PBB-165,Rainbow Jelly,Beban Pembelian Bahan Baku,true,96
+e4c2b64a-633e-41b5-9e63-9f129424bece,PBB-166,Rujak Cireng,Beban Pembelian Bahan Baku,true,97
+1f3c09d9-7ae8-43f6-93d4-453b4fff5a31,PBB-167,Salada,Beban Pembelian Bahan Baku,true,98
+89d39bd7-7188-4a7b-8f59-7e6252919572,PBB-168,Sauce Barbeque,Beban Pembelian Bahan Baku,true,99
+112325c2-481d-47b4-987f-c8b0ea4fd784,PBB-169,Sauce Teriyaki,Beban Pembelian Bahan Baku,true,100
+e5c4d7a1-9414-4d2c-aeb9-3f0727c4683b,PBB-170,Saus Bolognaise,Beban Pembelian Bahan Baku,true,101
+0c5d2608-bb79-4191-b8b1-4235436b1846,PBB-171,Saus Container 25ml,Beban Pembelian Bahan Baku,true,102
+ec9dfb26-7789-43a9-bac5-ca978570b5b8,PBB-172,Saus Sambal Jerigen,Beban Pembelian Bahan Baku,true,103
+6bcccbf1-8881-467f-9364-1a4758cf0b71,PBB-173,Saus Tiram,Beban Pembelian Bahan Baku,true,104
+e3eacbcd-36fd-4300-b569-cba0eb9f30e5,PBB-174,Saus Tomat,Beban Pembelian Bahan Baku,true,105
+2d2a51a1-4bf7-460c-9f86-946c38555134,PBB-175,Schweppes,Beban Pembelian Bahan Baku,true,106
+7858173c-d56a-4aba-b52d-637b23d7f715,PBB-176,Sedotan,Beban Pembelian Bahan Baku,true,107
+cdf26d52-03e3-4974-9f40-5df84f35d3fb,PBB-177,Selada,Beban Pembelian Bahan Baku,true,108
+65b74660-d5eb-4c0d-adbd-8f78a18e4bd9,PBB-178,Sendok + Garpu Plastik,Beban Pembelian Bahan Baku,true,109
+fb543dc8-53d3-4093-8e82-cd8496195108,PBB-179,Serai,Beban Pembelian Bahan Baku,true,110
+a27f94c7-0752-49ff-886d-d9f66b8619e7,PBB-180,Sesame Oil,Beban Pembelian Bahan Baku,true,111
+d9466b94-4f82-4325-be44-ca7604ddd04a,PBB-181,Smoked Beef,Beban Pembelian Bahan Baku,true,112
+b63849a2-d113-4e96-a8ba-5cc1862ebebd,PBB-182,Susu Kental Manis,Beban Pembelian Bahan Baku,true,113
+bfee9a2d-d41e-4f79-96a5-a822a3c41d1a,PBB-183,Tahu Cibuntu,Beban Pembelian Bahan Baku,true,114
+21f748f4-0c80-4ba3-880a-8ac6c400abe5,PBB-184,Tahu Walik,Beban Pembelian Bahan Baku,true,115
+b86654da-7f3e-4cf7-990e-3c219a16754c,PBB-185,Takjil,Beban Pembelian Bahan Baku,true,116
+1104fd76-6e3e-4f53-af5b-56880da10c34,PBB-186,Telur,Beban Pembelian Bahan Baku,true,117
+e4f080f3-2b0f-4a1f-b798-24a0b633ec29,PBB-187,Tempe,Beban Pembelian Bahan Baku,true,118
+0fc8f932-ffd2-4704-9f77-53c25dc5bdbc,PBB-188,Tepung Maizena,Beban Pembelian Bahan Baku,true,119
+596f252f-47f9-4487-9320-1e0482006781,PBB-189,Tepung Tapioka,Beban Pembelian Bahan Baku,true,120
+6994ade5-b5a7-468a-8701-2a276e038ba5,PBB-190,Tepung Terigu,Beban Pembelian Bahan Baku,true,121
+dbcd75fd-7d66-4d8d-84fb-c42754758f37,PBB-191,Terasi,Beban Pembelian Bahan Baku,true,122
+c8552fc3-97fc-436c-8fa5-6a11de4333ca,PBB-192,Thermal,Beban Pembelian Bahan Baku,true,123
+cf64e734-828f-47cf-9955-f3ee31b453c1,PBB-193,Timun,Beban Pembelian Bahan Baku,true,124
+9ab4947d-f69c-4dc2-a866-ae35896dee6e,PBB-194,Tissue,Beban Pembelian Bahan Baku,true,125
+ee67e9cb-7f79-4f8e-83d7-5056429e8264,PBB-195,Tomat,Beban Pembelian Bahan Baku,true,126
+2f9bea58-de42-4315-8499-ec0ff636beb8,PBB-196,Trashbag,Beban Pembelian Bahan Baku,true,127
+2c0d800b-d072-4f1d-869a-707d0715e599,PBB-197,Vegetable Frozen,Beban Pembelian Bahan Baku,true,128
+8d829e7b-7837-4764-962e-ca97e815f905,PBB-198,Wortel,Beban Pembelian Bahan Baku,true,129
+e7c13216-55ac-48c1-8b33-d25fe2f34557,PBB-199,Yakult,Beban Pembelian Bahan Baku,true,130
+a29ab4cf-c444-4a77-b5fe-7ffabf4e6274,PBB-200,Saus Cury Batangan,Beban Pembelian Bahan Baku,true,131
+2caed84f-9672-42da-8916-a0227ec3a3a1,BPB-101,Pengiriman Barang - Jasa,Beban Pengiriman Barang,true,132
+131e80a5-2d4e-4964-8638-65f73628b3fc,BPB-102,Pengiriman Barang - Tol,Beban Pengiriman Barang,true,133
+46481a86-a933-47cd-889a-2f9231cf14b6,BPD-101,Uang Keamanan,Beban Perizinan atau Denda,true,134
+26a4d245-5701-4ee6-8bc9-340e2b36b89d,BPT-101,Perlengkapan Bar,Beban Perlengkapan Toko,true,135
+32ca64b0-c0c2-43b9-b7ee-e37f20b7e913,BPT-102,Perlengkapan Kitchen,Beban Perlengkapan Toko,true,136
+67ed6d8a-ec18-444a-8488-3c93b5f9ea1f,BPT-103,Perlengkapan Area,Beban Perlengkapan Toko,true,137
+ac9b3f59-bb1a-47c4-b495-862ba67b760c,BTI-101,Pulsa HP,Beban Telpon dan Internet,true,138
+174bbf7d-6bb0-4062-abac-8bf3e8c793ca,BTI-102,Wifi,Beban Telpon dan Internet,true,139
