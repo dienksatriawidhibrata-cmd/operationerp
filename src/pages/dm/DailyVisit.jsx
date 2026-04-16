@@ -123,7 +123,6 @@ export default function DailyVisit() {
     // Insert scores
     const scoreRows = AUDIT_ITEMS.map(item => ({
       visit_id: visitId,
-      audit_item_id: null, // optional — item_key is enough
       item_key: item.key,
       score: scores[item.key] || 1,
       photos: photos[item.key] || [],
