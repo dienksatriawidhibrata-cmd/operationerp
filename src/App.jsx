@@ -11,7 +11,8 @@ const BebanOperasional = lazy(() => import('./pages/staff/BebanOperasional'))
 const DMDashboard = lazy(() => import('./pages/dm/Dashboard'))
 const DailyVisit = lazy(() => import('./pages/dm/DailyVisit'))
 const ApprovalSetoran = lazy(() => import('./pages/dm/ApprovalSetoran'))
-const AuditSetoran = lazy(() => import('./pages/finance/AuditSetoran'))
+const AuditSetoran   = lazy(() => import('./pages/finance/AuditSetoran'))
+const OpexOverview  = lazy(() => import('./pages/OpexOverview'))
 
 function RootRedirect() {
   const { user, profile, loading, profileError } = useAuth()
@@ -128,6 +129,12 @@ export default function App() {
       <Route path="/finance" element={
         <RequireAuth roles={[...FINANCE_ROLES, 'ops_manager']}>
           <AuditSetoran />
+        </RequireAuth>
+      } />
+
+      <Route path="/opex" element={
+        <RequireAuth roles={[...FINANCE_ROLES, 'ops_manager']}>
+          <OpexOverview />
         </RequireAuth>
       } />
 
