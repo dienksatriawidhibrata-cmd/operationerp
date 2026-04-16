@@ -127,12 +127,19 @@ export default function DMDashboard() {
   const refreshTimeoutRef = useRef(null)
   const bootstrappedBrowserNotificationsRef = useRef(false)
   const notifiedBrowserKeysRef = useRef(new Set())
+  // Prevents the budgetMonth auto-correction inside fetchDashboard from
+  // triggering a second fetch via the useEffect dependency on budgetMonth.
+  const suppressBudgetMonthRefetchRef = useRef(false)
 
   useEffect(() => {
-    if (profile) {
-      fetchDashboard()
+    if (!profile) return
+    // Skip the extra fetch triggered by auto-correcting budgetMonth inside fetchDashboard
+    if (suppressBudgetMonthRefetchRef.current) {
+      suppressBudgetMonthRefetchRef.current = false
+      return
     }
-  }, [profile, visitPeriod, budgetMonth])
+    fetchDashboard()
+  }, [profile?.id, visitPeriod, budgetMonth])
 
   useEffect(() => {
     dashboardRefreshRef.current = () => fetchDashboard()
@@ -395,6 +402,7 @@ export default function DMDashboard() {
     const months = buildAvailableMonths(reportsByBranchMonth, expensesByBranchDate, today)
     setAvailableMonths(months)
     if (!months.find((month) => month.key === budgetMonth) && months[0]) {
+      suppressBudgetMonthRefetchRef.current = true
       setBudgetMonth(months[0].key)
     }
 

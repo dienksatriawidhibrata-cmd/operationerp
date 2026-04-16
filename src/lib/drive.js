@@ -115,13 +115,19 @@ async function compressImage(file) {
   const safeBlob = finalBlob || await canvasToBlob(canvas, quality)
   const originalBaseName = file.name?.replace(/\.[^.]+$/, '') || 'foto'
 
-  return {
+  const result = {
     base64: await blobToBase64(safeBlob),
     mimeType: JPEG_MIME,
     fileName: `${originalBaseName}.jpg`,
     size: safeBlob.size,
     compressed: safeBlob.size < file.size,
   }
+
+  // Release canvas pixel buffer explicitly to help GC on low-memory devices
+  canvas.width  = 0
+  canvas.height = 0
+
+  return result
 }
 
 function extractFileId(url) {
@@ -147,16 +153,30 @@ export async function uploadToDrive(file, folder = 'general') {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
   const fileName = `${folder}/${timestamp}_${compressed.fileName}`
 
-  const res = await fetch(SCRIPT_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain' }, // Apps Script quirk
-    body: JSON.stringify({
-      fileName,
-      mimeType: compressed.mimeType,
-      data: compressed.base64,
-      folder,
-    }),
-  })
+  const controller = new AbortController()
+  const timeoutId  = setTimeout(() => controller.abort(), 45_000) // 45s max
+
+  let res
+  try {
+    res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' }, // Apps Script quirk
+      body: JSON.stringify({
+        fileName,
+        mimeType: compressed.mimeType,
+        data: compressed.base64,
+        folder,
+      }),
+      signal: controller.signal,
+    })
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error('Upload timeout (>45 detik). Coba lagi dengan koneksi yang lebih stabil.')
+    }
+    throw err
+  } finally {
+    clearTimeout(timeoutId)
+  }
 
   const json = await res.json()
 

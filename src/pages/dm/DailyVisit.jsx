@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { AUDIT_ITEMS, AUDIT_SECTIONS, AUDIT_MAX_SCORE } from '../../lib/constants'
@@ -26,8 +26,16 @@ export default function DailyVisit() {
   const [error, setError]     = useState('')
   const [photoErrors, setPhotoErrors] = useState({})
 
-  useEffect(() => { fetchBranches() }, [profile])
-  useEffect(() => { if (selectedBranch) fetchExisting() }, [selectedBranch])
+  useEffect(() => { fetchBranches() }, [profile?.id])
+
+  // Use a ref to cancel in-flight fetchExisting when branch changes
+  const fetchSeqRef = useRef(0)
+  useEffect(() => {
+    if (!selectedBranch) return
+    fetchSeqRef.current += 1
+    const seq = fetchSeqRef.current
+    fetchExisting(false, seq)
+  }, [selectedBranch])
 
   const fetchBranches = async () => {
     let q = supabase.from('branches').select('id,name,store_id,district,area').eq('is_active', true)
@@ -37,13 +45,21 @@ export default function DailyVisit() {
     setBranches(data || [])
   }
 
-  const fetchExisting = async (preserveDone = false) => {
-    const { data: visit } = await supabase
+  const fetchExisting = async (preserveDone = false, seq = null) => {
+    const { data: visit, error: fetchErr } = await supabase
       .from('daily_visits')
       .select('*, visit_scores(*)')
       .eq('branch_id', selectedBranch)
       .eq('tanggal', today)
       .maybeSingle()
+
+    // Discard result if a newer fetchExisting has been triggered (branch changed)
+    if (seq !== null && seq !== fetchSeqRef.current) return
+
+    if (fetchErr) {
+      setError('Gagal memuat data audit: ' + fetchErr.message)
+      return
+    }
 
     if (visit) {
       setExisting(visit)

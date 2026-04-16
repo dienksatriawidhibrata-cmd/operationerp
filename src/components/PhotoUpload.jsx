@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toEmbedUrl, uploadToDrive } from '../lib/drive'
 
 /**
@@ -23,7 +23,10 @@ export default function PhotoUpload({
   const [uploading, setUploading] = useState(false)
   const [error, setError]         = useState(null)
   const [uploadSummary, setUploadSummary] = useState('')
-  const inputRef = useRef(null)
+  const inputRef   = useRef(null)
+  // Keep a ref to the latest value so async upload handlers don't use stale closure
+  const valueRef   = useRef(value)
+  useEffect(() => { valueRef.current = value }, [value])
 
   const handleFiles = async (files) => {
     if (!files || files.length === 0) return
@@ -41,7 +44,8 @@ export default function PhotoUpload({
       const newUrls = uploads.map(u => u.url)
       const originalBytes = uploads.reduce((sum, item) => sum + Number(item.originalSize || 0), 0)
       const uploadedBytes = uploads.reduce((sum, item) => sum + Number(item.uploadedSize || 0), 0)
-      onChange?.([...value, ...newUrls])
+      // Use the ref to get the latest value, not the stale closure from when upload started
+      onChange?.([...valueRef.current, ...newUrls])
 
       if (originalBytes > 0 && uploadedBytes > 0) {
         setUploadSummary(`Foto dikompres ${formatKb(originalBytes)} -> ${formatKb(uploadedBytes)}`)
