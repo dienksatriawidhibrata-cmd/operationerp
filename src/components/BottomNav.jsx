@@ -62,7 +62,7 @@ export function DMBottomNav() {
       {profile?.role === 'ops_manager' && (
         <NavItem to="/finance" icon="finance" label="Finance" active={pathname.startsWith('/finance')} />
       )}
-      {profile?.email === 'dksatriaw@gmail.com' && (
+      {profile?.email === 'dkwcoffeeindonesia@gmail.com' && (
         <NavItem to="/kpi" icon="chart" label="KPI" active={pathname.startsWith('/kpi')} />
       )}
     </Dock>
