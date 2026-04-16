@@ -8,6 +8,7 @@ import { toEmbedUrl } from '../lib/drive'
  */
 export default function PhotoViewer({ urls = [], emptyText = 'Tidak ada foto' }) {
   const [lightbox, setLightbox] = useState(null)
+  const [broken, setBroken]     = useState({})
 
   if (!urls || urls.length === 0) {
     return <p className="text-xs text-gray-400 italic">{emptyText}</p>
@@ -23,15 +24,16 @@ export default function PhotoViewer({ urls = [], emptyText = 'Tidak ada foto' })
             onClick={() => setLightbox(url)}
             className="w-20 h-20 rounded-xl overflow-hidden border border-primary-200 hover:border-primary-400 transition-colors flex-shrink-0 bg-gray-100"
           >
-            <img
-              src={toEmbedUrl(url)}
-              alt={`Foto ${idx + 1}`}
-              className="w-full h-full object-cover"
-              onError={(event) => {
-                event.target.parentElement.innerHTML =
-                  '<div class="w-full h-full flex items-center justify-center text-xs text-gray-400">Foto</div>'
-              }}
-            />
+            {broken[idx] ? (
+              <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">Foto</div>
+            ) : (
+              <img
+                src={toEmbedUrl(url)}
+                alt={`Foto ${idx + 1}`}
+                className="w-full h-full object-cover"
+                onError={() => setBroken(prev => ({ ...prev, [idx]: true }))}
+              />
+            )}
           </button>
         ))}
       </div>

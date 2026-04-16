@@ -32,7 +32,10 @@ export default function CeklisHarian() {
   }, [branchId])
 
   useEffect(() => {
-    // Load existing data when shift changes
+    // Load existing data when shift changes.
+    // Do NOT reset `done` here — fetchExisting updates `existing` after a
+    // successful submit, which would immediately clear the success banner.
+    // `done` is only reset when the user explicitly switches shift tabs.
     const ex = existing[activeShift]
     if (ex) {
       setAnswers(ex.answers || {})
@@ -45,9 +48,14 @@ export default function CeklisHarian() {
       setOosList([])
       setNotes('')
     }
+    setError('')
+  }, [existing])
+
+  // Reset done only when the user manually switches tabs
+  useEffect(() => {
     setDone(false)
     setError('')
-  }, [activeShift, existing])
+  }, [activeShift])
 
   const fetchExisting = async () => {
     const { data, error: fetchErr } = await supabase
