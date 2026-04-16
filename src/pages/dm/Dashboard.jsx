@@ -8,7 +8,7 @@ import {
   requestBrowserNotificationPermission,
   showBrowserNotification,
 } from '../../lib/notifications'
-import { DMBottomNav } from '../../components/BottomNav'
+import { DMBottomNav, OpsBottomNav } from '../../components/BottomNav'
 import {
   ActionCard,
   AppCanvas,
@@ -1229,7 +1229,7 @@ export default function DMDashboard() {
         />
       )}
 
-      <DMBottomNav />
+      {isOpsManager ? <OpsBottomNav /> : <DMBottomNav />}
     </AppCanvas>
   )
 }

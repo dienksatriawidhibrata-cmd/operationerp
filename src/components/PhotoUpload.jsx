@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { toEmbedUrl, uploadToDrive } from '../lib/drive'
+import { toEmbedUrl, toFullUrl } from '../lib/drive'
 
 /**
  * Komponen upload foto ke Google Drive via Apps Script.
@@ -23,6 +23,7 @@ export default function PhotoUpload({
   const [uploading, setUploading] = useState(false)
   const [error, setError]         = useState(null)
   const [uploadSummary, setUploadSummary] = useState('')
+  const [lightboxIdx, setLightboxIdx] = useState(null)
   const inputRef   = useRef(null)
   // Keep a ref to the latest value so async upload handlers don't use stale closure
   const valueRef   = useRef(value)
@@ -69,23 +70,65 @@ export default function PhotoUpload({
         <div className="flex flex-wrap gap-2">
           {value.map((url, idx) => (
             <div key={idx} className="relative w-20 h-20 rounded-xl overflow-hidden border border-primary-200 group">
-              <img
-                src={toEmbedUrl(url)}
-                alt={`foto ${idx + 1}`}
-                className="w-full h-full object-cover"
-                onError={e => { e.target.src = '' }}
-              />
+              <button
+                type="button"
+                onClick={() => setLightboxIdx(idx)}
+                className="w-full h-full"
+              >
+                <img
+                  src={toEmbedUrl(url)}
+                  alt={`foto ${idx + 1}`}
+                  className="w-full h-full object-cover"
+                  onError={e => { e.target.style.display = 'none' }}
+                />
+              </button>
               {!disabled && (
                 <button
                   type="button"
-                  onClick={() => removePhoto(idx)}
-                  className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
+                  onClick={(e) => { e.stopPropagation(); removePhoto(idx) }}
+                  className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity z-10"
                 >
                   ×
                 </button>
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Inline lightbox */}
+      {lightboxIdx !== null && (
+        <div
+          className="fixed inset-0 bg-black/95 z-50 flex flex-col items-center justify-center"
+          onClick={() => setLightboxIdx(null)}
+        >
+          <div className="absolute top-0 inset-x-0 flex items-center justify-between px-4 py-3 bg-gradient-to-b from-black/60 to-transparent z-10">
+            <span className="text-white/70 text-sm font-medium">{lightboxIdx + 1} / {value.length}</span>
+            <button className="w-9 h-9 bg-white/15 rounded-full text-white text-xl flex items-center justify-center" onClick={() => setLightboxIdx(null)}>×</button>
+          </div>
+          <div className="relative w-full h-full flex items-center justify-center px-14 py-14" onClick={() => setLightboxIdx(null)}>
+            <img
+              key={value[lightboxIdx]}
+              src={toFullUrl(value[lightboxIdx])}
+              alt={`Foto ${lightboxIdx + 1}`}
+              className="max-w-full max-h-full rounded-xl object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+          {value.length > 1 && (
+            <>
+              <button className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/15 rounded-full text-white text-lg flex items-center justify-center z-10"
+                onClick={(e) => { e.stopPropagation(); setLightboxIdx((i) => (i - 1 + value.length) % value.length) }}>‹</button>
+              <button className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/15 rounded-full text-white text-lg flex items-center justify-center z-10"
+                onClick={(e) => { e.stopPropagation(); setLightboxIdx((i) => (i + 1) % value.length) }}>›</button>
+            </>
+          )}
+          <div className="absolute bottom-4 inset-x-0 flex justify-center gap-1.5">
+            {value.map((_, i) => (
+              <button key={i} className={`w-2 h-2 rounded-full ${i === lightboxIdx ? 'bg-white' : 'bg-white/40'}`}
+                onClick={(e) => { e.stopPropagation(); setLightboxIdx(i) }} />
+            ))}
+          </div>
         </div>
       )}
 

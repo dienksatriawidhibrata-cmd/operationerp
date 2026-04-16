@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
-import { SCBottomNav } from '../../components/BottomNav'
+import { SCBottomNav, OpsBottomNav } from '../../components/BottomNav'
 import {
   HeroCard, InlineStat, SectionPanel, SubpageShell, ToneBadge, EmptyPanel,
 } from '../../components/ui/AppKit'
@@ -53,7 +53,7 @@ export default function SCDashboard() {
       title="Supply Chain"
       subtitle="Warehouse → Store delivery tracking"
       eyebrow="SC Dashboard"
-      footer={<SCBottomNav />}
+      footer={profile?.role === 'ops_manager' ? <OpsBottomNav /> : <SCBottomNav />}
     >
       <HeroCard
         eyebrow="Overview"

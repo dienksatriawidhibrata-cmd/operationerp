@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { fmtRp, fmtDateShort } from '../../lib/utils'
 import PhotoViewer from '../../components/PhotoViewer'
 import Alert from '../../components/Alert'
-import { DMBottomNav } from '../../components/BottomNav'
+import { DMBottomNav, OpsBottomNav } from '../../components/BottomNav'
 import {
   AppIcon,
   EmptyPanel,
@@ -122,7 +122,7 @@ export default function ApprovalSetoran() {
           : 'Monitoring setoran harian'}
       eyebrow="Approval Flow"
       showBack={false}
-      footer={<DMBottomNav />}
+      footer={profile?.role === 'ops_manager' ? <OpsBottomNav /> : <DMBottomNav />}
     >
       <SectionPanel
         eyebrow="Filter Status"
