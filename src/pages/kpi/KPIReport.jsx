@@ -127,6 +127,147 @@ function formatMetricValue(key, metrics) {
   return '-'
 }
 
+function pct(value, target) {
+  if (!target || value == null) return null
+  return value / target
+}
+
+function MetricRow({ label, value, target, format = 'rp' }) {
+  const ratio = pct(value, target)
+  const tone = ratio == null ? 'slate' : ratio >= 1 ? 'ok' : ratio >= 0.9 ? 'warn' : 'danger'
+  const formatted =
+    format === 'rp' ? (value != null ? fmtRp(value) : '-') :
+    format === 'pct' ? (value != null ? `${(value * 100).toFixed(1)}%` : '-') :
+    format === 'score' ? (value != null ? value.toFixed(1) : '-') :
+    (value != null ? String(value) : '-')
+  const targetFmt =
+    format === 'rp' ? (target != null ? fmtRp(target) : null) :
+    format === 'pct' ? (target != null ? `${(target * 100).toFixed(1)}%` : null) :
+    null
+
+  return (
+    <div className="flex items-center gap-3 rounded-[18px] bg-white/90 px-4 py-3">
+      <div className="min-w-0 flex-1">
+        <div className="text-xs text-slate-500">{label}</div>
+        <div className="mt-0.5 text-sm font-semibold text-slate-900">{formatted}</div>
+        {targetFmt && <div className="mt-0.5 text-[11px] text-slate-400">Target: {targetFmt}</div>}
+      </div>
+      {ratio != null && (
+        <ToneBadge tone={tone}>{(ratio * 100).toFixed(0)}%</ToneBadge>
+      )}
+    </div>
+  )
+}
+
+function StoreDetailView({ report, previousReport, itemKeys, monthOptions, activeMonth, onMonthChange }) {
+  const m = report.metrics || {}
+  const sales = m.sales
+  const avg = m.avg
+  const audit = m.audit
+  const ms = m.mysteryShopper
+  const large = m.large
+  const oatside = m.oatside
+  const bundling = m.bundling
+  const complain = m.complain
+
+  return (
+    <div className="space-y-6">
+      <SectionPanel
+        eyebrow="Period"
+        title="Pilih Bulan"
+        actions={
+          <SegmentedControl
+            options={monthOptions}
+            value={activeMonth}
+            onChange={onMonthChange}
+          />
+        }
+      >
+        <div className="grid gap-3 sm:grid-cols-3">
+          {monthOptions.map((month) => (
+            <button
+              key={month.key}
+              type="button"
+              onClick={() => onMonthChange(month.key)}
+              className={`rounded-[18px] px-4 py-4 text-left transition-colors ${
+                month.key === activeMonth ? 'bg-primary-600 text-white' : 'bg-slate-50 hover:bg-slate-100'
+              }`}
+            >
+              <div className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${
+                month.key === activeMonth ? 'text-primary-100' : 'text-slate-400'
+              }`}>{month.label}</div>
+              <div className={`mt-2 text-2xl font-semibold ${month.key === activeMonth ? 'text-white' : 'text-slate-950'}`}>
+                {((report.total_score || 0) * 100).toFixed(1)}%
+              </div>
+            </button>
+          ))}
+        </div>
+      </SectionPanel>
+
+      <SectionPanel eyebrow="Metrics" title="Pencapaian Detail">
+        <div className="space-y-2">
+          <MetricRow label="Net Sales" value={sales?.actual} target={sales?.target} format="rp" />
+          <MetricRow label="AVG Transaksi" value={avg?.actual} target={avg?.target} format="rp" />
+          {audit != null && (
+            <MetricRow label="Audit Score" value={audit / 100} target={0.9} format="pct" />
+          )}
+          {ms != null && (
+            <MetricRow label="Mystery Shopper" value={ms} target={5} format="score" />
+          )}
+          {large != null && (
+            <MetricRow label="Large Attach Rate" value={large.rate} target={0.65} format="pct" />
+          )}
+          {oatside != null && (
+            <MetricRow label="Oatside Attach Rate" value={oatside.rate} target={0.05} format="pct" />
+          )}
+          {bundling != null && (
+            <MetricRow label="Bundling Asik Rate" value={bundling.rate} target={0.05} format="pct" />
+          )}
+          {complain != null && (
+            <div className="flex items-center gap-3 rounded-[18px] bg-white/90 px-4 py-3">
+              <div className="min-w-0 flex-1">
+                <div className="text-xs text-slate-500">Komplain</div>
+                <div className="mt-0.5 text-sm font-semibold text-slate-900">{complain.count || 0} kasus</div>
+                <div className="mt-0.5 text-[11px] text-slate-400">
+                  {complain.trx ? `${((complain.count / complain.trx) * 100).toFixed(3)}% dari ${complain.trx.toLocaleString('id-ID')} trx` : ''}
+                </div>
+              </div>
+              <ToneBadge tone={complain.count === 0 ? 'ok' : complain.count <= 3 ? 'warn' : 'danger'}>
+                {complain.count === 0 ? 'Bersih' : `${complain.count} kasus`}
+              </ToneBadge>
+            </div>
+          )}
+        </div>
+      </SectionPanel>
+
+      <SectionPanel eyebrow="Skor KPI" title="Penilaian per Item">
+        <div className="space-y-2">
+          {itemKeys.map((key) => {
+            const current = report.item_scores?.[key]
+            const previous = previousReport?.item_scores?.[key] ?? null
+            const trend =
+              previous == null || current == null ? 'netral' :
+              current > previous ? 'naik' :
+              current < previous ? 'turun' : 'stabil'
+            return (
+              <div key={key} className="flex items-center gap-3 rounded-[18px] bg-white/90 px-4 py-3">
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-medium text-slate-800">{key}</div>
+                  <div className="mt-0.5 text-xs text-slate-400">{KPI_ITEM_META[key]?.target || 'Pantau per item'}</div>
+                </div>
+                <div className={`text-[11px] font-semibold ${
+                  trend === 'naik' ? 'text-emerald-600' : trend === 'turun' ? 'text-rose-500' : 'text-slate-400'
+                }`}>{trend}</div>
+                <ScorePill value={current} />
+              </div>
+            )
+          })}
+        </div>
+      </SectionPanel>
+    </div>
+  )
+}
+
 function StoreCard({ rank, report, itemKeys, previousReport, expanded, onToggle }) {
   const salesMetric = report.metrics?.sales || null
   const avgMetric = report.metrics?.avg || null
@@ -398,6 +539,9 @@ export default function KPIReport() {
     )
   }
 
+  const myReport = isStoreRole(profile?.role) ? sortedStores[0] || null : null
+  const myPreviousReport = myReport ? previousReportsByBranch[myReport.branch_id] || null : null
+
   return (
     <SubpageShell
       title="KPI Report 2026"
@@ -407,25 +551,51 @@ export default function KPIReport() {
     >
       <HeroCard
         eyebrow={getScopeLabel(profile, uniqueBranches)}
-        title={`Avg KPI ${(avgTotal * 100).toFixed(1)}%`}
-        description="Semua ranking, DM scorecard, dan analisis item di halaman ini mengikuti scope toko, district, atau area akun yang sedang login lewat policy Supabase."
+        title={`KPI ${((myReport || sortedStores[0] || { total_score: avgTotal }).total_score * 100).toFixed(1)}%`}
+        description={
+          isStoreRole(profile?.role)
+            ? 'Skor dan detail KPI toko kamu bulan ini. Klik bulan di bawah untuk lihat riwayat.'
+            : 'Semua ranking, DM scorecard, dan analisis item di halaman ini mengikuti scope toko, district, atau area akun yang sedang login lewat policy Supabase.'
+        }
         meta={
           <>
-            <ToneBadge tone={totalTone(avgTotal)}>{sortedStores.length} toko terlihat</ToneBadge>
-            <ToneBadge tone="info">{dmRanking.length} manager tercakup</ToneBadge>
-            {isStoreRole(profile?.role) && <ToneBadge tone="ok">Mode toko sendiri</ToneBadge>}
+            <ToneBadge tone={totalTone(myReport?.total_score || avgTotal)}>
+              {isStoreRole(profile?.role) ? formatMonthLabel(activeMonth) : `${sortedStores.length} toko`}
+            </ToneBadge>
+            {!isStoreRole(profile?.role) && <ToneBadge tone="info">{dmRanking.length} manager tercakup</ToneBadge>}
           </>
         }
       >
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <InlineStat label="Avg Score" value={`${(avgTotal * 100).toFixed(1)}%`} tone="primary" />
-          <InlineStat label="Top Performer" value={storeLabel(topStores[0] || {}) || '-'} tone="emerald" />
-          <InlineStat label="Perlu Perhatian" value={storeLabel(bottomStores[0] || {}) || '-'} tone={bottomStores.length ? 'rose' : 'slate'} />
-          <InlineStat label="Scope" value={uniqueBranches.length} tone="slate" />
-        </div>
+        {isStoreRole(profile?.role) ? (
+          <div className="grid gap-3 sm:grid-cols-3">
+            <InlineStat label="Score Bulan Ini" value={`${((myReport?.total_score || 0) * 100).toFixed(1)}%`} tone="primary" />
+            <InlineStat label="Net Sales" value={formatMetricValue('sales', myReport?.metrics?.sales)} tone="slate" />
+            <InlineStat label="Audit" value={formatMetricValue('audit', myReport?.metrics?.audit)} tone="slate" />
+          </div>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <InlineStat label="Avg Score" value={`${(avgTotal * 100).toFixed(1)}%`} tone="primary" />
+            <InlineStat label="Top Performer" value={storeLabel(topStores[0] || {}) || '-'} tone="emerald" />
+            <InlineStat label="Perlu Perhatian" value={storeLabel(bottomStores[0] || {}) || '-'} tone={bottomStores.length ? 'rose' : 'slate'} />
+            <InlineStat label="Scope" value={uniqueBranches.length} tone="slate" />
+          </div>
+        )}
       </HeroCard>
 
       <div className="mt-6 space-y-6">
+        {isStoreRole(profile?.role) && myReport ? (
+          <StoreDetailView
+            report={myReport}
+            previousReport={myPreviousReport}
+            itemKeys={itemKeys}
+            monthOptions={monthOptions}
+            activeMonth={activeMonth}
+            onMonthChange={setActiveMonth}
+          />
+        ) : null}
+
+        {!isStoreRole(profile?.role) && (
+        <>
         <SectionPanel
           eyebrow="Period"
           title="Pilih Bulan"
@@ -594,6 +764,8 @@ export default function KPIReport() {
             ))}
           </div>
         </SectionPanel>
+        </>
+        )}
       </div>
     </SubpageShell>
   )
