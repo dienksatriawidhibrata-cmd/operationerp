@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { StaffBottomNav } from '../../components/BottomNav'
+import { canViewKPI, canViewSupplyChain } from '../../lib/access'
 import {
   ActionCard,
   AppIcon,
@@ -66,6 +67,8 @@ export default function StaffHome() {
   }
 
   const isStoreLevel = ['staff', 'asst_head_store', 'head_store'].includes(profile?.role)
+  const kpiEnabled = canViewKPI(profile?.role)
+  const supplyChainEnabled = canViewSupplyChain(profile?.role)
   const shortName = profile?.full_name?.split(' ')[0] || '-'
   const branchName = profile?.branch?.name || 'Bagi Kopi'
   const greetingLabel = getGreetingLabel()
@@ -182,6 +185,24 @@ export default function StaffHome() {
               description="Catat pengeluaran toko beserta bukti nota."
               accent="violet"
             />
+            {kpiEnabled && (
+              <ActionCard
+                to="/kpi"
+                icon="chart"
+                title="KPI Toko"
+                description="Lihat performa KPI sesuai scope toko atau wilayah kamu."
+                accent="amber"
+              />
+            )}
+            {supplyChainEnabled && (
+              <ActionCard
+                to="/sc"
+                icon="checklist"
+                title="Supply Chain"
+                description="Pantau order aktif dan pengiriman barang sesuai cabang kamu."
+                accent="emerald"
+              />
+            )}
             {!isStoreLevel && (
               <ActionCard
                 to="/dm"

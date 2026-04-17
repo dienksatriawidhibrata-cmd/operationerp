@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { fmtRp, todayWIB, yesterdayWIB, visitGrade } from '../../lib/utils'
+import { canViewKPI, canViewSupplyChain } from '../../lib/access'
 import {
   getBrowserNotificationPermission,
   requestBrowserNotificationPermission,
@@ -108,6 +109,8 @@ export default function DMDashboard() {
   const [notifPermission, setNotifPermission] = useState(getBrowserNotificationPermission())
 
   const isOpsManager = profile?.role === 'ops_manager'
+  const kpiEnabled = canViewKPI(profile?.role)
+  const supplyChainEnabled = canViewSupplyChain(profile?.role)
   const accessibleBranchIdsRef = useRef(new Set())
   const dashboardRefreshRef = useRef(() => {})
   const refreshTimeoutRef = useRef(null)
@@ -727,6 +730,24 @@ export default function DMDashboard() {
                   description="Review setoran pending dan tindak lanjuti kas harian."
                   accent="emerald"
                 />
+                {kpiEnabled && (
+                  <ActionCard
+                    to="/kpi"
+                    icon="chart"
+                    title="KPI Report"
+                    description="Pantau KPI yang sudah otomatis terfilter sesuai area atau district kamu."
+                    accent="primary"
+                  />
+                )}
+                {supplyChainEnabled && (
+                  <ActionCard
+                    to="/sc"
+                    icon="checklist"
+                    title="Supply Chain"
+                    description="Lihat order aktif dan pengiriman barang sesuai outlet di scope kamu."
+                    accent="violet"
+                  />
+                )}
                 {isOpsManager && (
                   <ActionCard
                     to="/finance"
