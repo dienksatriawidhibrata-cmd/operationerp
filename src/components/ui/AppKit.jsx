@@ -139,8 +139,8 @@ export function AppIcon({ name, size = 20, className = '', strokeWidth = 1.8 }) 
 export function AppCanvas({ children, className = '' }) {
   return (
     <div className={`relative min-h-screen overflow-x-clip bg-slate-50 text-slate-900 ${className}`}>
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-[34rem] bg-[radial-gradient(circle_at_top,_rgba(37,99,235,0.22),_transparent_58%),linear-gradient(180deg,_rgba(219,234,254,0.72),_rgba(248,250,252,0.98)_52%)]" />
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-[22rem] bg-[radial-gradient(circle_at_top_right,_rgba(59,130,246,0.18),_transparent_44%)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[30rem] bg-[radial-gradient(circle_at_top,_rgba(37,99,235,0.22),_transparent_58%),linear-gradient(180deg,_rgba(219,234,254,0.72),_rgba(248,250,252,0.98)_52%)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[18rem] bg-[radial-gradient(circle_at_top_right,_rgba(59,130,246,0.18),_transparent_44%)]" />
       <div className="relative">{children}</div>
     </div>
   )
@@ -156,16 +156,16 @@ export function ShellHeader({
 }) {
   return (
     <header className="sticky top-0 z-30 border-b border-white/60 bg-white/80 backdrop-blur-xl">
-      <div className="mx-auto flex h-20 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex h-[4.4rem] max-w-7xl items-center justify-between gap-3 px-4 sm:h-20 sm:gap-4 sm:px-6 lg:px-8">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-950 text-white shadow-[0_18px_50px_-26px_rgba(15,23,42,0.8)]">
-            <AppIcon name="store" size={22} />
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-950 text-white shadow-[0_18px_50px_-26px_rgba(15,23,42,0.8)] sm:h-11 sm:w-11">
+            <AppIcon name="store" size={20} />
           </div>
           <div className="min-w-0">
-            <div className="truncate text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+            <div className="truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400 sm:text-[11px] sm:tracking-[0.2em]">
               {brandSubtitle}
             </div>
-            <div className="truncate text-lg font-semibold tracking-tight text-slate-950">
+            <div className="truncate text-base font-semibold tracking-tight text-slate-950 sm:text-lg">
               {brandTitle}
             </div>
           </div>
@@ -179,7 +179,7 @@ export function ShellHeader({
             <div className="text-sm font-semibold text-slate-900">{profileName}</div>
             <div className="text-[11px] text-slate-500">{profileRole}</div>
           </div>
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary-100 text-primary-700 shadow-inner shadow-primary-200/70">
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary-100 text-primary-700 shadow-inner shadow-primary-200/70 sm:h-11 sm:w-11">
             <span className="text-sm font-bold">{(profileName || '?').slice(0, 1).toUpperCase()}</span>
           </div>
         </div>
@@ -211,12 +211,12 @@ export function SubpageShell({
   return (
     <AppCanvas>
       <header className="sticky top-0 z-30 border-b border-white/60 bg-white/84 backdrop-blur-xl">
-        <div className="mx-auto flex h-20 max-w-7xl items-center gap-3 px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex h-[4.4rem] max-w-7xl items-center gap-3 px-4 sm:h-20 sm:px-6 lg:px-8">
           {showBack && (
             <button
               type="button"
               onClick={handleBack}
-              className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500 shadow-[0_16px_44px_-34px_rgba(15,23,42,0.35)] transition-colors hover:border-primary-200 hover:text-primary-700"
+              className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500 shadow-[0_16px_44px_-34px_rgba(15,23,42,0.35)] transition-colors hover:border-primary-200 hover:text-primary-700 sm:h-11 sm:w-11"
               aria-label="Kembali"
             >
               <AppIcon name="chevronLeft" size={18} />
@@ -225,11 +225,11 @@ export function SubpageShell({
 
           <div className="min-w-0 flex-1">
             {eyebrow && (
-              <div className="truncate text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+              <div className="truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400 sm:text-[11px] sm:tracking-[0.2em]">
                 {eyebrow}
               </div>
             )}
-            <div className="truncate text-lg font-semibold tracking-tight text-slate-950">{title}</div>
+            <div className="truncate text-base font-semibold tracking-tight text-slate-950 sm:text-lg">{title}</div>
             {subtitle && <div className="truncate text-sm text-slate-500">{subtitle}</div>}
           </div>
 
@@ -237,7 +237,7 @@ export function SubpageShell({
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-7xl px-4 pb-36 pt-4 sm:px-6 lg:px-8 lg:pb-32 lg:pt-8">
+      <main className="mx-auto w-full max-w-7xl px-4 pb-36 pt-3 sm:px-6 sm:pt-4 lg:px-8 lg:pb-32 lg:pt-6">
         {children}
       </main>
 
@@ -248,21 +248,21 @@ export function SubpageShell({
 
 export function HeroCard({ eyebrow, title, description, meta, actions, children }) {
   return (
-    <section className="relative overflow-hidden rounded-[28px] border border-white/70 bg-[linear-gradient(135deg,_rgba(30,64,175,0.96),_rgba(37,99,235,0.92)_46%,_rgba(56,189,248,0.85)_120%)] px-5 py-6 text-white shadow-[0_30px_90px_-36px_rgba(37,99,235,0.85)] sm:px-6 lg:px-8">
+    <section className="relative overflow-hidden rounded-[26px] border border-white/70 bg-[linear-gradient(135deg,_rgba(30,64,175,0.96),_rgba(37,99,235,0.92)_46%,_rgba(56,189,248,0.85)_120%)] px-4 py-5 text-white shadow-[0_30px_90px_-36px_rgba(37,99,235,0.85)] sm:px-6 sm:py-6 lg:rounded-[28px] lg:px-8">
       <div className="pointer-events-none absolute -right-20 top-[-3.5rem] h-44 w-44 rounded-full bg-white/10 blur-3xl" />
       <div className="pointer-events-none absolute left-10 top-28 h-24 w-24 rounded-full bg-sky-200/20 blur-2xl" />
 
-      <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+      <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
         <div className="max-w-2xl">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.28em] text-blue-100">{eyebrow}</div>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">{title}</h1>
-          <p className="mt-3 max-w-xl text-sm leading-6 text-blue-50/92 sm:text-[15px]">{description}</p>
-          {meta && <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-blue-100">{meta}</div>}
+          <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-blue-100 sm:text-[11px] sm:tracking-[0.22em]">{eyebrow}</div>
+          <h1 className="mt-2.5 text-[1.7rem] font-semibold leading-tight tracking-tight sm:mt-3 sm:text-4xl">{title}</h1>
+          <p className="mt-2.5 max-w-xl text-sm leading-5.5 text-blue-50/92 sm:mt-3 sm:text-[15px] sm:leading-6">{description}</p>
+          {meta && <div className="mt-3.5 flex flex-wrap items-center gap-2 text-xs text-blue-100 sm:mt-4">{meta}</div>}
         </div>
         {actions && <div className="flex flex-wrap gap-3">{actions}</div>}
       </div>
 
-      {children && <div className="relative mt-6">{children}</div>}
+      {children && <div className="relative mt-5 sm:mt-6">{children}</div>}
     </section>
   )
 }
@@ -291,23 +291,23 @@ export function MetricCard({
     <button
       onClick={onClick}
       type="button"
-      className={`group rounded-[24px] border border-white/75 bg-white p-5 text-left shadow-[0_18px_55px_-32px_rgba(15,23,42,0.32)] transition-all ${
+      className={`group rounded-[22px] border border-white/75 bg-white p-4 text-left shadow-[0_18px_55px_-32px_rgba(15,23,42,0.32)] transition-all sm:rounded-[24px] sm:p-5 ${
         interactive ? 'hover:-translate-y-0.5 hover:border-primary-200 hover:shadow-[0_24px_70px_-34px_rgba(37,99,235,0.35)]' : ''
       }`}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">{title}</div>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400 sm:text-[11px] sm:tracking-[0.18em]">{title}</div>
           <div className="mt-3 flex items-end gap-2">
-            <div className="text-3xl font-semibold tracking-tight text-slate-950">{value}</div>
+            <div className="text-[1.7rem] font-semibold leading-none tracking-tight text-slate-950 sm:text-3xl">{value}</div>
             {total != null && <div className="pb-1 text-sm text-slate-400">/ {total}</div>}
           </div>
         </div>
-        <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ring-1 ${tones[tone] || tones.primary}`}>
-          <AppIcon name={icon} size={22} />
+        <div className={`flex h-10 w-10 items-center justify-center rounded-2xl ring-1 sm:h-12 sm:w-12 ${tones[tone] || tones.primary}`}>
+          <AppIcon name={icon} size={20} />
         </div>
       </div>
-      {note && <div className="mt-4 text-sm leading-6 text-slate-500">{note}</div>}
+      {note && <div className="mt-3.5 text-sm leading-5.5 text-slate-500">{note}</div>}
     </button>
   )
 }
@@ -321,13 +321,13 @@ export function ActionCard({ title, description, icon, href, to, onClick, accent
   }
 
   const content = (
-    <div className="group rounded-[24px] border border-white/75 bg-white p-5 text-left shadow-[0_18px_55px_-32px_rgba(15,23,42,0.28)] transition-all hover:-translate-y-0.5 hover:border-primary-200 hover:shadow-[0_24px_70px_-34px_rgba(37,99,235,0.32)]">
-      <div className={`inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br ${tone[accent] || tone.primary}`}>
+    <div className="group rounded-[22px] border border-white/75 bg-white p-4 text-left shadow-[0_18px_55px_-32px_rgba(15,23,42,0.28)] transition-all hover:-translate-y-0.5 hover:border-primary-200 hover:shadow-[0_24px_70px_-34px_rgba(37,99,235,0.32)] sm:rounded-[24px] sm:p-5">
+      <div className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br sm:h-11 sm:w-11 ${tone[accent] || tone.primary}`}>
         <AppIcon name={icon} size={20} />
       </div>
-      <div className="mt-4 text-sm font-semibold text-slate-900">{title}</div>
+      <div className="mt-3.5 text-sm font-semibold text-slate-900">{title}</div>
       <div className="mt-1 text-sm leading-6 text-slate-500">{description}</div>
-      <div className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-primary-700">
+      <div className="mt-3.5 inline-flex items-center gap-2 text-sm font-semibold text-primary-700">
         Buka
         <AppIcon name="chevronRight" size={16} className="transition-transform group-hover:translate-x-0.5" />
       </div>
@@ -355,33 +355,33 @@ export function ActionCard({ title, description, icon, href, to, onClick, accent
 
 export function SectionPanel({ eyebrow, title, description, actions, children, className = '' }) {
   return (
-    <section className={`rounded-[28px] border border-white/80 bg-white/95 p-5 shadow-[0_22px_65px_-38px_rgba(15,23,42,0.26)] backdrop-blur ${className}`}>
+    <section className={`rounded-[24px] border border-white/80 bg-white/95 p-4 shadow-[0_22px_65px_-38px_rgba(15,23,42,0.26)] backdrop-blur sm:rounded-[28px] sm:p-5 ${className}`}>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           {eyebrow && (
-            <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400 sm:text-[11px] sm:tracking-[0.2em]">
               {eyebrow}
             </div>
           )}
-          <div className="mt-2 text-xl font-semibold tracking-tight text-slate-950">{title}</div>
-          {description && <div className="mt-2 text-sm leading-6 text-slate-500">{description}</div>}
+          <div className="mt-1.5 text-lg font-semibold tracking-tight text-slate-950 sm:mt-2 sm:text-xl">{title}</div>
+          {description && <div className="mt-1.5 text-sm leading-5.5 text-slate-500 sm:mt-2 sm:leading-6">{description}</div>}
         </div>
         {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
       </div>
-      <div className="mt-5">{children}</div>
+      <div className="mt-4 sm:mt-5">{children}</div>
     </section>
   )
 }
 
 export function SegmentedControl({ options, value, onChange, className = '' }) {
   return (
-    <div className={`inline-flex rounded-2xl bg-slate-100 p-1 ${className}`}>
+    <div className={`inline-flex rounded-2xl bg-slate-100 p-0.5 ${className}`}>
       {options.map((option) => (
         <button
           key={option.key}
           type="button"
           onClick={() => onChange(option.key)}
-          className={`rounded-2xl px-4 py-2 text-sm font-semibold transition-all ${
+          className={`whitespace-nowrap rounded-2xl px-3 py-2 text-xs font-semibold transition-all sm:px-4 sm:text-sm ${
             value === option.key
               ? 'bg-white text-slate-950 shadow-[0_10px_28px_-18px_rgba(15,23,42,0.45)]'
               : 'text-slate-500 hover:text-slate-700'
@@ -404,7 +404,7 @@ export function ToneBadge({ tone = 'slate', children }) {
   }
 
   return (
-    <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-semibold ring-1 ${tones[tone] || tones.slate}`}>
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold ring-1 sm:px-3 sm:py-1.5 sm:text-[11px] ${tones[tone] || tones.slate}`}>
       {children}
     </span>
   )
@@ -412,17 +412,17 @@ export function ToneBadge({ tone = 'slate', children }) {
 
 export function EmptyPanel({ title, description, actionLabel, onAction }) {
   return (
-    <div className="rounded-[24px] border border-dashed border-slate-200 bg-slate-50/85 px-5 py-8 text-center">
-      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-slate-400 shadow-sm">
+    <div className="rounded-[22px] border border-dashed border-slate-200 bg-slate-50/85 px-4 py-6 text-center sm:rounded-[24px] sm:px-5 sm:py-8">
+      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-slate-400 shadow-sm sm:h-14 sm:w-14">
         <AppIcon name="spark" size={24} />
       </div>
-      <div className="mt-4 text-base font-semibold text-slate-900">{title}</div>
-      <div className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">{description}</div>
+      <div className="mt-3.5 text-base font-semibold text-slate-900">{title}</div>
+      <div className="mx-auto mt-2 max-w-md text-sm leading-5.5 text-slate-500 sm:leading-6">{description}</div>
       {actionLabel && onAction && (
         <button
           type="button"
           onClick={onAction}
-          className="mt-5 inline-flex items-center gap-2 rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white"
+          className="mt-4 inline-flex items-center gap-2 rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white sm:mt-5"
         >
           {actionLabel}
           <AppIcon name="chevronRight" size={16} />
@@ -442,9 +442,9 @@ export function InlineStat({ label, value, tone = 'slate' }) {
   }
 
   return (
-    <div className={`rounded-2xl px-4 py-3 ${tones[tone] || tones.slate}`}>
-      <div className="text-[11px] font-semibold uppercase tracking-[0.2em] opacity-75">{label}</div>
-      <div className="mt-2 text-2xl font-semibold tracking-tight">{value}</div>
+    <div className={`rounded-2xl px-3.5 py-3 sm:px-4 ${tones[tone] || tones.slate}`}>
+      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] opacity-75 sm:text-[11px] sm:tracking-[0.18em]">{label}</div>
+      <div className="mt-1.5 text-xl font-semibold tracking-tight sm:mt-2 sm:text-2xl">{value}</div>
     </div>
   )
 }
@@ -460,7 +460,7 @@ export function SoftButton({ children, onClick, icon, tone = 'light', className 
     <button
       type={type}
       onClick={onClick}
-      className={`inline-flex items-center gap-2 rounded-2xl border px-4 py-2.5 text-sm font-semibold transition-colors ${tones[tone] || tones.light} ${className}`}
+      className={`inline-flex items-center gap-2 rounded-2xl border px-3.5 py-2 text-sm font-semibold transition-colors sm:px-4 sm:py-2.5 ${tones[tone] || tones.light} ${className}`}
     >
       {icon && <AppIcon name={icon} size={18} />}
       {children}

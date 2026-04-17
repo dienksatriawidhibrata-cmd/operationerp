@@ -132,7 +132,7 @@ export default function CeklisHarian() {
   return (
     <SubpageShell
       title="Ceklis Harian"
-      subtitle={`${profile?.branch?.name || 'Bagi Kopi'} • ${today}`}
+      subtitle={`${profile?.branch?.name || 'Bagi Kopi'} / ${today}`}
       eyebrow="Operational Checklist"
       footer={<StaffBottomNav />}
     >
@@ -178,7 +178,7 @@ export default function CeklisHarian() {
           title={activeShift === 'pagi' ? 'Status Pembukaan' : 'Status Penutupan'}
           description="Pastikan semua platform dan status toko sesuai kondisi aktual."
         >
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             {items
               .filter((item) => [
                 'toko_buka',
@@ -207,9 +207,9 @@ export default function CeklisHarian() {
           title="Kebersihan Area"
           description="Setiap area perlu status kebersihan dan bukti foto agar kondisi toko mudah diverifikasi."
         >
-          <div className="space-y-5">
+          <div className="space-y-4">
             {items.filter((item) => item.key.endsWith('_bersih')).map((item) => (
-              <div key={item.key} className="rounded-[22px] bg-slate-50/85 px-4 py-4">
+              <div key={item.key} className="rounded-[20px] bg-slate-50/85 px-3.5 py-3.5 sm:rounded-[22px] sm:px-4 sm:py-4">
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-sm font-medium text-slate-700">{item.label}</span>
                   <Toggle
@@ -268,7 +268,7 @@ export default function CeklisHarian() {
                   {item}
                   {!isReadOnly && (
                     <button type="button" onClick={() => removeOos(item)} className="text-rose-500">
-                      ×
+                      x
                     </button>
                   )}
                 </ToneBadge>
@@ -321,11 +321,7 @@ export default function CeklisHarian() {
         </SectionPanel>
 
         {!isReadOnly && (
-          <button
-            onClick={handleSubmit}
-            disabled={saving}
-            className="btn-primary"
-          >
+          <button onClick={handleSubmit} disabled={saving} className="btn-primary">
             {saving ? 'Menyimpan...' : `Submit Ceklis ${activeShift === 'pagi' ? 'Pagi' : 'Malam'}`}
           </button>
         )}
@@ -336,7 +332,7 @@ export default function CeklisHarian() {
 
 function ToggleRow({ label, checked, onChange, disabled }) {
   return (
-    <div className="flex items-center justify-between rounded-[20px] bg-slate-50/85 px-4 py-3">
+    <div className="flex items-center justify-between rounded-[18px] bg-slate-50/85 px-3.5 py-2.5 sm:rounded-[20px] sm:px-4 sm:py-3">
       <span className="text-sm text-slate-700">{label}</span>
       <Toggle checked={checked} onChange={onChange} disabled={disabled} />
     </div>

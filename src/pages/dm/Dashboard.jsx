@@ -850,7 +850,7 @@ export default function DMDashboard() {
                       ) : (
                         <div className="space-y-3">
                           {opexRows.map((row) => (
-                            <OpexBudgetRow key={row.id} row={row} onOpenDetail={() => setSelectedBudgetDetail(row)} />
+                            <BudgetRowCard key={row.id} row={row} onOpenDetail={() => setSelectedBudgetDetail(row)} />
                           ))}
                         </div>
                       )
@@ -930,7 +930,7 @@ export default function DMDashboard() {
                   >
                     <div className="space-y-3">
                       {managerCoverage.map((manager) => (
-                        <ManagerCoverageCard
+                        <CoverageManagerCard
                           key={manager.id}
                           manager={manager}
                           expanded={expandedManagerId === manager.id}
@@ -999,7 +999,7 @@ export default function DMDashboard() {
                   ) : (
                     <div className="space-y-3">
                       {visits.map((visit) => (
-                        <VisitHistoryCard key={visit.id} visit={visit} />
+                        <VisitHistoryRow key={visit.id} visit={visit} />
                       ))}
                     </div>
                   )}
@@ -1013,7 +1013,7 @@ export default function DMDashboard() {
       </main>
 
       {selectedBudgetDetail && (
-        <BudgetDetailModal
+        <BudgetDetailSheet
           row={selectedBudgetDetail}
           onClose={() => setSelectedBudgetDetail(null)}
         />
@@ -1560,7 +1560,7 @@ function StoreHealthCard({ store, isOpsManager, badge }) {
         : 'Setoran belum masuk'
 
   return (
-    <article className="rounded-[24px] border border-white/85 bg-white p-5 shadow-[0_18px_55px_-38px_rgba(15,23,42,0.28)]">
+    <article className="rounded-[22px] border border-white/85 bg-white p-4 shadow-[0_18px_55px_-38px_rgba(15,23,42,0.28)] sm:rounded-[24px] sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-3">
@@ -1578,23 +1578,23 @@ function StoreHealthCard({ store, isOpsManager, badge }) {
         <ToneBadge tone={badge.tone}>{badge.label}</ToneBadge>
       </div>
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-2">
-        <div className="rounded-2xl bg-slate-50 px-4 py-3">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Ceklis Pagi</div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div className="rounded-2xl bg-slate-50 px-3.5 py-3">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">Ceklis Pagi</div>
           <div className="mt-2 text-sm font-semibold text-slate-900">{store.ceklisPagi ? 'Sudah masuk' : 'Belum masuk'}</div>
         </div>
-        <div className="rounded-2xl bg-slate-50 px-4 py-3">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Laporan H-1</div>
+        <div className="rounded-2xl bg-slate-50 px-3.5 py-3">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">Laporan H-1</div>
           <div className="mt-2 text-sm font-semibold text-slate-900">{store.laporan ? fmtRp(store.laporan.net_sales || 0) : 'Belum masuk'}</div>
         </div>
-        <div className="rounded-2xl bg-slate-50 px-4 py-3">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Visit Periode</div>
+        <div className="rounded-2xl bg-slate-50 px-3.5 py-3">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">Visit Periode</div>
           <div className="mt-2 text-sm font-semibold text-slate-900">
             {store.visitPeriod ? `${formatVisitDate(store.visitPeriod.tanggal)} - ${visitScore}%` : 'Belum ada visit'}
           </div>
         </div>
-        <div className="rounded-2xl bg-slate-50 px-4 py-3">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">BOH Bulan Aktif</div>
+        <div className="rounded-2xl bg-slate-50 px-3.5 py-3">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">BOH Bulan Aktif</div>
           <div className="mt-2 text-sm font-semibold text-slate-900">
             {budgetRatio == null ? 'Belum cukup data' : formatRatio(budgetRatio)}
           </div>
@@ -1631,7 +1631,7 @@ function OpexBudgetRow({ row, onOpenDetail }) {
   const statusLabel = row.status === 'over' ? 'Over 3%' : row.status === 'pending' ? 'Pending' : 'Aman'
 
   return (
-    <article className="rounded-[24px] border border-white/85 bg-white p-5 shadow-[0_16px_42px_-34px_rgba(15,23,42,0.28)]">
+    <article className="rounded-[22px] border border-white/85 bg-white p-4 shadow-[0_16px_42px_-34px_rgba(15,23,42,0.28)] sm:rounded-[24px] sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="truncate text-base font-semibold text-slate-950">{row.name.replace('Bagi Kopi ', '')}</div>
@@ -1641,17 +1641,17 @@ function OpexBudgetRow({ row, onOpenDetail }) {
         </div>
         <ToneBadge tone={tone}>{statusLabel}</ToneBadge>
       </div>
-      <div className="mt-4 grid grid-cols-3 gap-3">
+      <div className="mt-4 grid grid-cols-3 gap-2.5 sm:gap-3">
         <div className="rounded-[20px] bg-slate-50 px-3 py-3">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Total BOH</div>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">Total BOH</div>
           <div className="mt-2 text-sm font-semibold text-slate-900">{fmtRp(row.bohAmount)}</div>
         </div>
         <div className="rounded-[20px] bg-slate-50 px-3 py-3">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Net Sales</div>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">Net Sales</div>
           <div className="mt-2 text-sm font-semibold text-slate-900">{fmtRp(row.netSales)}</div>
         </div>
         <div className="rounded-[20px] bg-slate-50 px-3 py-3">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Rasio</div>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">Rasio</div>
           <div className={`mt-2 text-sm font-semibold ${row.status === 'over' ? 'text-rose-600' : row.status === 'pending' ? 'text-amber-700' : 'text-emerald-700'}`}>
             {row.ratio == null ? '-' : formatRatio(row.ratio)}
           </div>
@@ -1678,7 +1678,7 @@ function BudgetDetailModal({ row, onClose }) {
       <div className="w-full max-w-[480px] overflow-hidden rounded-[32px] bg-white shadow-2xl">
         <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-5 py-5">
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Detail BOH</div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Detail BOH</div>
             <div className="mt-1 text-lg font-semibold text-slate-950">{row.name.replace('Bagi Kopi ', '')}</div>
             <div className="mt-1 text-sm text-slate-500">
               {row.monthKey ? formatMonthKey(row.monthKey) : 'Belum ada periode'} · {row.note}
@@ -1712,10 +1712,10 @@ function ManagerCoverageCard({ manager, expanded, onToggle }) {
   const coverageTone = coverage >= 0.8 ? 'ok' : coverage > 0 ? 'warn' : 'danger'
 
   return (
-    <article className="rounded-[26px] border border-white/85 bg-white shadow-[0_18px_55px_-38px_rgba(15,23,42,0.3)]">
-      <button onClick={onToggle} className="w-full px-5 py-5 text-left transition-colors hover:bg-slate-50/50">
+    <article className="rounded-[24px] border border-white/85 bg-white shadow-[0_18px_55px_-38px_rgba(15,23,42,0.3)]">
+      <button onClick={onToggle} className="w-full px-4 py-4 text-left transition-colors hover:bg-slate-50/50 sm:px-5 sm:py-5">
         <div className="flex items-start gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary-50 text-primary-700 text-sm font-bold">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary-50 text-primary-700 text-sm font-bold sm:h-12 sm:w-12">
             {(manager.name || '?').slice(0, 1).toUpperCase()}
           </div>
           <div className="min-w-0 flex-1">
@@ -1744,10 +1744,10 @@ function ManagerCoverageCard({ manager, expanded, onToggle }) {
       </button>
 
       {expanded && (
-        <div className="space-y-4 border-t border-slate-100 px-5 py-5">
+        <div className="space-y-4 border-t border-slate-100 px-4 py-4 sm:px-5 sm:py-5">
           {manager.unvisitedStores.length > 0 && (
             <div>
-              <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-rose-500">Belum dikunjungi</div>
+              <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-rose-500">Belum dikunjungi</div>
               <div className="flex flex-wrap gap-2">
                 {manager.unvisitedStores.map((store) => (
                   <ToneBadge key={store.id} tone="danger">{store.name.replace('Bagi Kopi ', '')}</ToneBadge>
@@ -1757,7 +1757,7 @@ function ManagerCoverageCard({ manager, expanded, onToggle }) {
           )}
           {manager.visitedStores.length > 0 && (
             <div>
-              <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-600">Sudah dikunjungi</div>
+              <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-600">Sudah dikunjungi</div>
               <div className="space-y-2">
                 {manager.visitedStores.map((store) => (
                   <div key={store.id} className="flex items-center justify-between rounded-[20px] bg-slate-50 px-4 py-3">
@@ -1778,6 +1778,11 @@ function ManagerCoverageCard({ manager, expanded, onToggle }) {
 }
 
 function StoreVisitRow({ store, subtitle, statusLabel, statusTone }) {
+  const safeSubtitle = String(subtitle || '')
+    .replaceAll('Â·', '/')
+    .replaceAll('·', '/')
+    .replaceAll('Ã—', 'x')
+
   return (
     <div className="flex items-center gap-4 rounded-[22px] bg-slate-50/85 px-4 py-4">
       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary-50 text-primary-700 text-sm font-bold">
@@ -1785,7 +1790,7 @@ function StoreVisitRow({ store, subtitle, statusLabel, statusTone }) {
       </div>
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-semibold text-slate-950">{store.name.replace('Bagi Kopi ', '')}</div>
-        <div className="mt-1 truncate text-sm text-slate-500">{subtitle}</div>
+        <div className="mt-1 truncate text-sm text-slate-500">{safeSubtitle}</div>
       </div>
       <ToneBadge tone={statusTone || 'slate'}>{statusLabel}</ToneBadge>
     </div>
@@ -1808,6 +1813,182 @@ function VisitHistoryCard({ visit }) {
         </div>
         <div className="mt-1 text-sm text-slate-500">
           {formatVisitDate(visit.tanggal)} · oleh {visit.auditor?.full_name?.split(' ')[0] || '-'}
+        </div>
+      </div>
+      <div className="shrink-0 text-right">
+        <div className="text-sm font-semibold text-primary-700">{visit.total_score}/{visit.max_score}</div>
+        <ToneBadge tone={tone}>{grade.label}</ToneBadge>
+      </div>
+    </article>
+  )
+}
+
+function BudgetRowCard({ row, onOpenDetail }) {
+  const tone = row.status === 'over' ? 'danger' : row.status === 'pending' ? 'warn' : 'ok'
+  const statusLabel = row.status === 'over' ? 'Over 3%' : row.status === 'pending' ? 'Pending' : 'Aman'
+  const periodLabel = row.monthKey ? `${formatMonthKey(row.monthKey)} / ${row.note}` : row.note
+
+  return (
+    <article className="rounded-[22px] border border-white/85 bg-white p-4 shadow-[0_16px_42px_-34px_rgba(15,23,42,0.28)] sm:rounded-[24px] sm:p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="truncate text-base font-semibold text-slate-950">{row.name.replace('Bagi Kopi ', '')}</div>
+          <div className="mt-1 text-sm text-slate-500">{periodLabel}</div>
+        </div>
+        <ToneBadge tone={tone}>{statusLabel}</ToneBadge>
+      </div>
+      <div className="mt-4 grid grid-cols-3 gap-2.5 sm:gap-3">
+        <div className="rounded-[20px] bg-slate-50 px-3 py-3">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">Total BOH</div>
+          <div className="mt-2 text-sm font-semibold text-slate-900">{fmtRp(row.bohAmount)}</div>
+        </div>
+        <div className="rounded-[20px] bg-slate-50 px-3 py-3">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">Net Sales</div>
+          <div className="mt-2 text-sm font-semibold text-slate-900">{fmtRp(row.netSales)}</div>
+        </div>
+        <div className="rounded-[20px] bg-slate-50 px-3 py-3">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">Rasio</div>
+          <div className={`mt-2 text-sm font-semibold ${row.status === 'over' ? 'text-rose-600' : row.status === 'pending' ? 'text-amber-700' : 'text-emerald-700'}`}>
+            {row.ratio == null ? '-' : formatRatio(row.ratio)}
+          </div>
+        </div>
+      </div>
+      <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
+        <div className="text-sm text-slate-500">
+          Estimasi {fmtRp(row.estimatedNetSales)} / budget {fmtRp(row.budgetCap)}
+        </div>
+        <button
+          onClick={onOpenDetail}
+          className="rounded-full border border-primary-100 bg-primary-50 px-3 py-1.5 text-xs font-semibold text-primary-700"
+        >
+          Detail
+        </button>
+      </div>
+    </article>
+  )
+}
+
+function BudgetDetailSheet({ row, onClose }) {
+  const periodLabel = `${row.monthKey ? formatMonthKey(row.monthKey) : 'Belum ada periode'} / ${row.note}`
+
+  return (
+    <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/40 px-4 py-6 backdrop-blur-[2px]">
+      <div className="w-full max-w-[480px] overflow-hidden rounded-[32px] bg-white shadow-2xl">
+        <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-5 py-5">
+          <div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Detail BOH</div>
+            <div className="mt-1 text-lg font-semibold text-slate-950">{row.name.replace('Bagi Kopi ', '')}</div>
+            <div className="mt-1 text-sm text-slate-500">{periodLabel}</div>
+          </div>
+          <button
+            onClick={onClose}
+            className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 text-slate-500 hover:border-primary-200 hover:text-primary-700"
+          >
+            x
+          </button>
+        </div>
+
+        <div className="max-h-[70vh] space-y-3 overflow-y-auto p-5">
+          <div className="grid grid-cols-2 gap-3">
+            <InlineStat label="Total BOH" value={fmtRp(row.bohAmount)} tone="slate" />
+            <InlineStat label="Net Sales Input" value={fmtRp(row.netSales)} tone="slate" />
+            <InlineStat label="Rasio Aktual" value={row.ratio == null ? '-' : formatRatio(row.ratio)} tone={row.status === 'over' ? 'rose' : 'emerald'} />
+            <InlineStat label="Estimasi Sales" value={fmtRp(row.estimatedNetSales)} tone="primary" />
+            <InlineStat label="Budget BOH 3%" value={fmtRp(row.budgetCap)} tone="primary" />
+            <InlineStat label="Rasio Estimasi" value={row.projectedRatio == null ? '-' : formatRatio(row.projectedRatio)} tone="primary" />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function CoverageManagerCard({ manager, expanded, onToggle }) {
+  const coverage = manager.totalStores ? manager.visitedCount / manager.totalStores : 0
+  const coverageTone = coverage >= 0.8 ? 'ok' : coverage > 0 ? 'warn' : 'danger'
+
+  return (
+    <article className="rounded-[24px] border border-white/85 bg-white shadow-[0_18px_55px_-38px_rgba(15,23,42,0.3)]">
+      <button onClick={onToggle} className="w-full px-4 py-4 text-left transition-colors hover:bg-slate-50/50 sm:px-5 sm:py-5">
+        <div className="flex items-start gap-4">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary-50 text-primary-700 text-sm font-bold sm:h-12 sm:w-12">
+            {(manager.name || '?').slice(0, 1).toUpperCase()}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="text-base font-semibold text-slate-950">{manager.name}</div>
+                <div className="mt-1 text-sm text-slate-500">{manager.roleLabel} / {manager.scopeLabel}</div>
+              </div>
+              <div className="shrink-0 text-right">
+                <ToneBadge tone={coverageTone}>{Math.round(coverage * 100)}%</ToneBadge>
+                <div className="mt-2 text-sm text-slate-500">{manager.visitedCount}/{manager.totalStores} toko</div>
+              </div>
+            </div>
+            <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
+              <div className="h-full rounded-full bg-primary-500 transition-all" style={{ width: `${Math.round(coverage * 100)}%` }} />
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <ToneBadge tone="ok">{manager.visitedCount} dikunjungi</ToneBadge>
+              {manager.unvisitedStores.length > 0 && (
+                <ToneBadge tone="danger">{manager.unvisitedStores.length} belum</ToneBadge>
+              )}
+              <ToneBadge tone="primary">{manager.totalVisits} visit / avg {manager.averagePct}%</ToneBadge>
+            </div>
+          </div>
+        </div>
+      </button>
+
+      {expanded && (
+        <div className="space-y-4 border-t border-slate-100 px-4 py-4 sm:px-5 sm:py-5">
+          {manager.unvisitedStores.length > 0 && (
+            <div>
+              <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-rose-500">Belum dikunjungi</div>
+              <div className="flex flex-wrap gap-2">
+                {manager.unvisitedStores.map((store) => (
+                  <ToneBadge key={store.id} tone="danger">{store.name.replace('Bagi Kopi ', '')}</ToneBadge>
+                ))}
+              </div>
+            </div>
+          )}
+          {manager.visitedStores.length > 0 && (
+            <div>
+              <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-600">Sudah dikunjungi</div>
+              <div className="space-y-2">
+                {manager.visitedStores.map((store) => (
+                  <div key={store.id} className="flex items-center justify-between rounded-[20px] bg-slate-50 px-4 py-3">
+                    <div>
+                      <div className="text-sm font-semibold text-slate-900">{store.name.replace('Bagi Kopi ', '')}</div>
+                      <div className="mt-1 text-sm text-slate-500">{formatVisitDate(store.tanggal)}</div>
+                    </div>
+                    <ToneBadge tone="primary">{store.scorePct}%</ToneBadge>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </article>
+  )
+}
+
+function VisitHistoryRow({ visit }) {
+  const grade = visitGrade(visit.total_score, visit.max_score)
+  const pct = visit.max_score ? Math.round((Number(visit.total_score) / Number(visit.max_score)) * 100) : 0
+  const tone = pct >= 85 ? 'ok' : pct >= 70 ? 'warn' : 'danger'
+
+  return (
+    <article className="flex items-center gap-4 rounded-[22px] bg-slate-50/85 px-4 py-4">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary-50 text-primary-700 text-sm font-bold">
+        {visit.branch?.store_id?.split('-')[1] || '??'}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-sm font-semibold text-slate-950">
+          {visit.branch?.name?.replace('Bagi Kopi ', '') || '-'}
+        </div>
+        <div className="mt-1 text-sm text-slate-500">
+          {formatVisitDate(visit.tanggal)} / oleh {visit.auditor?.full_name?.split(' ')[0] || '-'}
         </div>
       </div>
       <div className="shrink-0 text-right">

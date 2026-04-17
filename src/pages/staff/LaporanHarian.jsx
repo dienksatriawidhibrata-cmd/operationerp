@@ -190,7 +190,11 @@ export default function LaporanHarian() {
       >
         <div className="grid gap-3 sm:grid-cols-4">
           <InlineStat label="Laporan" value={laporanDone ? 'Done' : 'Open'} tone={laporanDone ? 'emerald' : 'amber'} />
-          <InlineStat label="Setoran" value={setoran?.status === 'approved' ? 'Approved' : setoran?.status === 'submitted' ? 'Pending' : setoran?.status === 'rejected' ? 'Rejected' : 'Draft'} tone={setoran?.status === 'approved' ? 'emerald' : setoran?.status === 'submitted' ? 'amber' : setoran?.status === 'rejected' ? 'rose' : 'slate'} />
+          <InlineStat
+            label="Setoran"
+            value={setoran?.status === 'approved' ? 'Approved' : setoran?.status === 'submitted' ? 'Pending' : setoran?.status === 'rejected' ? 'Rejected' : 'Draft'}
+            tone={setoran?.status === 'approved' ? 'emerald' : setoran?.status === 'submitted' ? 'amber' : setoran?.status === 'rejected' ? 'rose' : 'slate'}
+          />
           <InlineStat label="Avg Spend" value={avgSpend > 0 ? fmtRp(avgSpend) : '-'} tone={avgSpend > 0 ? 'primary' : 'slate'} />
           <InlineStat label="Selisih Setoran" value={cashPos && cashSetor ? fmtRp(Math.abs(selisih)) : '-'} tone={selisih === 0 ? 'emerald' : selisih ? 'rose' : 'slate'} />
         </div>
@@ -256,7 +260,7 @@ export default function LaporanHarian() {
 
             {netSales > 0 && jumlahKunjungan > 0 && (
               <div className="rounded-[22px] border border-primary-100 bg-primary-50 px-4 py-4">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary-500">Avg Spend</div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-500">Avg Spend</div>
                 <div className="mt-2 text-2xl font-semibold text-primary-700">{fmtRp(avgSpend)}</div>
               </div>
             )}
@@ -313,17 +317,23 @@ export default function LaporanHarian() {
             </div>
 
             {cashPos && cashSetor && (
-              <div className={`rounded-[22px] px-4 py-4 ${
-                selisih === 0 ? 'border border-emerald-200 bg-emerald-50' : 'border border-rose-200 bg-rose-50'
-              }`}>
-                <div className={`text-[11px] font-semibold uppercase tracking-[0.2em] ${
-                  selisih === 0 ? 'text-emerald-500' : 'text-rose-500'
-                }`}>
+              <div
+                className={`rounded-[22px] px-4 py-4 ${
+                  selisih === 0 ? 'border border-emerald-200 bg-emerald-50' : 'border border-rose-200 bg-rose-50'
+                }`}
+              >
+                <div
+                  className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${
+                    selisih === 0 ? 'text-emerald-500' : 'text-rose-500'
+                  }`}
+                >
                   {selisih === 0 ? 'Tidak ada selisih' : 'Selisih cash'}
                 </div>
-                <div className={`mt-2 text-2xl font-semibold ${
-                  selisih === 0 ? 'text-emerald-700' : 'text-rose-700'
-                }`}>
+                <div
+                  className={`mt-2 text-2xl font-semibold ${
+                    selisih === 0 ? 'text-emerald-700' : 'text-rose-700'
+                  }`}
+                >
                   {selisih === 0 ? 'Pas' : fmtRp(Math.abs(selisih))}
                 </div>
               </div>
@@ -344,7 +354,7 @@ export default function LaporanHarian() {
 
             {setoran?.alasan_selisih && !setoranEditable && (
               <div className="rounded-[22px] bg-slate-50 px-4 py-4 text-sm leading-6 text-slate-600">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Alasan Selisih</div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Alasan Selisih</div>
                 <div className="mt-2">{setoran.alasan_selisih}</div>
               </div>
             )}

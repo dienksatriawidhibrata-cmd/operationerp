@@ -166,7 +166,7 @@ export default function BebanOperasional() {
                       setShowDrop(false)
                     }}
                   >
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary-500">{item.code}</div>
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-500">{item.code}</div>
                     <div className="mt-1 text-sm font-semibold text-slate-900">{item.name}</div>
                     <div className="mt-1 text-sm text-slate-500">{item.category}</div>
                   </button>
@@ -177,7 +177,7 @@ export default function BebanOperasional() {
 
           {selected && (
             <div className="mt-4 rounded-[22px] border border-primary-100 bg-primary-50 px-4 py-4">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary-500">Item Dipilih</div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-500">Item Dipilih</div>
               <div className="mt-2 text-base font-semibold text-primary-700">{selected.name}</div>
               <div className="mt-1 text-sm text-primary-600">{selected.code} • {selected.category}</div>
             </div>
@@ -208,7 +208,7 @@ export default function BebanOperasional() {
 
             {qty && harga && (
               <div className="rounded-[22px] border border-primary-100 bg-primary-50 px-4 py-4">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary-500">Total Cash Out</div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-500">Total Cash Out</div>
                 <div className="mt-2 text-2xl font-semibold text-primary-700">{fmtRp(total)}</div>
               </div>
             )}
