@@ -133,10 +133,10 @@ $$ LANGUAGE sql SECURITY DEFINER STABLE;
 
 -- ── Policies: supply_orders ─────────────────────────────────
 CREATE POLICY "supply_orders_select" ON supply_orders FOR SELECT TO authenticated
-  USING (is_sc_role() OR my_role() = 'ops_manager');
+  USING (is_sc_role());
 
 CREATE POLICY "supply_orders_insert" ON supply_orders FOR INSERT TO authenticated
-  WITH CHECK (my_role() IN ('warehouse_admin','purchasing_admin','ops_manager','sc_supervisor'));
+  WITH CHECK (my_role() IN ('warehouse_admin','warehouse_spv','purchasing_admin','ops_manager','sc_supervisor'));
 
 CREATE POLICY "supply_orders_update" ON supply_orders FOR UPDATE TO authenticated
   USING (my_role() IN ('warehouse_admin','warehouse_spv','ops_manager','sc_supervisor',
@@ -147,13 +147,13 @@ CREATE POLICY "soi_select" ON supply_order_items FOR SELECT TO authenticated
   USING (is_sc_role());
 
 CREATE POLICY "soi_insert" ON supply_order_items FOR INSERT TO authenticated
-  WITH CHECK (my_role() IN ('warehouse_admin','purchasing_admin','ops_manager','sc_supervisor'));
+  WITH CHECK (my_role() IN ('warehouse_admin','warehouse_spv','purchasing_admin','ops_manager','sc_supervisor'));
 
 CREATE POLICY "soi_update" ON supply_order_items FOR UPDATE TO authenticated
-  USING (my_role() IN ('warehouse_admin','ops_manager','sc_supervisor'));
+  USING (my_role() IN ('warehouse_admin','warehouse_spv','ops_manager','sc_supervisor'));
 
 CREATE POLICY "soi_delete" ON supply_order_items FOR DELETE TO authenticated
-  USING (my_role() IN ('warehouse_admin','ops_manager','sc_supervisor'));
+  USING (my_role() IN ('warehouse_admin','warehouse_spv','ops_manager','sc_supervisor'));
 
 -- ── Policies: supply_confirmations ─────────────────────────
 CREATE POLICY "sc_confirm_select" ON supply_confirmations FOR SELECT TO authenticated
@@ -167,7 +167,6 @@ CREATE POLICY "sc_confirm_update" ON supply_confirmations FOR UPDATE TO authenti
     (stage = 'picking'      AND my_role() IN ('picking_spv','warehouse_admin','warehouse_spv','ops_manager','sc_supervisor'))
     OR (stage = 'qc'        AND my_role() IN ('qc_spv','warehouse_admin','warehouse_spv','ops_manager','sc_supervisor'))
     OR (stage = 'distribution' AND my_role() IN ('distribution_spv','warehouse_admin','warehouse_spv','ops_manager','sc_supervisor'))
-    OR my_role() IN ('ops_manager','sc_supervisor')
   );
 
 -- ── Policies: supply_confirmation_items ────────────────────
@@ -191,7 +190,8 @@ CREATE POLICY "sj_insert" ON surat_jalan FOR INSERT TO authenticated
   WITH CHECK (my_role() IN ('warehouse_admin','warehouse_spv','ops_manager','sc_supervisor'));
 
 CREATE POLICY "sj_update" ON surat_jalan FOR UPDATE TO authenticated
-  USING (my_role() IN ('warehouse_admin','warehouse_spv','distribution_spv','ops_manager','sc_supervisor'));
+  USING (my_role() IN ('warehouse_admin','warehouse_spv','distribution_spv','ops_manager','sc_supervisor',
+                       'staff','asst_head_store','head_store'));
 
 -- ── Policies: surat_jalan_items ────────────────────────────
 CREATE POLICY "sji_select" ON surat_jalan_items FOR SELECT TO authenticated
