@@ -147,10 +147,10 @@ function extractFileId(url) {
   return match ? match[0] : null
 }
 
-export function buildPreviewUrl(urlOrFileId) {
+export function buildPreviewUrl(urlOrFileId, size = 'w400') {
   const fileId = extractFileId(urlOrFileId) || urlOrFileId
   if (!fileId) return ''
-  return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1600`
+  return `https://lh3.googleusercontent.com/d/${fileId}=${size}`
 }
 
 /**
@@ -225,11 +225,12 @@ export function toEmbedUrl(driveUrl) {
 
 /**
  * URL langsung (full resolution) untuk lightbox.
- * Menggunakan uc?export=view agar gambar langsung tampil tanpa redirect ke Drive.
+ * Menggunakan lh3.googleusercontent.com/d/ yang lebih reliable dan
+ * tidak butuh sign-in Google untuk file dengan sharing ANYONE_WITH_LINK.
  */
 export function toFullUrl(driveUrl) {
   if (!driveUrl) return null
   const fileId = extractFileId(driveUrl)
   if (!fileId) return driveUrl
-  return `https://drive.google.com/uc?export=view&id=${fileId}`
+  return `https://lh3.googleusercontent.com/d/${fileId}=w1920`
 }
