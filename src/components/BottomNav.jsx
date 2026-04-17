@@ -55,7 +55,7 @@ export function DMBottomNav() {
     <Dock>
       <NavItem to="/dm" icon="home" label="Dashboard" active={pathname === '/dm'} />
       <NavItem to="/dm/stores" icon="checklist" label="Toko" active={pathname.startsWith('/dm/stores')} />
-      <NavItem to="/dm/visit" icon="map" label="Visit" active={pathname.startsWith('/dm/visit')} />
+      <NavItem to="/dm/visits" icon="map" label="Visit" active={pathname.startsWith('/dm/visit') || pathname.startsWith('/ops/visits')} />
       <NavItem to="/dm/approval" icon="approval" label="Approval" active={pathname.startsWith('/dm/approval')} />
       <NavItem to="/kpi" icon="chart" label="KPI" active={pathname.startsWith('/kpi')} />
     </Dock>
