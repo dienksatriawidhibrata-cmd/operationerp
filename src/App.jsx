@@ -18,6 +18,7 @@ const LaporanHarian = lazy(() => import('./pages/staff/LaporanHarian'))
 const BebanOperasional = lazy(() => import('./pages/staff/BebanOperasional'))
 const DMDashboard = lazy(() => import('./pages/dm/Dashboard'))
 const DailyVisit = lazy(() => import('./pages/dm/DailyVisit'))
+const VisitHub   = lazy(() => import('./pages/dm/VisitHub'))
 const ApprovalSetoran = lazy(() => import('./pages/dm/ApprovalSetoran'))
 const StoreStatus = lazy(() => import('./pages/dm/StoreStatus'))
 const AuditSetoran   = lazy(() => import('./pages/finance/AuditSetoran'))
@@ -137,7 +138,7 @@ export default function App() {
         </RequireAuth>
       } />
       <Route path="/ops/visits" element={
-        <RequireAuth roles={['ops_manager']}>
+        <RequireAuth roles={['ops_manager', 'area_manager']}>
           <OpsVisitStatus />
         </RequireAuth>
       } />
@@ -145,6 +146,11 @@ export default function App() {
       <Route path="/dm" element={
         <RequireAuth roles={ALL_MANAGER}>
           <DMDashboard />
+        </RequireAuth>
+      } />
+      <Route path="/dm/visits" element={
+        <RequireAuth roles={ALL_MANAGER}>
+          <VisitHub />
         </RequireAuth>
       } />
       <Route path="/dm/visit" element={
