@@ -584,6 +584,28 @@ function StoreCard({ rank, report, itemKeys, previousReport, expanded, onToggle 
   )
 }
 
+function DashSection({ icon, label, badge, open, onToggle, children }) {
+  return (
+    <div className="overflow-hidden rounded-[22px] border border-white/85 bg-white shadow-[0_8px_24px_-16px_rgba(15,23,42,0.2)]">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center gap-3 px-4 py-4 text-left transition-colors hover:bg-slate-50/60"
+      >
+        <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-base">{icon}</span>
+        <span className="flex-1 text-sm font-semibold text-slate-900">{label}</span>
+        {badge}
+        <span className={`text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`}>▾</span>
+      </button>
+      {open && (
+        <div className="border-t border-slate-100 px-4 py-4 space-y-6">
+          {children}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function KPIReport() {
   const { profile } = useAuth()
   const [reports, setReports] = useState([])
@@ -593,6 +615,8 @@ export default function KPIReport() {
   const [activePeriodKey, setActivePeriodKey] = useState('')
   const [openStoreName, setOpenStoreName] = useState(null)
   const [dmFilter, setDmFilter] = useState('all')
+  const [highlightOpen, setHighlightOpen] = useState(false)
+  const [itemOpen, setItemOpen] = useState(false)
 
   useEffect(() => {
     if (!profile?.role) return
@@ -923,6 +947,13 @@ export default function KPIReport() {
           </div>
         </SectionPanel>
 
+        <DashSection
+          icon="🏆"
+          label="Highlight & Manager"
+          badge={<ToneBadge tone={totalTone(avgTotal)}>{(avgTotal * 100).toFixed(1)}% avg</ToneBadge>}
+          open={highlightOpen}
+          onToggle={() => setHighlightOpen(v => !v)}
+        >
         <div className="grid gap-4 xl:grid-cols-2">
           <SectionPanel eyebrow="Top Performer" title="3 Toko Terbaik" description={`${activePeriodLabel} / scope aktif`}>
             <div className="space-y-2">
@@ -977,6 +1008,7 @@ export default function KPIReport() {
             ))}
           </div>
         </SectionPanel>
+        </DashSection>
 
         <SectionPanel
           eyebrow="Store Ranking"
@@ -1005,6 +1037,13 @@ export default function KPIReport() {
           </div>
         </SectionPanel>
 
+        <DashSection
+          icon="📊"
+          label="Analisis Item KPI"
+          badge={<ToneBadge tone="info">{itemSummary.length} item</ToneBadge>}
+          open={itemOpen}
+          onToggle={() => setItemOpen(v => !v)}
+        >
         <SectionPanel
           eyebrow="Item Analysis"
           title="Rata-rata Skor per Item"
@@ -1050,6 +1089,7 @@ export default function KPIReport() {
             ))}
           </div>
         </SectionPanel>
+        </DashSection>
         </>
         )}
       </div>

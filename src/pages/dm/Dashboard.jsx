@@ -85,6 +85,28 @@ function readStoreSectionPreference() {
   }
 }
 
+function DashSection({ icon, label, badge, open, onToggle, children }) {
+  return (
+    <div className="overflow-hidden rounded-[22px] border border-white/85 bg-white shadow-[0_8px_24px_-16px_rgba(15,23,42,0.2)]">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center gap-3 px-4 py-4 text-left transition-colors hover:bg-slate-50/60"
+      >
+        <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-base">{icon}</span>
+        <span className="flex-1 text-sm font-semibold text-slate-900">{label}</span>
+        {badge}
+        <span className={`text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`}>▾</span>
+      </button>
+      {open && (
+        <div className="border-t border-slate-100 px-4 py-4 space-y-6">
+          {children}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function DMDashboard() {
   const { profile, signOut } = useAuth()
   const today = todayWIB()
@@ -108,6 +130,8 @@ export default function DMDashboard() {
   const [managerCoverage, setManagerCoverage] = useState([])
   const [expandedManagerId, setExpandedManagerId] = useState(null)
   const [notifPermission, setNotifPermission] = useState(getBrowserNotificationPermission())
+  const [tokoOpen, setTokoOpen] = useState(false)
+  const [visitOpen, setVisitOpen] = useState(false)
 
   const isOpsManager = profile?.role === 'ops_manager'
   const kpiEnabled = canViewKPI(profile?.role)
@@ -643,38 +667,14 @@ export default function DMDashboard() {
           </div>
         </HeroCard>
 
-        <div className="mt-6">
+        <div className="mt-4 space-y-3">
         {loading ? (
           <div className="flex justify-center py-12">
             <div className="animate-spin w-8 h-8 border-2 border-primary-600 border-t-transparent rounded-full" />
           </div>
         ) : (
           <>
-            {notifPermission !== 'granted' && (
-              <SectionPanel
-                className="mb-6"
-                eyebrow="Notification Layer"
-                title="Aktifkan notifikasi browser"
-                description="Reminder dan update terbaru akan muncul otomatis saat dashboard sedang terbuka, jadi kamu tidak perlu terus memantau manual."
-                actions={
-                  notifPermission === 'unsupported' ? (
-                    <ToneBadge tone="slate">Browser tidak mendukung</ToneBadge>
-                  ) : (
-                    <SoftButton tone="white" icon="bell" onClick={enableBrowserNotifications}>
-                      Aktifkan
-                    </SoftButton>
-                  )
-                }
-              >
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <InlineStat label="Alert Prioritas" value={criticalAlertCount} tone={criticalAlertCount > 0 ? 'rose' : 'slate'} />
-                  <InlineStat label="Aktivitas Hari Ini" value={activities.length} tone="primary" />
-                  <InlineStat label="Pending Approval" value={summary.pendingSetoran} tone={summary.pendingSetoran > 0 ? 'amber' : 'slate'} />
-                </div>
-              </SectionPanel>
-            )}
-
-            <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {overviewCards.map((card) => (
                 <MetricCard
                   key={card.title}
@@ -695,30 +695,9 @@ export default function DMDashboard() {
               ))}
             </div>
 
-            <div className="mb-6 grid gap-4 xl:grid-cols-3">
-              {insightItems.map((item) => (
-                <InsightCard key={item.title} item={item} />
-              ))}
-            </div>
-
-            {summary.pendingSetoran > 0 && (
-              <div className="mb-6 rounded-[24px] border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800 shadow-[0_18px_48px_-36px_rgba(217,119,6,0.6)]">
-                <strong>{summary.pendingSetoran} setoran</strong> menunggu approval.
-                <Link to="/dm/approval" className="ml-2 font-semibold text-primary-700">
-                  Review sekarang
-                </Link>
-              </div>
-            )}
-
-            <SectionPanel
-              className="mb-6"
-              eyebrow="Workflow"
-              title="Akses Cepat"
-              description="Pintasan ke alur yang paling sering kamu buka untuk follow up operasional."
-            >
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <div className="mb-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                 <ActionCard
-                  to="/dm/visit"
+                  to="/dm/visits"
                   icon="map"
                   title="Daily Visit"
                   description="Audit outlet, isi skor, dan lihat log kunjungan."
@@ -768,25 +747,19 @@ export default function DMDashboard() {
                   />
                 )}
               </div>
-            </SectionPanel>
 
-            <SectionPanel
-              className="mb-6"
-              eyebrow="Workspace"
-              title="Mode Pantau"
-              description="Pilih fokus kerja yang ingin kamu lihat lebih detail di bawah."
-              actions={
-                <SegmentedControl
-                  options={[
-                    { key: 'toko', label: 'Status Toko' },
-                    { key: 'kunjungan', label: 'Monitoring Visit' },
-                  ]}
-                  value={activeTab}
-                  onChange={setActiveTab}
-                />
+            <DashSection
+              icon="🏪"
+              label="Status Toko"
+              badge={
+                criticalAlertCount > 0
+                  ? <ToneBadge tone="danger">{criticalAlertCount} alert</ToneBadge>
+                  : <ToneBadge tone="ok">{healthyStoreCount}/{stores.length} aman</ToneBadge>
               }
+              open={tokoOpen}
+              onToggle={() => setTokoOpen(v => !v)}
             >
-              {activeTab === 'toko' && (
+            <>
                 <div className="space-y-6">
                   <div className="grid gap-3 sm:grid-cols-3">
                     <InlineStat label="BOH Aman" value={opexSummary.withinBudget} tone="emerald" />
@@ -917,9 +890,17 @@ export default function DMDashboard() {
                     )}
                   </SectionPanel>
                 </div>
-              )}
+            </>
+            </DashSection>
 
-            {activeTab === 'kunjungan' && (
+            <DashSection
+              icon="🗺️"
+              label="Monitoring Visit"
+              badge={<ToneBadge tone={visitCoveragePct >= 80 ? 'ok' : visitCoveragePct > 0 ? 'warn' : 'slate'}>{visitSummary.visitedCount}/{summary.total} · {visitCoveragePct}%</ToneBadge>}
+              open={visitOpen}
+              onToggle={() => setVisitOpen(v => !v)}
+            >
+            <>
               <div className="space-y-6">
                 <SectionPanel
                   eyebrow="Visit Analytics"
@@ -1027,8 +1008,8 @@ export default function DMDashboard() {
                   )}
                 </SectionPanel>
               </div>
-            )}
-            </SectionPanel>
+            </>
+            </DashSection>
           </>
         )}
       </div>
