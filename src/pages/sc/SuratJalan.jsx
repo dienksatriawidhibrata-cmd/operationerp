@@ -2,12 +2,18 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
-
-const STORE_ROLES = ['staff', 'asst_head_store', 'head_store']
 import { todayWIB } from '../../lib/utils'
+import {
+  canIssueSuratJalan,
+  canMarkSuratJalanDelivered,
+  canMarkSuratJalanShipped,
+  getScopeLabel,
+  isManagerRole,
+  isStoreRole,
+} from '../../lib/access'
 import PhotoUpload from '../../components/PhotoUpload'
 import Alert from '../../components/Alert'
-import { SCBottomNav, StaffBottomNav } from '../../components/BottomNav'
+import { DMBottomNav, OpsBottomNav, SCBottomNav, StaffBottomNav } from '../../components/BottomNav'
 import {
   EmptyPanel, InlineStat, SectionPanel, SegmentedControl, SubpageShell, ToneBadge,
 } from '../../components/ui/AppKit'
@@ -209,7 +215,9 @@ function NewSJForm() {
 
 function SJList() {
   const { profile }   = useAuth()
-  const isStoreRole   = STORE_ROLES.includes(profile?.role)
+  const isStoreOnly   = isStoreRole(profile?.role)
+  const canShip       = canMarkSuratJalanShipped(profile?.role)
+  const canDeliver    = canMarkSuratJalanDelivered(profile?.role)
   const [list, setList]             = useState([])
   const [loading, setLoading]       = useState(true)
   const [filter, setFilter]         = useState('all')
@@ -222,7 +230,7 @@ function SJList() {
       .from('surat_jalan')
       .select('*, branch:branches(name), order:supply_orders(order_number)')
       .order('issued_at', { ascending: false })
-    if (isStoreRole && profile?.branch_id) {
+    if (isStoreOnly && profile?.branch_id) {
       query = query.eq('branch_id', profile.branch_id)
     }
     const { data } = await query
@@ -256,8 +264,8 @@ function SJList() {
   return (
     <SectionPanel
       eyebrow="Surat Jalan"
-      title={isStoreRole ? 'Pengiriman ke Toko' : 'Daftar Surat Jalan'}
-      description={isStoreRole ? 'Daftar pengiriman barang yang ditujukan ke toko kamu.' : 'Semua SJ yang sudah diterbitkan. Update status setelah barang dikirim atau diterima.'}
+      title={isStoreOnly ? 'Pengiriman ke Toko' : 'Daftar Surat Jalan'}
+      description={isStoreOnly ? 'Daftar pengiriman barang yang ditujukan ke toko kamu.' : 'Semua SJ yang terlihat akan otomatis mengikuti scope cabang atau wilayah akun yang login.'}
       actions={
         <SegmentedControl options={tabs} value={filter} onChange={setFilter} />
       }
@@ -300,7 +308,7 @@ function SJList() {
                 </ToneBadge>
               </div>
               <div className="flex gap-2">
-                {!isStoreRole && (
+                {!isStoreOnly && (
                   <Link
                     to={`/sc/orders/${sj.order_id}`}
                     className="rounded-xl bg-primary-50 px-3 py-1.5 text-xs font-semibold text-primary-700 hover:bg-primary-100"
@@ -308,7 +316,7 @@ function SJList() {
                     Lihat Order
                   </Link>
                 )}
-                {sj.status === 'issued' && !isStoreRole && (
+                {sj.status === 'issued' && canShip && (
                   <button
                     onClick={() => setPending({ id: sj.id, status: 'shipped', label: `Tandai "${sj.sj_number}" sedang dalam perjalanan` })}
                     className="rounded-xl bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-100"
@@ -316,7 +324,7 @@ function SJList() {
                     Tandai Dikirim
                   </button>
                 )}
-                {sj.status === 'shipped' && (
+                {sj.status === 'shipped' && canDeliver && (
                   <button
                     onClick={() => setPending({ id: sj.id, status: 'delivered', label: `Tandai "${sj.sj_number}" sudah diterima toko` })}
                     className="rounded-xl bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
@@ -338,15 +346,30 @@ function SJList() {
 export default function SuratJalanPage() {
   const [params]  = useSearchParams()
   const { profile } = useAuth()
-  const isNew     = params.has('order') && !STORE_ROLES.includes(profile?.role)
-  const isStore   = STORE_ROLES.includes(profile?.role)
+  const isStore   = isStoreRole(profile?.role)
+  const isManager = isManagerRole(profile?.role)
+  const isNew     = params.has('order') && canIssueSuratJalan(profile?.role)
+  const subtitle = isNew
+    ? 'Buat SJ dari konfirmasi distribution'
+    : isStore
+      ? 'Status kiriman barang yang ditujukan ke toko kamu'
+      : isManager
+        ? `Daftar surat jalan otomatis mengikuti scope ${getScopeLabel(profile)}`
+        : 'Kelola semua surat jalan pengiriman'
+  const footer = profile?.role === 'ops_manager'
+    ? <OpsBottomNav />
+    : isManager
+      ? <DMBottomNav />
+      : isStore
+        ? <StaffBottomNav />
+        : <SCBottomNav />
 
   return (
     <SubpageShell
       title={isNew ? 'Terbitkan Surat Jalan' : isStore ? 'Pengiriman Barang' : 'Surat Jalan'}
-      subtitle={isNew ? 'Buat SJ dari konfirmasi distribution' : isStore ? 'Status kiriman barang ke toko kamu' : 'Kelola semua surat jalan pengiriman'}
+      subtitle={subtitle}
       eyebrow="Surat Jalan"
-      footer={isStore ? <StaffBottomNav /> : <SCBottomNav />}
+      footer={footer}
     >
       {isNew ? <NewSJForm /> : <SJList />}
     </SubpageShell>

@@ -1,6 +1,14 @@
 import { Suspense, lazy } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext'
+import {
+  FINANCE_ROLES,
+  KPI_ALLOWED_ROLES,
+  MANAGER_ROLES,
+  SC_ROLES,
+  STORE_ROLES,
+  SUPPLY_CHAIN_VIEW_ROLES,
+} from './lib/access'
 
 import Login from './pages/Login'
 
@@ -93,11 +101,7 @@ function NoRouteScreen({ role }) {
   )
 }
 
-const STORE_ROLES   = ['staff', 'asst_head_store', 'head_store']
-const MANAGER_ROLES = ['district_manager', 'area_manager', 'ops_manager']
-const FINANCE_ROLES = ['finance_supervisor']
-const ALL_MANAGER   = [...MANAGER_ROLES, 'ops_manager']
-const SC_ROLES      = ['purchasing_admin', 'warehouse_admin', 'picking_spv', 'qc_spv', 'distribution_spv', 'warehouse_spv', 'sc_supervisor']
+const ALL_MANAGER = MANAGER_ROLES
 
 export default function App() {
   return (
@@ -166,14 +170,14 @@ export default function App() {
       } />
 
       <Route path="/kpi" element={
-        <RequireAuth roles={[...ALL_MANAGER, ...FINANCE_ROLES]}>
+        <RequireAuth roles={KPI_ALLOWED_ROLES}>
           <KPIReport />
         </RequireAuth>
       } />
 
       {/* ── Supply Chain ── */}
       <Route path="/sc" element={
-        <RequireAuth roles={[...SC_ROLES, 'ops_manager']}>
+        <RequireAuth roles={SUPPLY_CHAIN_VIEW_ROLES}>
           <SCDashboard />
         </RequireAuth>
       } />
@@ -183,7 +187,7 @@ export default function App() {
         </RequireAuth>
       } />
       <Route path="/sc/orders/:id" element={
-        <RequireAuth roles={[...SC_ROLES, 'ops_manager']}>
+        <RequireAuth roles={SUPPLY_CHAIN_VIEW_ROLES}>
           <SCOrderDetail />
         </RequireAuth>
       } />
@@ -203,7 +207,7 @@ export default function App() {
         </RequireAuth>
       } />
       <Route path="/sc/sj" element={
-        <RequireAuth roles={[...STORE_ROLES,'warehouse_admin','warehouse_spv','distribution_spv','ops_manager','sc_supervisor']}>
+        <RequireAuth roles={SUPPLY_CHAIN_VIEW_ROLES}>
           <SCSuratJalan />
         </RequireAuth>
       } />

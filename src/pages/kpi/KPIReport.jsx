@@ -1,644 +1,599 @@
-import { useState } from 'react'
-import { KPI_2026 } from '../../data/kpi2026'
+import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
+import { supabase } from '../../lib/supabase'
 import { fmtRp } from '../../lib/utils'
+import { getScopeLabel, isManagerRole, isStoreRole, normalizeStoreName } from '../../lib/access'
+import { DMBottomNav, OpsBottomNav, StaffBottomNav } from '../../components/BottomNav'
 import {
+  EmptyPanel,
   HeroCard,
   InlineStat,
   SectionPanel,
   SegmentedControl,
   SubpageShell,
   ToneBadge,
-  EmptyPanel,
 } from '../../components/ui/AppKit'
-import { OpsBottomNav } from '../../components/BottomNav'
-
-// ─── KPI item labels and improvement copy ────────────────────────────────────
 
 const KPI_ITEM_META = {
-  'Net Sales': {
-    icon: '💰',
-    target: 'Tier 2',
-    improve: 'Review target harian dan aktivasi promo. Push bundling dan upselling di jam peak.',
-    maintain: 'Pertahankan momentum — monitor daily agar tidak turun di akhir periode.',
-  },
-  'AVG': {
-    icon: '🧾',
-    target: 'Rp 55.000',
-    improve: 'Latih staff menawarkan add-on (oatmilk, snack, telur). Dorong Large size dan bundling combo.',
-    maintain: 'AVG sudah bagus. Pertahankan scripting kasir dan lanjutkan coaching upselling.',
-  },
-  'AVG Transactions': {
-    icon: '🧾',
-    target: 'Rp 55.000',
-    improve: 'Latih staff menawarkan add-on (oatmilk, snack, telur). Dorong Large size dan bundling combo.',
-    maintain: 'AVG sudah bagus. Pertahankan scripting kasir dan lanjutkan coaching upselling.',
-  },
-  'Large': {
-    icon: '🥤',
-    target: '≥ 65% dari total cup',
-    improve: 'Staff wajib aktif menawarkan Large. Pasang reminder di kasir. Coaching roleplay tawarkan "mau large?"',
-    maintain: 'Large attach rate baik. Tetap konsisten di setiap order.',
-  },
-  'Oatside': {
-    icon: '🌾',
-    target: '≥ 5% dari total minuman',
-    improve: 'Sebutkan "oatmilk" secara eksplisit saat mengambil order. Edukasi customer manfaat oatmilk.',
-    maintain: 'Oatmilk attach rate on track. Pertahankan habit menyebut oatmilk.',
-  },
-  'Snack Platter': {
-    icon: '🍽️',
-    target: '≥ 10% dari snack',
-    improve: 'Tawarkan snack platter saat customer pesan minuman. Tampilkan visual di kasir.',
-    maintain: 'Snack platter attach sudah baik.',
-  },
-  'Add On Telur': {
-    icon: '🥚',
-    target: '≥ target add-on',
-    improve: 'Aktif tawarkan menu telur sebagai add-on saat order. Staff perlu hafal menu paket.',
-    maintain: 'Add-on telur sudah bagus. Pertahankan habit menawarkan.',
-  },
-  'B. Asik': {
-    icon: '🎁',
-    target: '≥ 5% dari transaksi',
-    improve: 'Edukasi staff dan customer soal bundling asik. Tampilkan harga bundling vs satuan.',
-    maintain: 'Bundling asik on track. Teruskan promosi aktif.',
-  },
-  'Audit': {
-    icon: '📋',
-    target: '≥ 90%',
-    improve: 'Review hasil audit terakhir. Fokus pada item yang sering gagal. Terapkan SOP ketat.',
-    maintain: 'Audit score sudah tinggi. Jaga konsistensi SOP harian.',
-  },
-  'M. Shopper': {
-    icon: '🕵️',
-    target: 'Sempurna (5.0)',
-    improve: 'Review feedback mystery shopper. Latih greeting, kebersihan, dan kecepatan layanan.',
-    maintain: 'Mystery shopper score bagus. Pertahankan standar layanan.',
-  },
-  'Complain': {
-    icon: '📣',
-    target: '≤ 0.1% dari transaksi',
-    improve: 'Identifikasi sumber komplain terbanyak. Coaching langsung ke staff terkait SOP handling.',
-    maintain: 'Tingkat komplain rendah. Pertahankan quality control dan respon cepat.',
-  },
+  'Net Sales': { icon: 'chart', target: 'Sales vs target bulanan' },
+  AVG: { icon: 'finance', target: 'Nilai transaksi rata-rata' },
+  Large: { icon: 'spark', target: 'Large attach rate' },
+  Oatside: { icon: 'spark', target: 'Add-on oatmilk' },
+  'Snack Platter': { icon: 'checklist', target: 'Snack platter attach rate' },
+  'Add On Telur': { icon: 'checklist', target: 'Add-on telur' },
+  'B. Asik': { icon: 'spark', target: 'Bundling asik' },
+  Audit: { icon: 'approval', target: 'Audit score' },
+  'M. Shopper': { icon: 'approval', target: 'Mystery shopper' },
+  Complain: { icon: 'warning', target: 'Komplain terkontrol' },
 }
 
-function getMeta(key) {
-  return KPI_ITEM_META[key] || { icon: '📊', target: '-', improve: 'Tingkatkan performa item ini.', maintain: 'Pertahankan performa.' }
+const monthFormatter = new Intl.DateTimeFormat('id-ID', {
+  month: 'short',
+  year: 'numeric',
+  timeZone: 'UTC',
+})
+
+function formatMonthLabel(value) {
+  if (!value) return '-'
+  const date = new Date(`${value}T00:00:00Z`)
+  return monthFormatter.format(date)
 }
 
-// ─── Score tone helpers ───────────────────────────────────────────────────────
+function buildDmRanking(reports) {
+  const grouped = reports.reduce((acc, report) => {
+    if (!acc[report.dm_name]) acc[report.dm_name] = []
+    acc[report.dm_name].push(report.total_score || 0)
+    return acc
+  }, {})
+
+  return Object.entries(grouped)
+    .map(([name, totals]) => ({
+      name,
+      score: totals.reduce((sum, value) => sum + value, 0) / totals.length,
+      stores: totals.length,
+    }))
+    .sort((a, b) => b.score - a.score)
+}
+
+function buildItemKeys(reports) {
+  const presentKeys = new Set()
+  reports.forEach((report) => {
+    Object.keys(report.item_scores || {}).forEach((key) => presentKeys.add(key))
+  })
+
+  return [
+    ...Object.keys(KPI_ITEM_META).filter((key) => presentKeys.has(key)),
+    ...[...presentKeys].filter((key) => !Object.prototype.hasOwnProperty.call(KPI_ITEM_META, key)),
+  ]
+}
+
+function buildScoreSummary(reports, itemKeys) {
+  return itemKeys.map((key) => {
+    const scores = reports
+      .map((report) => report.item_scores?.[key])
+      .filter((score) => score != null)
+
+    const average = scores.length
+      ? scores.reduce((sum, value) => sum + value, 0) / scores.length
+      : null
+
+    return {
+      key,
+      average,
+      distribution: [1, 2, 3, 4, 5].map((value) => scores.filter((score) => score === value).length),
+      total: scores.length,
+    }
+  })
+}
 
 function scoreTone(score) {
-  if (score === null || score === undefined) return 'slate'
+  if (score == null) return 'slate'
   if (score >= 4) return 'ok'
-  if (score === 3)  return 'warn'
+  if (score >= 3) return 'warn'
   return 'danger'
-}
-
-function scoreLabel(score) {
-  if (score === null) return '-'
-  if (score >= 5) return '5'
-  return String(score)
 }
 
 function totalTone(total) {
-  if (total >= 0.80) return 'ok'
-  if (total >= 0.60) return 'warn'
+  if (total >= 0.8) return 'ok'
+  if (total >= 0.6) return 'warn'
   return 'danger'
 }
 
-function pct(n) { return n != null ? (n * 100).toFixed(1) + '%' : '-' }
-function fmtPct(n) { return n != null ? (n * 100).toFixed(2) + '%' : '-' }
-
-// ─── Trend indicator ─────────────────────────────────────────────────────────
-
-function trend(curr, prev) {
-  if (curr == null || prev == null) return null
-  if (curr > prev) return 'up'
-  if (curr < prev) return 'down'
-  return 'same'
-}
-
-function TrendArrow({ dir }) {
-  if (!dir || dir === 'same') return <span className="text-slate-400 text-xs">–</span>
-  if (dir === 'up') return <span className="text-emerald-600 text-xs font-bold">↑</span>
-  return <span className="text-rose-500 text-xs font-bold">↓</span>
-}
-
-// ─── ScorePip ─────────────────────────────────────────────────────────────────
-
-function ScorePip({ score }) {
-  const tone = scoreTone(score)
-  const colors = {
-    ok:      'bg-emerald-500 text-white',
-    warn:    'bg-amber-400 text-white',
-    danger:  'bg-rose-500 text-white',
-    slate:   'bg-slate-200 text-slate-500',
-  }
+function ScorePill({ value }) {
   return (
-    <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold ${colors[tone]}`}>
-      {score ?? '–'}
+    <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold ${
+      value == null
+        ? 'bg-slate-200 text-slate-500'
+        : value >= 4
+          ? 'bg-emerald-500 text-white'
+          : value >= 3
+            ? 'bg-amber-400 text-white'
+            : 'bg-rose-500 text-white'
+    }`}>
+      {value ?? '-'}
     </span>
   )
 }
 
-// ─── Store row (collapsed) ────────────────────────────────────────────────────
+function storeLabel(report) {
+  return normalizeStoreName(report.branch?.name || report.store_name || '')
+}
 
-function StoreRow({ store, itemKeys, rank, prevScores, prevTotal, onClick, isOpen }) {
-  const t = trend(store.total, prevTotal)
+function formatMetricValue(key, metrics) {
+  if (key === 'sales') return metrics?.actual != null ? fmtRp(metrics.actual) : '-'
+  if (key === 'avg') return metrics?.actual != null ? fmtRp(metrics.actual) : '-'
+  if (key === 'audit') return metrics != null ? `${Number(metrics).toFixed(1)}%` : '-'
+  if (key === 'complain') return metrics ? `${metrics.count || 0} kasus` : '-'
+  return '-'
+}
+
+function StoreCard({ rank, report, itemKeys, previousReport, expanded, onToggle }) {
+  const salesMetric = report.metrics?.sales || null
+  const avgMetric = report.metrics?.avg || null
+  const auditMetric = report.metrics?.audit ?? null
+  const complainMetric = report.metrics?.complain || null
+
   return (
-    <button
-      onClick={onClick}
-      className={`w-full text-left rounded-[22px] px-4 py-4 transition-colors ${
-        isOpen ? 'bg-primary-50 ring-1 ring-primary-200' : 'bg-slate-50/85 hover:bg-slate-100'
-      }`}
-    >
-      <div className="flex items-center gap-3">
-        {/* Rank */}
-        <div className={`shrink-0 h-8 w-8 flex items-center justify-center rounded-xl text-xs font-bold ${
-          rank === 1 ? 'bg-amber-100 text-amber-700' :
-          rank === 2 ? 'bg-slate-100 text-slate-600' :
-          rank === 3 ? 'bg-orange-100 text-orange-700' :
-          'bg-white text-slate-500 border border-slate-100'
+    <article className={`rounded-[22px] border px-4 py-4 shadow-[0_16px_42px_-34px_rgba(15,23,42,0.28)] transition-colors ${
+      expanded ? 'border-primary-200 bg-primary-50' : 'border-white/85 bg-white'
+    }`}>
+      <button onClick={onToggle} type="button" className="flex w-full items-center gap-3 text-left">
+        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl text-xs font-bold ${
+          rank <= 3 ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'
         }`}>
           {rank}
         </div>
-
-        {/* Name & DM */}
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-semibold text-slate-900">{store.store}</div>
-          <div className="text-xs text-slate-400">{store.dm}</div>
-        </div>
-
-        {/* Score pips (hidden on very small screens) */}
-        <div className="hidden sm:flex gap-1">
-          {store.scores.map((s, i) => <ScorePip key={i} score={s} />)}
-        </div>
-
-        {/* Total + trend */}
-        <div className="shrink-0 flex items-center gap-2 ml-2">
-          <TrendArrow dir={t} />
-          <ToneBadge tone={totalTone(store.total)}>
-            {(store.total * 100).toFixed(1)}%
-          </ToneBadge>
-        </div>
-      </div>
-    </button>
-  )
-}
-
-// ─── Store detail (expanded) ──────────────────────────────────────────────────
-
-function StoreDetail({ store, itemKeys, prevStore, month, data }) {
-  const focusAreas = itemKeys
-    .map((key, i) => ({ key, score: store.scores[i] }))
-    .filter(({ score }) => score !== null && score <= 2)
-
-  const salesD = data.sales?.[store.store]?.[month]
-  const avgD   = data.avg?.[store.store]?.[month]
-  const auditD = data.audit?.[store.store]?.[month]
-  const complainD = data.complain?.[store.store]?.[month]
-
-  return (
-    <div className="mt-3 space-y-4 px-1">
-      {/* Item breakdown */}
-      <div className="rounded-[22px] bg-white border border-slate-100 px-4 py-4 space-y-3">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Item Score</div>
-        <div className="space-y-2">
-          {itemKeys.map((key, i) => {
-            const score    = store.scores[i]
-            const prevScore = prevStore?.scores[i] ?? null
-            const t        = trend(score, prevScore)
-            const meta     = getMeta(key)
-            return (
-              <div key={key} className="flex items-center gap-3">
-                <span className="w-5 text-center shrink-0">{meta.icon}</span>
-                <span className="flex-1 text-sm text-slate-700">{key}</span>
-                <TrendArrow dir={t} />
-                <ScorePip score={score} />
-              </div>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Raw metrics if available */}
-      {(salesD || avgD || auditD || complainD) && (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {salesD && (
-            <div className="rounded-[18px] bg-slate-50 px-3 py-3">
-              <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Net Sales</div>
-              <div className="mt-1 text-sm font-semibold text-slate-900">{fmtRp(salesD.actual ?? 0)}</div>
-              <div className="text-[11px] text-slate-400">Target {fmtRp(salesD.target ?? 0)}</div>
-              {salesD.target > 0 && (
-                <div className={`mt-1 text-[11px] font-semibold ${(salesD.actual / salesD.target) >= 1 ? 'text-emerald-600' : 'text-rose-500'}`}>
-                  {pct(salesD.actual / salesD.target)} ach
-                </div>
-              )}
-            </div>
-          )}
-          {avgD && (
-            <div className="rounded-[18px] bg-slate-50 px-3 py-3">
-              <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">AVG Txn</div>
-              <div className="mt-1 text-sm font-semibold text-slate-900">{fmtRp(avgD.actual ?? 0)}</div>
-              <div className="text-[11px] text-slate-400">Target {fmtRp(avgD.target ?? 0)}</div>
-            </div>
-          )}
-          {auditD != null && (
-            <div className="rounded-[18px] bg-slate-50 px-3 py-3">
-              <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Audit</div>
-              <div className="mt-1 text-sm font-semibold text-slate-900">{auditD.toFixed(1)}%</div>
-              <div className={`text-[11px] font-semibold ${auditD >= 90 ? 'text-emerald-600' : 'text-rose-500'}`}>
-                {auditD >= 90 ? '✓ Target' : '✗ Di bawah target'}
-              </div>
-            </div>
-          )}
-          {complainD && (
-            <div className="rounded-[18px] bg-slate-50 px-3 py-3">
-              <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Komplain</div>
-              <div className="mt-1 text-sm font-semibold text-slate-900">{complainD.count} kasus</div>
-              <div className={`text-[11px] font-semibold ${complainD.rate <= 0.001 ? 'text-emerald-600' : 'text-rose-500'}`}>
-                {fmtPct(complainD.rate)} ({complainD.trx} txn)
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Focus areas */}
-      {focusAreas.length > 0 && (
-        <div className="rounded-[22px] border border-rose-100 bg-rose-50 px-4 py-4 space-y-3">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-rose-400">
-            Fokus Perbaikan Bulan Depan
+          <div className="truncate text-sm font-semibold text-slate-950">{storeLabel(report)}</div>
+          <div className="mt-1 text-xs text-slate-500">
+            {report.branch?.store_id || '-'} / {report.branch?.district || '-'} / {report.dm_name}
           </div>
-          {focusAreas.map(({ key, score }) => {
-            const meta = getMeta(key)
-            return (
-              <div key={key} className="flex gap-3">
-                <span className="shrink-0 mt-0.5">{meta.icon}</span>
-                <div>
-                  <div className="text-sm font-semibold text-rose-700">
-                    {key} <span className="font-normal text-rose-400">(score {score}/5)</span>
-                  </div>
-                  <div className="mt-0.5 text-sm text-rose-600">{meta.improve}</div>
-                </div>
-              </div>
-            )
-          })}
         </div>
-      )}
+        <ToneBadge tone={totalTone(report.total_score || 0)}>{((report.total_score || 0) * 100).toFixed(1)}%</ToneBadge>
+      </button>
 
-      {focusAreas.length === 0 && (
-        <div className="rounded-[22px] border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-          Semua item di atas standar. Pertahankan performa dan tingkatkan item yang masih di angka 3.
+      {expanded && (
+        <div className="mt-4 space-y-4 border-t border-primary-100 pt-4">
+          <div className="grid gap-2 sm:grid-cols-3 xl:grid-cols-4">
+            <InlineStat label="Net Sales" value={formatMetricValue('sales', salesMetric)} tone="primary" />
+            <InlineStat label="AVG" value={formatMetricValue('avg', avgMetric)} tone="slate" />
+            <InlineStat label="Audit" value={formatMetricValue('audit', auditMetric)} tone="slate" />
+            <InlineStat label="Komplain" value={formatMetricValue('complain', complainMetric)} tone="slate" />
+          </div>
+
+          <div className="rounded-[20px] bg-white/90 px-4 py-4">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Skor per item</div>
+            <div className="mt-3 space-y-2">
+              {itemKeys.map((key) => {
+                const current = report.item_scores?.[key]
+                const previous = previousReport?.item_scores?.[key] ?? null
+                const trend =
+                  previous == null || current == null
+                    ? 'netral'
+                    : current > previous
+                      ? 'naik'
+                      : current < previous
+                        ? 'turun'
+                        : 'stabil'
+
+                return (
+                  <div key={key} className="flex items-center gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-medium text-slate-800">{key}</div>
+                      <div className="mt-0.5 text-xs text-slate-400">{KPI_ITEM_META[key]?.target || 'Pantau per item'}</div>
+                    </div>
+                    <div className={`text-[11px] font-semibold ${
+                      trend === 'naik'
+                        ? 'text-emerald-600'
+                        : trend === 'turun'
+                          ? 'text-rose-500'
+                          : 'text-slate-400'
+                    }`}>
+                      {trend}
+                    </div>
+                    <ScorePill value={current} />
+                  </div>
+                )
+              })}
+            </div>
+          </div>
         </div>
       )}
-    </div>
+    </article>
   )
 }
-
-// ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function KPIReport() {
   const { profile } = useAuth()
+  const [reports, setReports] = useState([])
+  const [loadingReports, setLoadingReports] = useState(true)
+  const [loadError, setLoadError] = useState('')
+  const [activeMonth, setActiveMonth] = useState('')
+  const [openStoreName, setOpenStoreName] = useState(null)
+  const [dmFilter, setDmFilter] = useState('all')
 
-  // Gate: demo for Dien only
-  if (profile?.email !== 'dkwcoffeeindonesia@gmail.com') {
+  useEffect(() => {
+    if (!profile?.role) return
+
+    let mounted = true
+
+    const loadReports = async () => {
+      setLoadingReports(true)
+      setLoadError('')
+
+      const { data, error } = await supabase
+        .from('kpi_monthly_reports')
+        .select(`
+          id,
+          branch_id,
+          bulan,
+          dm_name,
+          total_score,
+          item_scores,
+          metrics,
+          source_updated_at,
+          branch:branches (
+            id,
+            name,
+            store_id,
+            district,
+            area
+          )
+        `)
+        .order('bulan', { ascending: true })
+
+      if (!mounted) return
+
+      if (error) {
+        setReports([])
+        setLoadError(error.message || 'Tidak bisa mengambil data KPI.')
+        setLoadingReports(false)
+        return
+      }
+
+      setReports(data || [])
+      setLoadingReports(false)
+    }
+
+    loadReports()
+
+    return () => {
+      mounted = false
+    }
+  }, [profile?.id, profile?.role])
+
+  const footer = profile?.role === 'ops_manager'
+    ? <OpsBottomNav />
+    : isManagerRole(profile?.role)
+      ? <DMBottomNav />
+      : <StaffBottomNav />
+
+  const uniqueBranches = useMemo(() => {
+    const seen = new Map()
+    reports.forEach((report) => {
+      if (report.branch?.id && !seen.has(report.branch.id)) {
+        seen.set(report.branch.id, report.branch)
+      }
+    })
+    return [...seen.values()]
+  }, [reports])
+
+  const monthOptions = useMemo(() => {
+    return [...new Set(reports.map((report) => report.bulan))]
+      .sort((a, b) => new Date(a) - new Date(b))
+      .map((bulan) => ({
+        key: bulan,
+        label: formatMonthLabel(bulan),
+      }))
+  }, [reports])
+
+  useEffect(() => {
+    if (!monthOptions.length) {
+      setActiveMonth('')
+      return
+    }
+
+    const isStillValid = monthOptions.some((option) => option.key === activeMonth)
+    if (!isStillValid) {
+      setActiveMonth(monthOptions[monthOptions.length - 1].key)
+    }
+  }, [monthOptions, activeMonth])
+
+  const monthReports = useMemo(() => {
+    return reports.filter((report) => report.bulan === activeMonth)
+  }, [reports, activeMonth])
+
+  const itemKeys = useMemo(() => buildItemKeys(monthReports), [monthReports])
+
+  const sortedStores = useMemo(() => {
+    return [...monthReports].sort((a, b) => (b.total_score || 0) - (a.total_score || 0))
+  }, [monthReports])
+
+  const dmNames = useMemo(() => {
+    return [...new Set(sortedStores.map((report) => report.dm_name).filter(Boolean))].sort()
+  }, [sortedStores])
+
+  const activeDmFilter = dmNames.includes(dmFilter) ? dmFilter : 'all'
+
+  const visibleStores = useMemo(() => {
+    return activeDmFilter === 'all'
+      ? sortedStores
+      : sortedStores.filter((report) => report.dm_name === activeDmFilter)
+  }, [sortedStores, activeDmFilter])
+
+  const dmRanking = useMemo(() => buildDmRanking(sortedStores), [sortedStores])
+  const avgTotal = sortedStores.length
+    ? sortedStores.reduce((sum, report) => sum + (report.total_score || 0), 0) / sortedStores.length
+    : 0
+  const topStores = sortedStores.slice(0, 3)
+  const bottomStores = [...sortedStores].sort((a, b) => (a.total_score || 0) - (b.total_score || 0)).slice(0, 3)
+  const itemSummary = useMemo(() => buildScoreSummary(sortedStores, itemKeys), [sortedStores, itemKeys])
+
+  const previousMonth = useMemo(() => {
+    const index = monthOptions.findIndex((option) => option.key === activeMonth)
+    return index > 0 ? monthOptions[index - 1].key : ''
+  }, [monthOptions, activeMonth])
+
+  const previousReportsByBranch = useMemo(() => {
+    return Object.fromEntries(
+      reports
+        .filter((report) => report.bulan === previousMonth)
+        .map((report) => [report.branch_id, report])
+    )
+  }, [reports, previousMonth])
+
+  const lastUpdated = useMemo(() => {
+    const values = reports.map((report) => report.source_updated_at).filter(Boolean).sort()
+    return values[values.length - 1] || ''
+  }, [reports])
+
+  useEffect(() => {
+    setOpenStoreName(null)
+  }, [activeMonth, activeDmFilter])
+
+  if (loadingReports) {
     return (
       <SubpageShell
         title="KPI Report"
-        subtitle="Akses terbatas"
+        subtitle="Menyiapkan akses KPI..."
         eyebrow="Performance"
+        footer={footer}
+      >
+        <div className="flex justify-center py-24">
+          <div className="h-9 w-9 animate-spin rounded-full border-2 border-primary-600 border-t-transparent" />
+        </div>
+      </SubpageShell>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <SubpageShell
+        title="KPI Report"
+        subtitle="Tidak bisa mengambil data KPI"
+        eyebrow="Performance"
+        footer={footer}
       >
         <EmptyPanel
-          title="Belum tersedia"
-          description="Halaman KPI Report sedang dalam tahap pengembangan dan belum aktif untuk akun ini."
+          title="KPI belum bisa dimuat"
+          description={loadError}
         />
       </SubpageShell>
     )
   }
 
-  const { availableMonths, monthly, sales, avg, audit, complain, lastUpdated } = KPI_2026
-
-  const [activeMon, setActiveMon] = useState(availableMonths[availableMonths.length - 1])
-  const [openStore, setOpenStore] = useState(null)
-  const [dmFilter, setDmFilter]   = useState('all')
-
-  const monData  = monthly[activeMon]
-  const prevMon  = availableMonths[availableMonths.indexOf(activeMon) - 1]
-  const prevData = prevMon ? monthly[prevMon] : null
-
-  if (!monData) return null
-
-  const { stores, dmRanking, itemKeys } = monData
-
-  // DM options for filter
-  const dmNames = [...new Set(stores.map(s => s.dm).filter(Boolean))].sort()
-
-  const filteredStores = dmFilter === 'all'
-    ? stores
-    : stores.filter(s => s.dm === dmFilter)
-
-  // Summary stats
-  const avgTotal = stores.reduce((s, r) => s + r.total, 0) / stores.length
-  const top3     = stores.slice(0, 3)
-  const bottom3  = [...stores].sort((a, b) => a.total - b.total).slice(0, 3)
-
-  function getPrevStore(storeName) {
-    return prevData?.stores.find(s => s.store === storeName) ?? null
+  if (!uniqueBranches.length || !monthOptions.length || !sortedStores.length) {
+    return (
+      <SubpageShell
+        title="KPI Report"
+        subtitle="Belum ada data sesuai scope akun ini"
+        eyebrow="Performance"
+        footer={footer}
+      >
+        <EmptyPanel
+          title="KPI belum tersedia"
+          description="Data KPI untuk scope toko atau wilayah akun ini belum tersedia di Supabase untuk periode yang dipilih."
+        />
+      </SubpageShell>
+    )
   }
-
-  function toggleStore(storeName) {
-    setOpenStore(prev => prev === storeName ? null : storeName)
-  }
-
-  const monthOpts = availableMonths.map(m => ({ key: m, label: m }))
-  const dmOpts    = [{ key: 'all', label: 'Semua DM' }, ...dmNames.map(n => ({ key: n, label: n }))]
 
   return (
     <SubpageShell
       title="KPI Report 2026"
-      subtitle={`Data per ${activeMon} 2026 · Updated ${lastUpdated}`}
-      eyebrow="Performance Report"
-      footer={<OpsBottomNav />}
+      subtitle={`${formatMonthLabel(activeMonth)} / update ${lastUpdated || '-'}`}
+      eyebrow="Performance"
+      footer={footer}
     >
-      {/* Hero summary */}
       <HeroCard
-        eyebrow={`Bulan ${activeMon} 2026`}
-        title={`Avg Store Score ${(avgTotal * 100).toFixed(1)}%`}
-        description="Scorecard KPI toko berdasarkan 9 item dengan total bobot 100%. Klik setiap toko untuk melihat detail dan area perbaikan bulan depan."
+        eyebrow={getScopeLabel(profile, uniqueBranches)}
+        title={`Avg KPI ${(avgTotal * 100).toFixed(1)}%`}
+        description="Semua ranking, DM scorecard, dan analisis item di halaman ini mengikuti scope toko, district, atau area akun yang sedang login lewat policy Supabase."
         meta={
           <>
-            <ToneBadge tone={avgTotal >= 0.75 ? 'ok' : avgTotal >= 0.60 ? 'warn' : 'danger'}>
-              {avgTotal >= 0.75 ? 'Di atas rata-rata' : avgTotal >= 0.60 ? 'Cukup' : 'Perlu perhatian'}
-            </ToneBadge>
-            <ToneBadge tone="info">{stores.length} toko</ToneBadge>
-            <ToneBadge tone="slate">{dmRanking.length} DM</ToneBadge>
+            <ToneBadge tone={totalTone(avgTotal)}>{sortedStores.length} toko terlihat</ToneBadge>
+            <ToneBadge tone="info">{dmRanking.length} manager tercakup</ToneBadge>
+            {isStoreRole(profile?.role) && <ToneBadge tone="ok">Mode toko sendiri</ToneBadge>}
           </>
         }
       >
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <InlineStat label="Avg Score" value={`${(avgTotal * 100).toFixed(1)}%`} tone="primary" />
-          <InlineStat label="≥ 80% (Top)" value={stores.filter(s => s.total >= 0.80).length} tone="emerald" />
-          <InlineStat label="< 60% (Risk)" value={stores.filter(s => s.total < 0.60).length} tone={stores.filter(s => s.total < 0.60).length > 0 ? 'rose' : 'slate'} />
+          <InlineStat label="Top Performer" value={storeLabel(topStores[0] || {}) || '-'} tone="emerald" />
+          <InlineStat label="Perlu Perhatian" value={storeLabel(bottomStores[0] || {}) || '-'} tone={bottomStores.length ? 'rose' : 'slate'} />
+          <InlineStat label="Scope" value={uniqueBranches.length} tone="slate" />
         </div>
       </HeroCard>
 
       <div className="mt-6 space-y-6">
-
-        {/* Month selector */}
         <SectionPanel
           eyebrow="Period"
           title="Pilih Bulan"
-          description="Data scorecard tersedia per bulan. Klik bulan untuk melihat ranking terbaru."
+          description="KPI tampil per bulan dan tetap terfilter mengikuti scope akses user."
           actions={
             <SegmentedControl
-              options={monthOpts}
-              value={activeMon}
-              onChange={(m) => { setActiveMon(m); setOpenStore(null) }}
+              options={monthOptions}
+              value={activeMonth}
+              onChange={setActiveMonth}
             />
           }
         >
           <div className="grid gap-3 sm:grid-cols-3">
-            {availableMonths.map(m => {
-              const md = monthly[m]
-              const avg = md ? (md.stores.reduce((s, r) => s + r.total, 0) / md.stores.length * 100).toFixed(1) : '-'
-              const topStore = md?.stores[0]
+            {monthOptions.map((month) => {
+              const reportsForMonth = reports.filter((report) => report.bulan === month.key)
+              const monthAverage = reportsForMonth.length
+                ? reportsForMonth.reduce((sum, report) => sum + (report.total_score || 0), 0) / reportsForMonth.length
+                : 0
+
               return (
                 <button
-                  key={m}
-                  onClick={() => { setActiveMon(m); setOpenStore(null) }}
+                  key={month.key}
+                  type="button"
+                  onClick={() => setActiveMonth(month.key)}
                   className={`rounded-[18px] px-4 py-4 text-left transition-colors ${
-                    m === activeMon
-                      ? 'bg-primary-600 text-white'
-                      : 'bg-slate-50 hover:bg-slate-100'
+                    month.key === activeMonth ? 'bg-primary-600 text-white' : 'bg-slate-50 hover:bg-slate-100'
                   }`}
                 >
-                  <div className={`text-[11px] font-semibold uppercase tracking-widest ${m === activeMon ? 'text-primary-100' : 'text-slate-400'}`}>
-                    {m} 2026
+                  <div className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${
+                    month.key === activeMonth ? 'text-primary-100' : 'text-slate-400'
+                  }`}>
+                    {month.label}
                   </div>
-                  <div className={`mt-1 text-xl font-bold ${m === activeMon ? 'text-white' : 'text-slate-900'}`}>
-                    {avg}%
+                  <div className={`mt-2 text-2xl font-semibold ${month.key === activeMonth ? 'text-white' : 'text-slate-950'}`}>
+                    {(monthAverage * 100).toFixed(1)}%
                   </div>
-                  {topStore && (
-                    <div className={`mt-1 text-xs ${m === activeMon ? 'text-primary-200' : 'text-slate-500'}`}>
-                      🏆 {topStore.store} ({(topStore.total * 100).toFixed(0)}%)
-                    </div>
-                  )}
+                  <div className={`mt-1 text-xs ${month.key === activeMonth ? 'text-primary-100' : 'text-slate-500'}`}>
+                    {reportsForMonth.length} toko sesuai scope
+                  </div>
                 </button>
               )
             })}
           </div>
         </SectionPanel>
 
-        {/* Top & Bottom */}
-        <div className="grid gap-4 sm:grid-cols-2">
-          <SectionPanel
-            eyebrow="Top Performer"
-            title="3 Toko Terbaik"
-            description={`${activeMon} 2026`}
-          >
+        <div className="grid gap-4 xl:grid-cols-2">
+          <SectionPanel eyebrow="Top Performer" title="3 Toko Terbaik" description={`${formatMonthLabel(activeMonth)} / scope aktif`}>
             <div className="space-y-2">
-              {top3.map((s, i) => (
-                <div key={s.store} className="flex items-center gap-3 rounded-[18px] bg-emerald-50 px-3 py-3">
-                  <span className="text-lg">{i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-semibold text-slate-900">{s.store}</div>
-                    <div className="text-xs text-slate-400">{s.dm}</div>
+              {topStores.map((report, index) => (
+                <div key={`${report.branch_id}-${report.bulan}`} className="flex items-center gap-3 rounded-[20px] bg-emerald-50 px-4 py-3">
+                  <div className="text-lg">{index === 0 ? '1' : index === 1 ? '2' : '3'}</div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-semibold text-slate-900">{storeLabel(report)}</div>
+                    <div className="mt-1 text-xs text-slate-500">{report.dm_name}</div>
                   </div>
-                  <ToneBadge tone="ok">{(s.total * 100).toFixed(1)}%</ToneBadge>
+                  <ToneBadge tone="ok">{((report.total_score || 0) * 100).toFixed(1)}%</ToneBadge>
                 </div>
               ))}
             </div>
           </SectionPanel>
 
-          <SectionPanel
-            eyebrow="Needs Attention"
-            title="3 Toko Terendah"
-            description={`${activeMon} 2026`}
-          >
+          <SectionPanel eyebrow="Needs Attention" title="3 Toko Terendah" description={`${formatMonthLabel(activeMonth)} / scope aktif`}>
             <div className="space-y-2">
-              {bottom3.map((s) => (
-                <div key={s.store} className="flex items-center gap-3 rounded-[18px] bg-rose-50 px-3 py-3">
-                  <span className="text-lg">⚠️</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-semibold text-slate-900">{s.store}</div>
-                    <div className="text-xs text-slate-400">{s.dm}</div>
+              {bottomStores.map((report) => (
+                <div key={`${report.branch_id}-${report.bulan}`} className="flex items-center gap-3 rounded-[20px] bg-rose-50 px-4 py-3">
+                  <div className="text-lg">!</div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-semibold text-slate-900">{storeLabel(report)}</div>
+                    <div className="mt-1 text-xs text-slate-500">{report.dm_name}</div>
                   </div>
-                  <ToneBadge tone="danger">{(s.total * 100).toFixed(1)}%</ToneBadge>
+                  <ToneBadge tone="danger">{((report.total_score || 0) * 100).toFixed(1)}%</ToneBadge>
                 </div>
               ))}
             </div>
           </SectionPanel>
         </div>
 
-        {/* DM Ranking */}
         <SectionPanel
           eyebrow="DM Scorecard"
-          title="Ranking District Manager"
-          description="Score DM dihitung dari rata-rata tertimbang semua toko yang dikelola."
-          actions={<ToneBadge tone="info">{dmRanking.length} DM</ToneBadge>}
+          title="Ranking Manager yang Tercakup"
+          description="Manager di bawah ini dihitung hanya dari toko yang memang terlihat oleh akun saat ini."
         >
           <div className="space-y-2">
-            {dmRanking.map((dm, i) => (
-              <div key={dm.name} className="flex items-center gap-3 rounded-[22px] bg-slate-50/85 px-4 py-3">
-                <div className={`shrink-0 h-8 w-8 flex items-center justify-center rounded-xl text-xs font-bold ${
-                  i === 0 ? 'bg-amber-100 text-amber-700' :
-                  i === 1 ? 'bg-slate-200 text-slate-600' :
-                  i === 2 ? 'bg-orange-100 text-orange-700' :
-                  'bg-white text-slate-400 border border-slate-100'
+            {dmRanking.map((manager, index) => (
+              <div key={manager.name} className="flex items-center gap-3 rounded-[22px] bg-slate-50/85 px-4 py-3">
+                <div className={`flex h-8 w-8 items-center justify-center rounded-xl text-xs font-bold ${
+                  index === 0 ? 'bg-amber-100 text-amber-700' : 'bg-white text-slate-500'
                 }`}>
-                  {i + 1}
+                  {index + 1}
                 </div>
-                <div className="flex-1">
-                  <div className="text-sm font-semibold text-slate-900">{dm.name}</div>
-                  <div className="text-xs text-slate-400">
-                    {stores.filter(s => s.dm === dm.name).length} toko
-                  </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-semibold text-slate-900">{manager.name}</div>
+                  <div className="mt-1 text-xs text-slate-500">{manager.stores} toko</div>
                 </div>
-
-                {/* Mini score bar */}
-                <div className="hidden sm:flex items-center gap-2">
-                  <div className="w-24 h-2 rounded-full bg-slate-200 overflow-hidden">
-                    <div
-                      className={`h-full rounded-full ${dm.score >= 0.75 ? 'bg-emerald-500' : dm.score >= 0.60 ? 'bg-amber-400' : 'bg-rose-500'}`}
-                      style={{ width: `${Math.min(100, dm.score * 100)}%` }}
-                    />
-                  </div>
-                </div>
-
-                <ToneBadge tone={dm.score >= 0.75 ? 'ok' : dm.score >= 0.60 ? 'warn' : 'danger'}>
-                  {(dm.score * 100).toFixed(1)}%
-                </ToneBadge>
+                <ToneBadge tone={totalTone(manager.score)}>{(manager.score * 100).toFixed(1)}%</ToneBadge>
               </div>
             ))}
           </div>
         </SectionPanel>
 
-        {/* Store leaderboard */}
         <SectionPanel
           eyebrow="Store Ranking"
-          title="Ranking Semua Toko"
-          description="Klik toko untuk melihat breakdown per item dan rekomendasi perbaikan bulan depan."
+          title="Ranking Toko"
+          description="Klik toko untuk melihat detail KPI per item. Filter manager hanya muncul dari scope data yang kamu miliki."
           actions={
             <SegmentedControl
-              options={dmOpts}
-              value={dmFilter}
+              options={[{ key: 'all', label: 'Semua DM' }, ...dmNames.map((name) => ({ key: name, label: name }))]}
+              value={activeDmFilter}
               onChange={setDmFilter}
             />
           }
         >
-          {/* Item key legend */}
-          <div className="mb-4 hidden sm:flex flex-wrap gap-2">
-            {itemKeys.map((key, i) => {
-              const meta = getMeta(key)
-              return (
-                <span key={i} className="text-xs text-slate-500 bg-slate-100 rounded-full px-2 py-1">
-                  {meta.icon} {key}
-                </span>
-              )
-            })}
-          </div>
-
-          <div className="space-y-2">
-            {filteredStores.map((store, idx) => {
-              const globalRank = stores.indexOf(store) + 1
-              const prevStore  = getPrevStore(store.store)
-              const isOpen     = openStore === store.store
-              return (
-                <div key={store.store}>
-                  <StoreRow
-                    store={store}
-                    itemKeys={itemKeys}
-                    rank={globalRank}
-                    prevScores={prevStore?.scores ?? null}
-                    prevTotal={prevStore?.total ?? null}
-                    onClick={() => toggleStore(store.store)}
-                    isOpen={isOpen}
-                  />
-                  {isOpen && (
-                    <StoreDetail
-                      store={store}
-                      itemKeys={itemKeys}
-                      prevStore={prevStore}
-                      month={activeMon}
-                      data={{ sales, avg, audit, complain }}
-                    />
-                  )}
-                </div>
-              )
-            })}
+          <div className="space-y-3">
+            {visibleStores.map((report, index) => (
+              <StoreCard
+                key={`${report.branch_id}-${report.bulan}`}
+                rank={index + 1}
+                report={report}
+                itemKeys={itemKeys}
+                previousReport={previousReportsByBranch[report.branch_id]}
+                expanded={openStoreName === report.branch_id}
+                onToggle={() => setOpenStoreName(openStoreName === report.branch_id ? null : report.branch_id)}
+              />
+            ))}
           </div>
         </SectionPanel>
 
-        {/* Item heatmap summary */}
         <SectionPanel
           eyebrow="Item Analysis"
-          title="Analisis per Item KPI"
-          description="Rata-rata skor tiap item di seluruh toko. Item dengan rata-rata rendah perlu perhatian sistemik."
+          title="Rata-rata Skor per Item"
+          description="Membantu melihat item KPI mana yang paling perlu dibenahi secara lintas toko di scope kamu."
         >
           <div className="space-y-3">
-            {itemKeys.map((key, i) => {
-              const validScores = stores.map(s => s.scores[i]).filter(v => v !== null)
-              const avgScore = validScores.length > 0
-                ? validScores.reduce((a, b) => a + b, 0) / validScores.length
-                : null
-              const meta  = getMeta(key)
-              const tone  = avgScore >= 4 ? 'ok' : avgScore >= 3 ? 'warn' : 'danger'
-              const dist  = [1,2,3,4,5].map(v => validScores.filter(s => s === v).length)
-              const total = validScores.length
-
-              return (
-                <div key={key} className="rounded-[22px] bg-slate-50/85 px-4 py-4">
-                  <div className="flex items-center gap-3 mb-3">
-                    <span className="text-xl">{meta.icon}</span>
-                    <div className="flex-1">
-                      <div className="text-sm font-semibold text-slate-900">{key}</div>
-                      <div className="text-xs text-slate-400">Target: {meta.target}</div>
-                    </div>
-                    {avgScore != null && (
-                      <ToneBadge tone={tone}>
-                        avg {avgScore.toFixed(2)}/5
-                      </ToneBadge>
-                    )}
+            {itemSummary.map((item) => (
+              <div key={item.key} className="rounded-[22px] bg-slate-50/85 px-4 py-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-primary-700">
+                    {KPI_ITEM_META[item.key]?.icon === 'finance' ? 'Rp' : KPI_ITEM_META[item.key]?.icon === 'warning' ? '!' : KPI_ITEM_META[item.key]?.icon === 'approval' ? 'OK' : 'K'}
                   </div>
-
-                  {/* Score distribution bar */}
-                  <div className="flex gap-1 h-3">
-                    {dist.map((count, vi) => {
-                      const w = total > 0 ? (count / total) * 100 : 0
-                      const colors = ['bg-rose-500', 'bg-orange-400', 'bg-amber-400', 'bg-lime-500', 'bg-emerald-500']
-                      return w > 0 ? (
-                        <div
-                          key={vi}
-                          className={`h-full rounded-full ${colors[vi]} relative group`}
-                          style={{ width: `${w}%` }}
-                          title={`Score ${vi+1}: ${count} toko`}
-                        />
-                      ) : null
-                    })}
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-semibold text-slate-900">{item.key}</div>
+                    <div className="mt-1 text-xs text-slate-500">{KPI_ITEM_META[item.key]?.target || 'Pantau detail KPI'}</div>
                   </div>
-                  <div className="mt-1 flex gap-2 flex-wrap">
-                    {dist.map((count, vi) => count > 0 && (
-                      <span key={vi} className="text-[10px] text-slate-400">
-                        {vi+1}={count}
-                      </span>
-                    ))}
-                  </div>
-
-                  {avgScore !== null && avgScore < 3 && (
-                    <div className="mt-3 text-xs text-rose-600 bg-rose-50 rounded-xl px-3 py-2">
-                      ⚠️ {meta.improve}
-                    </div>
-                  )}
+                  <ToneBadge tone={scoreTone(item.average)}>{item.average == null ? '-' : `${item.average.toFixed(2)}/5`}</ToneBadge>
                 </div>
-              )
-            })}
+                <div className="mt-4 flex h-3 gap-1">
+                  {item.distribution.map((count, distributionIndex) => {
+                    const width = item.total ? (count / item.total) * 100 : 0
+                    const colors = ['bg-rose-500', 'bg-orange-400', 'bg-amber-400', 'bg-lime-500', 'bg-emerald-500']
+                    return width > 0 ? (
+                      <div
+                        key={`${item.key}-${distributionIndex}`}
+                        className={`h-full rounded-full ${colors[distributionIndex]}`}
+                        style={{ width: `${width}%` }}
+                        title={`Score ${distributionIndex + 1}: ${count} toko`}
+                      />
+                    ) : null
+                  })}
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-slate-400">
+                  {item.distribution.map((count, distributionIndex) => (
+                    <span key={`${item.key}-label-${distributionIndex}`}>{distributionIndex + 1}={count}</span>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         </SectionPanel>
-
       </div>
     </SubpageShell>
   )

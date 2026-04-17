@@ -2,56 +2,105 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
-import { SCBottomNav, OpsBottomNav } from '../../components/BottomNav'
+import { DMBottomNav, OpsBottomNav, SCBottomNav, StaffBottomNav } from '../../components/BottomNav'
 import {
-  AppIcon, HeroCard, InlineStat, SectionPanel, SubpageShell, ToneBadge, EmptyPanel,
+  canCreateSupplyOrder,
+  canIssueSuratJalan,
+  getScopeLabel,
+  isManagerRole,
+  isStoreRole,
+} from '../../lib/access'
+import {
+  AppIcon,
+  EmptyPanel,
+  HeroCard,
+  InlineStat,
+  SectionPanel,
+  SubpageShell,
+  ToneBadge,
 } from '../../components/ui/AppKit'
 
 const STATUS_TONE = {
-  draft: 'slate', picking: 'warn', qc: 'warn', distribution: 'warn',
-  sj_ready: 'info', shipped: 'info', completed: 'ok', cancelled: 'danger',
-}
-const STATUS_LABEL = {
-  draft: 'Draft', picking: 'Picking', qc: 'QC', distribution: 'Distribution',
-  sj_ready: 'Siap SJ', shipped: 'Dikirim', completed: 'Selesai', cancelled: 'Batal',
+  draft: 'slate',
+  picking: 'warn',
+  qc: 'warn',
+  distribution: 'warn',
+  sj_ready: 'info',
+  shipped: 'info',
+  completed: 'ok',
+  cancelled: 'danger',
 }
 
-const STAGE_ORDER = ['draft','picking','qc','distribution','sj_ready','shipped','completed','cancelled']
+const STATUS_LABEL = {
+  draft: 'Draft',
+  picking: 'Picking',
+  qc: 'QC',
+  distribution: 'Distribution',
+  sj_ready: 'Siap SJ',
+  shipped: 'Dikirim',
+  completed: 'Selesai',
+  cancelled: 'Batal',
+}
+
+const STAGE_ORDER = ['draft', 'picking', 'qc', 'distribution', 'sj_ready', 'shipped', 'completed', 'cancelled']
+
+function getFooter(role) {
+  if (role === 'ops_manager') return <OpsBottomNav />
+  if (isManagerRole(role)) return <DMBottomNav />
+  if (isStoreRole(role)) return <StaffBottomNav />
+  return <SCBottomNav />
+}
+
+function getSubtitle(profile) {
+  if (isStoreRole(profile?.role)) {
+    return 'Pantau order aktif dan pengiriman barang yang menuju toko kamu.'
+  }
+
+  if (isManagerRole(profile?.role)) {
+    return `Order dan pengiriman otomatis difilter untuk ${getScopeLabel(profile)}.`
+  }
+
+  return 'Warehouse -> Store delivery tracking'
+}
 
 export default function SCDashboard() {
   const { profile, signOut } = useAuth()
-  const [orders, setOrders]   = useState([])
+  const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => { fetchOrders() }, [])
+  useEffect(() => {
+    fetchOrders()
+  }, [])
 
   const fetchOrders = async () => {
+    setLoading(true)
+
     const { data } = await supabase
       .from('supply_orders')
-      .select('*, branch:branches(id,name,store_id)')
+      .select('*, branch:branches(id,name,store_id,district,area)')
       .neq('status', 'completed')
       .neq('status', 'cancelled')
       .order('created_at', { ascending: false })
       .limit(60)
+
     setOrders(data || [])
     setLoading(false)
   }
 
-  // Stats
-  const byStatus = STAGE_ORDER.reduce((acc, s) => {
-    acc[s] = orders.filter(o => o.status === s).length
+  const byStatus = STAGE_ORDER.reduce((acc, status) => {
+    acc[status] = orders.filter((order) => order.status === status).length
     return acc
   }, {})
 
-  const activeCount = orders.filter(o => !['completed','cancelled'].includes(o.status)).length
-  const urgentCount = orders.filter(o => o.status === 'sj_ready').length
-
-  const canCreateOrder = ['warehouse_admin','purchasing_admin','ops_manager','sc_supervisor'].includes(profile?.role)
+  const activeCount = orders.filter((order) => !['completed', 'cancelled'].includes(order.status)).length
+  const urgentCount = orders.filter((order) => order.status === 'sj_ready').length
+  const canCreateOrder = canCreateSupplyOrder(profile?.role)
+  const canIssueSJ = canIssueSuratJalan(profile?.role)
 
   return (
     <SubpageShell
       title="Supply Chain"
-      subtitle="Warehouse → Store delivery tracking"
+      subtitle={getSubtitle(profile)}
       eyebrow="SC Dashboard"
       showBack={false}
       action={
@@ -63,12 +112,12 @@ export default function SCDashboard() {
           <AppIcon name="logout" size={18} />
         </button>
       }
-      footer={profile?.role === 'ops_manager' ? <OpsBottomNav /> : <SCBottomNav />}
+      footer={getFooter(profile?.role)}
     >
       <HeroCard
         eyebrow="Overview"
         title={`${activeCount} Order Aktif`}
-        description="Pantau semua alur pengiriman dari warehouse ke toko. Setiap order melewati Picking → QC → Distribution → Surat Jalan."
+        description="Pantau semua alur pengiriman dari warehouse ke outlet. Data di halaman ini selalu menyesuaikan cabang atau wilayah yang boleh kamu lihat."
         meta={
           <>
             {urgentCount > 0 && <ToneBadge tone="warn">{urgentCount} perlu SJ</ToneBadge>}
@@ -85,50 +134,50 @@ export default function SCDashboard() {
       </HeroCard>
 
       <div className="mt-6 space-y-6">
-
-        {/* Quick actions */}
         <div className="grid gap-3 sm:grid-cols-2">
           {canCreateOrder && (
             <Link
               to="/sc/orders/new"
-              className="flex items-center gap-3 rounded-[22px] bg-primary-600 px-5 py-4 text-white hover:bg-primary-700 transition-colors"
+              className="flex items-center gap-3 rounded-[22px] bg-primary-600 px-5 py-4 text-white transition-colors hover:bg-primary-700"
             >
-              <span className="text-2xl">📂</span>
+              <span className="text-2xl">PO</span>
               <div>
                 <div className="text-sm font-semibold">Buat Order Baru</div>
-                <div className="text-xs text-primary-200">Upload Excel / CSV</div>
+                <div className="text-xs text-primary-200">Upload Excel atau CSV</div>
               </div>
             </Link>
           )}
+
           <Link
             to="/sc/sj"
-            className="flex items-center gap-3 rounded-[22px] bg-slate-100 px-5 py-4 hover:bg-slate-200 transition-colors"
+            className="flex items-center gap-3 rounded-[22px] bg-slate-100 px-5 py-4 transition-colors hover:bg-slate-200"
           >
-            <span className="text-2xl">📄</span>
+            <span className="text-2xl">SJ</span>
             <div>
               <div className="text-sm font-semibold text-slate-900">Surat Jalan</div>
-              <div className="text-xs text-slate-400">Lihat & kelola semua SJ</div>
+              <div className="text-xs text-slate-400">Lihat pengiriman dan status penerimaan barang.</div>
             </div>
           </Link>
         </div>
 
-        {/* Orders needing SJ */}
-        {byStatus.sj_ready > 0 && (
+        {canIssueSJ && urgentCount > 0 && (
           <SectionPanel
             eyebrow="Action Required"
             title="Perlu Diterbitkan SJ"
-            description="Order berikut sudah selesai konfirmasi Distribution dan siap diterbitkan Surat Jalan."
-            actions={<ToneBadge tone="warn">{byStatus.sj_ready} order</ToneBadge>}
+            description="Order berikut sudah selesai distribution dan siap diterbitkan Surat Jalan."
+            actions={<ToneBadge tone="warn">{urgentCount} order</ToneBadge>}
           >
             <div className="space-y-2">
-              {orders.filter(o => o.status === 'sj_ready').map(o => (
-                <div key={o.id} className="flex items-center gap-3 rounded-[22px] bg-amber-50 border border-amber-100 px-4 py-4">
-                  <div className="flex-1">
-                    <div className="text-sm font-semibold text-slate-900">{o.order_number}</div>
-                    <div className="text-xs text-slate-400">{o.branch?.name} · {o.tanggal_po}</div>
+              {orders.filter((order) => order.status === 'sj_ready').map((order) => (
+                <div key={order.id} className="flex items-center gap-3 rounded-[22px] border border-amber-100 bg-amber-50 px-4 py-4">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-semibold text-slate-900">{order.order_number}</div>
+                    <div className="mt-1 text-xs text-slate-500">
+                      {order.branch?.name} / {order.tanggal_po}
+                    </div>
                   </div>
                   <Link
-                    to={`/sc/sj?order=${o.id}`}
+                    to={`/sc/sj?order=${order.id}`}
                     className="rounded-xl bg-primary-600 px-3 py-2 text-xs font-semibold text-white hover:bg-primary-700"
                   >
                     Terbitkan SJ
@@ -139,11 +188,10 @@ export default function SCDashboard() {
           </SectionPanel>
         )}
 
-        {/* All active orders */}
         <SectionPanel
           eyebrow="Order Aktif"
           title="Semua Order Berjalan"
-          description="Klik order untuk melihat detail lengkap termasuk konfirmasi tiap tahap."
+          description="Klik order untuk melihat detail barang, hasil konfirmasi tiap tahap, dan status surat jalannya."
           actions={<ToneBadge tone="info">{activeCount} order</ToneBadge>}
         >
           {loading ? (
@@ -153,30 +201,31 @@ export default function SCDashboard() {
           ) : orders.length === 0 ? (
             <EmptyPanel
               title="Tidak ada order aktif"
-              description="Semua order sudah selesai atau belum ada order baru."
+              description="Semua order sudah selesai atau belum ada order baru untuk scope ini."
             />
           ) : (
             <div className="space-y-2">
-              {orders.map(o => (
+              {orders.map((order) => (
                 <Link
-                  key={o.id}
-                  to={`/sc/orders/${o.id}`}
-                  className="flex items-center gap-3 rounded-[22px] bg-slate-50/85 hover:bg-primary-50 px-4 py-4 transition-colors"
+                  key={order.id}
+                  to={`/sc/orders/${order.id}`}
+                  className="flex items-center gap-3 rounded-[22px] bg-slate-50/85 px-4 py-4 transition-colors hover:bg-primary-50"
                 >
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-semibold text-slate-900">{o.order_number}</div>
-                    <div className="text-xs text-slate-400 truncate">{o.branch?.name} · {o.tanggal_po}</div>
-                    {o.catatan && <div className="text-xs text-slate-400 truncate">{o.catatan}</div>}
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-semibold text-slate-900">{order.order_number}</div>
+                    <div className="mt-1 truncate text-xs text-slate-500">
+                      {order.branch?.name} / {order.branch?.district || '-'} / {order.tanggal_po}
+                    </div>
+                    {order.catatan && <div className="mt-1 truncate text-xs text-slate-400">{order.catatan}</div>}
                   </div>
-                  <ToneBadge tone={STATUS_TONE[o.status] ?? 'slate'}>
-                    {STATUS_LABEL[o.status] ?? o.status}
+                  <ToneBadge tone={STATUS_TONE[order.status] || 'slate'}>
+                    {STATUS_LABEL[order.status] || order.status}
                   </ToneBadge>
                 </Link>
               ))}
             </div>
           )}
         </SectionPanel>
-
       </div>
     </SubpageShell>
   )

@@ -43,7 +43,7 @@ export function StaffBottomNav() {
       <NavItem to="/staff/ceklis" icon="checklist" label="Ceklis" active={pathname.startsWith('/staff/ceklis')} />
       <NavItem to="/staff/laporan" icon="chart" label="Laporan" active={pathname.startsWith('/staff/laporan')} />
       <NavItem to="/staff/opex" icon="opex" label="Opex" active={pathname.startsWith('/staff/opex')} />
-      <NavItem to="/sc/sj" icon="finance" label="Pengiriman" active={pathname.startsWith('/sc/sj')} />
+      <NavItem to="/sc/sj" icon="finance" label="Pengiriman" active={pathname.startsWith('/sc')} />
     </Dock>
   )
 }
@@ -56,6 +56,8 @@ export function DMBottomNav() {
       <NavItem to="/dm" icon="home" label="Dashboard" active={pathname === '/dm'} />
       <NavItem to="/dm/visit" icon="map" label="Visit" active={pathname.startsWith('/dm/visit')} />
       <NavItem to="/dm/approval" icon="approval" label="Approval" active={pathname.startsWith('/dm/approval')} />
+      <NavItem to="/kpi" icon="chart" label="KPI" active={pathname.startsWith('/kpi')} />
+      <NavItem to="/sc" icon="checklist" label="Supply" active={pathname.startsWith('/sc')} />
     </Dock>
   )
 }
