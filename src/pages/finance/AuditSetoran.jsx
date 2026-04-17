@@ -31,8 +31,6 @@ const PERIODS = [
 const STATUS_FILTERS = [
   { key: 'all', label: 'Semua' },
   { key: 'selisih', label: 'Ada Selisih' },
-  { key: 'approved', label: 'Approved' },
-  { key: 'rejected', label: 'Rejected' },
 ]
 
 export default function AuditSetoran() {
@@ -77,7 +75,7 @@ export default function AuditSetoran() {
       .from('daily_deposits')
       .select('*, branch:branches(id,name,store_id,district,area)')
       .eq('finance_status', tab)
-      .in('status', ['approved', 'rejected', 'submitted'])
+      .eq('status', 'approved')
       .gte('tanggal', range.start)
       .lte('tanggal', range.end)
       .order('tanggal', { ascending: false })
@@ -130,8 +128,6 @@ export default function AuditSetoran() {
   const filtered = useMemo(() => {
     return items.filter((item) => {
       if (filter === 'selisih' && Number(item.selisih) === 0) return false
-      if (filter === 'approved' && item.status !== 'approved') return false
-      if (filter === 'rejected' && item.status !== 'rejected') return false
       if (areaFilter !== 'all' && item.branch?.area !== areaFilter) return false
       if (districtFilter !== 'all' && item.branch?.district !== districtFilter) return false
       if (branchFilter !== 'all' && item.branch_id !== branchFilter) return false
@@ -384,8 +380,8 @@ function FinanceCard({ item, expanded, onToggle, onAudit, onFlag, notes, onNotes
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-3">
-          <ToneBadge tone={item.status === 'approved' ? 'ok' : item.status === 'rejected' ? 'danger' : 'warn'}>
-            {item.status === 'approved' ? 'DM Approved' : item.status === 'rejected' ? 'DM Rejected' : 'Pending DM'}
+          <ToneBadge tone={Number(item.selisih || 0) !== 0 ? 'danger' : 'ok'}>
+            {Number(item.selisih || 0) !== 0 ? 'Ada Selisih' : 'Sesuai'}
           </ToneBadge>
           <AppIcon name={expanded ? 'chevronDown' : 'chevronRight'} size={18} className="text-slate-400" />
         </div>

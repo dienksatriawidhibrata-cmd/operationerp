@@ -21,6 +21,17 @@ const TABS = [
   { key: 'rejected', label: 'Rejected' },
 ]
 
+// Returns districts in AM's areas that have no active DM assigned
+async function fetchUncoveredDistricts(profile) {
+  const [{ data: dms }, { data: branches }] = await Promise.all([
+    supabase.from('profiles').select('managed_districts').eq('role', 'district_manager').eq('is_active', true),
+    supabase.from('branches').select('district').in('area', profile.managed_areas || []).eq('is_active', true),
+  ])
+  const covered = new Set((dms || []).flatMap((dm) => dm.managed_districts || []))
+  const all = [...new Set((branches || []).map((b) => b.district).filter(Boolean))]
+  return all.filter((d) => !covered.has(d))
+}
+
 export default function ApprovalSetoran() {
   const { profile } = useAuth()
   const [tab, setTab] = useState('submitted')
@@ -46,7 +57,13 @@ export default function ApprovalSetoran() {
     if (profile?.role === 'district_manager') {
       query = query.in('branch.district', profile.managed_districts || [])
     } else if (profile?.role === 'area_manager') {
-      query = query.in('branch.area', profile.managed_areas || [])
+      const uncovered = await fetchUncoveredDistricts(profile)
+      if (uncovered.length === 0) {
+        setItems([])
+        setLoading(false)
+        return
+      }
+      query = query.in('branch.district', uncovered)
     }
 
     const { data, error: fetchErr } = await query
@@ -134,7 +151,7 @@ export default function ApprovalSetoran() {
         profile?.role === 'district_manager'
           ? `District ${profile?.managed_districts?.join(', ') || '-'}`
           : profile?.role === 'area_manager'
-            ? `Area ${profile?.managed_areas?.join(', ') || '-'}`
+            ? `Area ${profile?.managed_areas?.join(', ') || '-'} · District tanpa DM`
             : 'Monitoring setoran harian'
       }
       eyebrow="Approval Flow"
