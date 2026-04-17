@@ -37,8 +37,8 @@ function doPost(e) {
     let sharingError = null;
 
     try {
-      // Set sharing: siapapun dengan link bisa lihat (untuk embed di app)
-      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      // Set sharing: fully public agar bisa di-embed di app tanpa butuh sign-in Google
+      file.setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
       shared = true;
     } catch (shareErr) {
       sharingError = shareErr.message;
@@ -47,7 +47,7 @@ function doPost(e) {
     return jsonResponse({
       success: true,
       fileId:  fileId,
-      url:     `https://drive.google.com/uc?id=${fileId}&export=view`,
+      url:     `https://lh3.googleusercontent.com/d/${fileId}=w1920`,
       viewUrl: `https://drive.google.com/file/d/${fileId}/view`,
       previewUrl: getPreviewUrl(fileId),
       shared: shared,
@@ -108,7 +108,7 @@ function generateFileName(original) {
 }
 
 function getDriveViewUrl(fileId) {
-  return `https://drive.google.com/uc?id=${fileId}&export=view`;
+  return `https://lh3.googleusercontent.com/d/${fileId}=w1920`;
 }
 
 function getPreviewUrl(fileId) {
