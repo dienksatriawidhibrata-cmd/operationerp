@@ -27,36 +27,38 @@ function getRows(sheetName) {
 }
 
 // ─── 1. Monthly scorecard sheets (Jan / Feb / Mar) ────────────────────────────
+// Actual layout: col0=Nama Outlet, col1=DM, col2=Store short, cols3-11=scores, col12=Total
+//                col13=empty, col14=Orang (DM ranking), col15=Score (DM ranking)
 
 function parseMonthlySheet(month) {
   const rows = getRows(month)
   if (!rows.length) return null
 
-  // Row 0 header: ['', 'Store', item1, item2, ..., item9, 'Total', '', 'Orang', 'Score']
   const headerRow = rows[0]
-  const itemKeys  = headerRow.slice(2, 11).map(str)
+  // Item keys are in cols 3–11 (9 KPI items), col 12 = Total
+  const itemKeys  = headerRow.slice(3, 12).map(str).filter(Boolean)
 
   const stores    = []
   const dmRanking = []
 
   for (let i = 1; i < rows.length; i++) {
     const row   = rows[i]
-    const store = str(row[1])
+    const store = str(row[2])
     if (!store || store === 'Store') continue
 
     stores.push({
-      dm:     str(row[0]),
+      dm:     str(row[1]),
       store,
       scores: itemKeys.map((_, j) => {
-        const v = row[2 + j]
+        const v = row[3 + j]
         return v !== '' ? Number(v) : null
       }),
-      total: num(row[11]) ?? 0,
+      total: num(row[12]) ?? 0,
     })
 
-    // DM ranking lives in cols 13–14 (not every row has it)
-    if (str(row[13]) && row[14] !== '') {
-      dmRanking.push({ name: str(row[13]), score: num(row[14]) ?? 0 })
+    // DM ranking lives in cols 14–15 (not every row has it)
+    if (str(row[14]) && row[15] !== '') {
+      dmRanking.push({ name: str(row[14]), score: num(row[15]) ?? 0 })
     }
   }
 
@@ -210,10 +212,13 @@ function parseHPP() {
   const result = {}
   // Row 1 header: FILTER, Gross Sales, HPP, %HPP, Gross Sales, HPP, Gross Sales, HPP...
   // Jan = cols 1,2 (+ %HPP at col 3), Feb = cols 4,5, Mar = cols 6,7
+  // Row 0: STORE, JAN(empty,empty), FEB(empty,empty), MAR(empty,empty)...
+  // Row 1: FILTER, Gross Sales, HPP, %HPP, Gross Sales, HPP, %HPP, Gross Sales, HPP, %HPP
+  // Jan=cols1,2  Feb=cols4,5  Mar=cols7,8
   const colMap = [
     { month: 'Jan', gross: 1, hpp: 2 },
     { month: 'Feb', gross: 4, hpp: 5 },
-    { month: 'Mar', gross: 6, hpp: 7 },
+    { month: 'Mar', gross: 7, hpp: 8 },
   ]
   for (let i = 2; i < rows.length; i++) {
     const row   = rows[i]

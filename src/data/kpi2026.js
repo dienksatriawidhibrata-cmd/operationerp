@@ -1,9 +1,9 @@
 // AUTO-GENERATED — do not edit manually.
 // Regenerate by running: node scripts/convert-kpi.cjs
-// Last updated: 2026-04-16
+// Last updated: 2026-04-17
 
 export const KPI_2026 = {
-  "lastUpdated": "2026-04-16",
+  "lastUpdated": "2026-04-17",
   "availableMonths": [
     "Jan",
     "Feb",
@@ -1082,6 +1082,22 @@ export const KPI_2026 = {
           "total": 0.97
         },
         {
+          "dm": "Nadine",
+          "store": "Lenteng Agung",
+          "scores": [
+            5,
+            5,
+            3,
+            5,
+            5,
+            5,
+            4,
+            5,
+            5
+          ],
+          "total": 0.95
+        },
+        {
           "dm": "Risti",
           "store": "Ujung Berung",
           "scores": [
@@ -1125,22 +1141,6 @@ export const KPI_2026 = {
             5,
             4,
             5,
-            5
-          ],
-          "total": 0.91
-        },
-        {
-          "dm": "Nadine",
-          "store": "Lenteng Agung",
-          "scores": [
-            5,
-            5,
-            3,
-            5,
-            5,
-            5,
-            4,
-            1,
             5
           ],
           "total": 0.91
@@ -1194,6 +1194,22 @@ export const KPI_2026 = {
           "total": 0.87
         },
         {
+          "dm": "Bagas",
+          "store": "Pengumben",
+          "scores": [
+            5,
+            5,
+            3,
+            5,
+            5,
+            5,
+            1,
+            5,
+            5
+          ],
+          "total": 0.86
+        },
+        {
           "dm": "Nadine",
           "store": "Pekayon",
           "scores": [
@@ -1226,22 +1242,6 @@ export const KPI_2026 = {
           "total": 0.85
         },
         {
-          "dm": "Risti",
-          "store": "Buah Batu",
-          "scores": [
-            5,
-            5,
-            1,
-            5,
-            3,
-            5,
-            2,
-            5,
-            4
-          ],
-          "total": 0.83
-        },
-        {
           "dm": "Sohib",
           "store": "Melong",
           "scores": [
@@ -1254,6 +1254,22 @@ export const KPI_2026 = {
             4,
             5,
             5
+          ],
+          "total": 0.83
+        },
+        {
+          "dm": "Risti",
+          "store": "Buah Batu",
+          "scores": [
+            5,
+            5,
+            1,
+            5,
+            3,
+            5,
+            2,
+            5,
+            4
           ],
           "total": 0.83
         },
@@ -1275,22 +1291,6 @@ export const KPI_2026 = {
         },
         {
           "dm": "Bagas",
-          "store": "Pengumben",
-          "scores": [
-            5,
-            5,
-            3,
-            5,
-            5,
-            5,
-            1,
-            1,
-            5
-          ],
-          "total": 0.82
-        },
-        {
-          "dm": "Bagas",
           "store": "Cawang",
           "scores": [
             5,
@@ -1302,6 +1302,22 @@ export const KPI_2026 = {
             1,
             5,
             5
+          ],
+          "total": 0.79
+        },
+        {
+          "dm": "Nadine",
+          "store": "Margonda",
+          "scores": [
+            5,
+            5,
+            1,
+            5,
+            5,
+            5,
+            2,
+            5,
+            1
           ],
           "total": 0.79
         },
@@ -1320,22 +1336,6 @@ export const KPI_2026 = {
             5
           ],
           "total": 0.78
-        },
-        {
-          "dm": "Nadine",
-          "store": "Margonda",
-          "scores": [
-            5,
-            5,
-            1,
-            5,
-            5,
-            5,
-            2,
-            1,
-            1
-          ],
-          "total": 0.75
         },
         {
           "dm": "Bagas",
@@ -1434,6 +1434,22 @@ export const KPI_2026 = {
           "total": 0.59
         },
         {
+          "dm": "Bagas",
+          "store": "Kemang Utara",
+          "scores": [
+            1,
+            5,
+            1,
+            2,
+            3,
+            5,
+            2,
+            5,
+            5
+          ],
+          "total": 0.5
+        },
+        {
           "dm": "Ismail",
           "store": "Margorejo",
           "scores": [
@@ -1464,22 +1480,6 @@ export const KPI_2026 = {
             5
           ],
           "total": 0.47
-        },
-        {
-          "dm": "Bagas",
-          "store": "Kemang Utara",
-          "scores": [
-            1,
-            5,
-            1,
-            2,
-            3,
-            5,
-            2,
-            1,
-            5
-          ],
-          "total": 0.46
         },
         {
           "dm": "Ryan",
@@ -1540,16 +1540,16 @@ export const KPI_2026 = {
             1,
             4,
             1,
-            1,
+            5,
             1
           ],
-          "total": 0.31
+          "total": 0.35
         }
       ],
       "dmRanking": [
         {
           "name": "Nadine",
-          "score": 0.882
+          "score": 0.898
         },
         {
           "name": "Risti",
@@ -1561,7 +1561,7 @@ export const KPI_2026 = {
         },
         {
           "name": "Bagas",
-          "score": 0.67875
+          "score": 0.69375
         },
         {
           "name": "Ryan",
@@ -2584,12 +2584,12 @@ export const KPI_2026 = {
     "Kayu Putih": {
       "Jan": 5,
       "Feb": 5,
-      "Mar": 0
+      "Mar": 5
     },
     "Kemang Utara": {
       "Jan": 5,
       "Feb": 5,
-      "Mar": 0
+      "Mar": 5
     },
     "Kota Wisata": {
       "Jan": 5,
@@ -2604,7 +2604,7 @@ export const KPI_2026 = {
     "Margonda": {
       "Jan": 5,
       "Feb": 5,
-      "Mar": 0
+      "Mar": 5
     },
     "Margorejo": {
       "Jan": 5,
@@ -2619,7 +2619,7 @@ export const KPI_2026 = {
     "Pengumben": {
       "Jan": 5,
       "Feb": 5,
-      "Mar": 0
+      "Mar": 5
     },
     "Karawaci": {
       "Jan": 4.95,
@@ -2634,7 +2634,7 @@ export const KPI_2026 = {
     "Lenteng Agung": {
       "Jan": 4.9,
       "Feb": 5,
-      "Mar": 0
+      "Mar": 5
     },
     "Setu Cipayung": {
       "Jan": 4.26,
@@ -5373,227 +5373,6 @@ export const KPI_2026 = {
     }
   },
   "hpp": {
-    "Margorejo": {
-      "Jan": {
-        "gross": 72955697,
-        "hpp": 36656056,
-        "rate": 0.5024
-      },
-      "Feb": {
-        "gross": 62515471,
-        "hpp": 38954405,
-        "rate": 0.6231
-      },
-      "Mar": {
-        "gross": 71579739,
-        "hpp": 35962908,
-        "rate": 0.5024
-      }
-    },
-    "Pamulang": {
-      "Jan": {
-        "gross": 177250971,
-        "hpp": 88166322,
-        "rate": 0.4974
-      },
-      "Feb": {
-        "gross": 136834830,
-        "hpp": 74104456,
-        "rate": 0.5416
-      },
-      "Mar": {
-        "gross": 253544544,
-        "hpp": 107878170,
-        "rate": 0.4255
-      }
-    },
-    "Ciumbuleuit": {
-      "Jan": {
-        "gross": 242624723,
-        "hpp": 118174990,
-        "rate": 0.4871
-      },
-      "Feb": {
-        "gross": 196565708,
-        "hpp": 100180733,
-        "rate": 0.5097
-      },
-      "Mar": {
-        "gross": 276302354,
-        "hpp": 130255734,
-        "rate": 0.4714
-      }
-    },
-    "Lenteng Agung": {
-      "Jan": {
-        "gross": 226598964,
-        "hpp": 110291299,
-        "rate": 0.4867
-      },
-      "Feb": {
-        "gross": 204873145,
-        "hpp": 91740625,
-        "rate": 0.4478
-      },
-      "Mar": {
-        "gross": 277178187,
-        "hpp": 113281069,
-        "rate": 0.4087
-      }
-    },
-    "Pengumben": {
-      "Jan": {
-        "gross": 211490006,
-        "hpp": 101706155,
-        "rate": 0.4809
-      },
-      "Feb": {
-        "gross": 184417138,
-        "hpp": 89193908,
-        "rate": 0.4837
-      },
-      "Mar": {
-        "gross": 288517805,
-        "hpp": 116031483,
-        "rate": 0.4022
-      }
-    },
-    "Ciputat Juanda": {
-      "Jan": {
-        "gross": 145741256,
-        "hpp": 69920652,
-        "rate": 0.4798
-      },
-      "Feb": {
-        "gross": 133943230,
-        "hpp": 56597407,
-        "rate": 0.4225
-      },
-      "Mar": {
-        "gross": 143766637,
-        "hpp": 60282446,
-        "rate": 0.4193
-      }
-    },
-    "Kayu Putih": {
-      "Jan": {
-        "gross": 146155608,
-        "hpp": 69957761,
-        "rate": 0.4787
-      },
-      "Feb": {
-        "gross": 113545202,
-        "hpp": 60580833,
-        "rate": 0.5335
-      },
-      "Mar": {
-        "gross": 142032305,
-        "hpp": 71087315,
-        "rate": 0.5005
-      }
-    },
-    "Lebak Bulus": {
-      "Jan": {
-        "gross": 140197587,
-        "hpp": 66583598,
-        "rate": 0.4749
-      },
-      "Feb": {
-        "gross": 115998752,
-        "hpp": 51264765,
-        "rate": 0.4419
-      },
-      "Mar": {
-        "gross": 160326262,
-        "hpp": 64128323,
-        "rate": 0.4
-      }
-    },
-    "Jatinangor": {
-      "Jan": {
-        "gross": 163085837,
-        "hpp": 77284891,
-        "rate": 0.4739
-      },
-      "Feb": {
-        "gross": 167022088,
-        "hpp": 74280552,
-        "rate": 0.4447
-      },
-      "Mar": {
-        "gross": 308111195,
-        "hpp": 119063899,
-        "rate": 0.3864
-      }
-    },
-    "Ciledug": {
-      "Jan": {
-        "gross": 331089547,
-        "hpp": 156619357,
-        "rate": 0.473
-      },
-      "Feb": {
-        "gross": 263796689,
-        "hpp": 126697071,
-        "rate": 0.4803
-      },
-      "Mar": {
-        "gross": 382818881,
-        "hpp": 177587509,
-        "rate": 0.4639
-      }
-    },
-    "Cilandak Barat": {
-      "Jan": {
-        "gross": 87433146,
-        "hpp": 41318613,
-        "rate": 0.4726
-      },
-      "Feb": {
-        "gross": 70193821,
-        "hpp": 36226153,
-        "rate": 0.5161
-      },
-      "Mar": {
-        "gross": 93177038,
-        "hpp": 37616650,
-        "rate": 0.4037
-      }
-    },
-    "Kalimalang": {
-      "Jan": {
-        "gross": 427922298,
-        "hpp": 201377149,
-        "rate": 0.4706
-      },
-      "Feb": {
-        "gross": 338384468,
-        "hpp": 159841955,
-        "rate": 0.4724
-      },
-      "Mar": {
-        "gross": 486165153,
-        "hpp": 201535654,
-        "rate": 0.4145
-      }
-    },
-    "Kranggan": {
-      "Jan": {
-        "gross": 333725473,
-        "hpp": 156221807,
-        "rate": 0.4681
-      },
-      "Feb": {
-        "gross": 296158878,
-        "hpp": 135668110,
-        "rate": 0.4581
-      },
-      "Mar": {
-        "gross": 398582346,
-        "hpp": 167086827,
-        "rate": 0.4192
-      }
-    },
     "Bintaro": {
       "Jan": {
         "gross": 117863358,
@@ -5609,74 +5388,6 @@ export const KPI_2026 = {
         "gross": 115159417,
         "hpp": 57131277,
         "rate": 0.4961
-      }
-    },
-    "Kemang Utara": {
-      "Jan": {
-        "gross": 335442145,
-        "hpp": 156754746,
-        "rate": 0.4673
-      },
-      "Feb": {
-        "gross": 287611930,
-        "hpp": 134974890,
-        "rate": 0.4693
-      },
-      "Mar": {
-        "gross": 384722919,
-        "hpp": 159522102,
-        "rate": 0.4146
-      }
-    },
-    "Cawang": {
-      "Jan": {
-        "gross": 216452296,
-        "hpp": 100966290,
-        "rate": 0.4665
-      },
-      "Feb": {
-        "gross": 168800802,
-        "hpp": 78749513,
-        "rate": 0.4665
-      },
-      "Mar": {
-        "gross": 291238715,
-        "hpp": 113327367,
-        "rate": 0.3891
-      }
-    },
-    "Ciputat Jombang": {
-      "Jan": {
-        "gross": 194033495,
-        "hpp": 90313794,
-        "rate": 0.4655
-      },
-      "Feb": {
-        "gross": 156509865,
-        "hpp": 74298274,
-        "rate": 0.4747
-      },
-      "Mar": {
-        "gross": 260949735,
-        "hpp": 104713380,
-        "rate": 0.4013
-      }
-    },
-    "Cimahi": {
-      "Jan": {
-        "gross": 344612180,
-        "hpp": 159821336,
-        "rate": 0.4638
-      },
-      "Feb": {
-        "gross": 302667043,
-        "hpp": 141536904,
-        "rate": 0.4676
-      },
-      "Mar": {
-        "gross": 423597573,
-        "hpp": 186858814,
-        "rate": 0.4411
       }
     },
     "Buah Batu": {
@@ -5696,21 +5407,242 @@ export const KPI_2026 = {
         "rate": 0.41
       }
     },
-    "Margonda": {
+    "Cawang": {
       "Jan": {
-        "gross": 251714439,
-        "hpp": 116613748,
-        "rate": 0.4633
+        "gross": 216452296,
+        "hpp": 100966290,
+        "rate": 0.4665
       },
       "Feb": {
-        "gross": 233757598,
-        "hpp": 108051532,
-        "rate": 0.4622
+        "gross": 168800802,
+        "hpp": 78749513,
+        "rate": 0.4665
       },
       "Mar": {
-        "gross": 335577488,
-        "hpp": 142339122,
-        "rate": 0.4242
+        "gross": 291238715,
+        "hpp": 113327367,
+        "rate": 0.3891
+      }
+    },
+    "Cilandak Barat": {
+      "Jan": {
+        "gross": 87433146,
+        "hpp": 41318613,
+        "rate": 0.4726
+      },
+      "Feb": {
+        "gross": 70193821,
+        "hpp": 36226153,
+        "rate": 0.5161
+      },
+      "Mar": {
+        "gross": 93177038,
+        "hpp": 37616650,
+        "rate": 0.4037
+      }
+    },
+    "Ciledug": {
+      "Jan": {
+        "gross": 331089547,
+        "hpp": 156619357,
+        "rate": 0.473
+      },
+      "Feb": {
+        "gross": 263796689,
+        "hpp": 126697071,
+        "rate": 0.4803
+      },
+      "Mar": {
+        "gross": 382818881,
+        "hpp": 177587509,
+        "rate": 0.4639
+      }
+    },
+    "Cimahi": {
+      "Jan": {
+        "gross": 344612180,
+        "hpp": 159821336,
+        "rate": 0.4638
+      },
+      "Feb": {
+        "gross": 302667043,
+        "hpp": 141536904,
+        "rate": 0.4676
+      },
+      "Mar": {
+        "gross": 423597573,
+        "hpp": 186858814,
+        "rate": 0.4411
+      }
+    },
+    "Ciputat Jombang": {
+      "Jan": {
+        "gross": 194033495,
+        "hpp": 90313794,
+        "rate": 0.4655
+      },
+      "Feb": {
+        "gross": 156509865,
+        "hpp": 74298274,
+        "rate": 0.4747
+      },
+      "Mar": {
+        "gross": 260949735,
+        "hpp": 104713380,
+        "rate": 0.4013
+      }
+    },
+    "Ciputat Juanda": {
+      "Jan": {
+        "gross": 145741256,
+        "hpp": 69920652,
+        "rate": 0.4798
+      },
+      "Feb": {
+        "gross": 133943230,
+        "hpp": 56597407,
+        "rate": 0.4225
+      },
+      "Mar": {
+        "gross": 143766637,
+        "hpp": 60282446,
+        "rate": 0.4193
+      }
+    },
+    "Citraland": {
+      "Jan": {
+        "gross": 196894389,
+        "hpp": 87873248,
+        "rate": 0.4463
+      },
+      "Feb": {
+        "gross": 160818127,
+        "hpp": 80123741,
+        "rate": 0.4982
+      },
+      "Mar": {
+        "gross": 198429092,
+        "hpp": 89311820,
+        "rate": 0.4501
+      }
+    },
+    "Ciumbuleuit": {
+      "Jan": {
+        "gross": 242624723,
+        "hpp": 118174990,
+        "rate": 0.4871
+      },
+      "Feb": {
+        "gross": 196565708,
+        "hpp": 100180733,
+        "rate": 0.5097
+      },
+      "Mar": {
+        "gross": 276302354,
+        "hpp": 130255734,
+        "rate": 0.4714
+      }
+    },
+    "Jatinangor": {
+      "Jan": {
+        "gross": 163085837,
+        "hpp": 77284891,
+        "rate": 0.4739
+      },
+      "Feb": {
+        "gross": 167022088,
+        "hpp": 74280552,
+        "rate": 0.4447
+      },
+      "Mar": {
+        "gross": 308111195,
+        "hpp": 119063899,
+        "rate": 0.3864
+      }
+    },
+    "Kalimalang": {
+      "Jan": {
+        "gross": 427922298,
+        "hpp": 201377149,
+        "rate": 0.4706
+      },
+      "Feb": {
+        "gross": 338384468,
+        "hpp": 159841955,
+        "rate": 0.4724
+      },
+      "Mar": {
+        "gross": 486165153,
+        "hpp": 201535654,
+        "rate": 0.4145
+      }
+    },
+    "Karawaci": {
+      "Jan": {
+        "gross": 163327660,
+        "hpp": 74858734,
+        "rate": 0.4583
+      },
+      "Feb": {
+        "gross": 131327525,
+        "hpp": 64195615,
+        "rate": 0.4888
+      },
+      "Mar": {
+        "gross": 178106066,
+        "hpp": 80009616,
+        "rate": 0.4492
+      }
+    },
+    "Kayu Putih": {
+      "Jan": {
+        "gross": 146155608,
+        "hpp": 69957761,
+        "rate": 0.4787
+      },
+      "Feb": {
+        "gross": 113545202,
+        "hpp": 60580833,
+        "rate": 0.5335
+      },
+      "Mar": {
+        "gross": 142032305,
+        "hpp": 71087315,
+        "rate": 0.5005
+      }
+    },
+    "Kemang Utara": {
+      "Jan": {
+        "gross": 335442145,
+        "hpp": 156754746,
+        "rate": 0.4673
+      },
+      "Feb": {
+        "gross": 287611930,
+        "hpp": 134974890,
+        "rate": 0.4693
+      },
+      "Mar": {
+        "gross": 384722919,
+        "hpp": 159522102,
+        "rate": 0.4146
+      }
+    },
+    "Kiara Artha": {
+      "Jan": {
+        "gross": 208840087,
+        "hpp": 93756063,
+        "rate": 0.4489
+      },
+      "Feb": {
+        "gross": 161556736,
+        "hpp": 77066799,
+        "rate": 0.477
+      },
+      "Mar": {
+        "gross": 300616793,
+        "hpp": 134675114,
+        "rate": 0.448
       }
     },
     "Kota Wisata": {
@@ -5730,6 +5662,142 @@ export const KPI_2026 = {
         "rate": 0.4196
       }
     },
+    "Kranggan": {
+      "Jan": {
+        "gross": 333725473,
+        "hpp": 156221807,
+        "rate": 0.4681
+      },
+      "Feb": {
+        "gross": 296158878,
+        "hpp": 135668110,
+        "rate": 0.4581
+      },
+      "Mar": {
+        "gross": 398582346,
+        "hpp": 167086827,
+        "rate": 0.4192
+      }
+    },
+    "Lebak Bulus": {
+      "Jan": {
+        "gross": 140197587,
+        "hpp": 66583598,
+        "rate": 0.4749
+      },
+      "Feb": {
+        "gross": 115998752,
+        "hpp": 51264765,
+        "rate": 0.4419
+      },
+      "Mar": {
+        "gross": 160326262,
+        "hpp": 64128323,
+        "rate": 0.4
+      }
+    },
+    "Lenteng Agung": {
+      "Jan": {
+        "gross": 226598964,
+        "hpp": 110291299,
+        "rate": 0.4867
+      },
+      "Feb": {
+        "gross": 204873145,
+        "hpp": 91740625,
+        "rate": 0.4478
+      },
+      "Mar": {
+        "gross": 277178187,
+        "hpp": 113281069,
+        "rate": 0.4087
+      }
+    },
+    "Margonda": {
+      "Jan": {
+        "gross": 251714439,
+        "hpp": 116613748,
+        "rate": 0.4633
+      },
+      "Feb": {
+        "gross": 233757598,
+        "hpp": 108051532,
+        "rate": 0.4622
+      },
+      "Mar": {
+        "gross": 335577488,
+        "hpp": 142339122,
+        "rate": 0.4242
+      }
+    },
+    "Margorejo": {
+      "Jan": {
+        "gross": 72955697,
+        "hpp": 36656056,
+        "rate": 0.5024
+      },
+      "Feb": {
+        "gross": 62515471,
+        "hpp": 38954405,
+        "rate": 0.6231
+      },
+      "Mar": {
+        "gross": 71579739,
+        "hpp": 35962908,
+        "rate": 0.5024
+      }
+    },
+    "Melong": {
+      "Jan": {
+        "gross": 157612789,
+        "hpp": 72101113,
+        "rate": 0.4575
+      },
+      "Feb": {
+        "gross": 144162932,
+        "hpp": 66336970,
+        "rate": 0.4602
+      },
+      "Mar": {
+        "gross": 203587542,
+        "hpp": 87070548,
+        "rate": 0.4277
+      }
+    },
+    "Metro": {
+      "Jan": {
+        "gross": 156045631,
+        "hpp": 69694693,
+        "rate": 0.4466
+      },
+      "Feb": {
+        "gross": 131913713,
+        "hpp": 64371607,
+        "rate": 0.488
+      },
+      "Mar": {
+        "gross": 214151765,
+        "hpp": 88702027,
+        "rate": 0.4142
+      }
+    },
+    "Pamulang": {
+      "Jan": {
+        "gross": 177250971,
+        "hpp": 88166322,
+        "rate": 0.4974
+      },
+      "Feb": {
+        "gross": 136834830,
+        "hpp": 74104456,
+        "rate": 0.5416
+      },
+      "Mar": {
+        "gross": 253544544,
+        "hpp": 107878170,
+        "rate": 0.4255
+      }
+    },
     "Pekayon": {
       "Jan": {
         "gross": 231746016,
@@ -5745,6 +5813,40 @@ export const KPI_2026 = {
         "gross": 289887339,
         "hpp": 126718632,
         "rate": 0.4371
+      }
+    },
+    "Pengumben": {
+      "Jan": {
+        "gross": 211490006,
+        "hpp": 101706155,
+        "rate": 0.4809
+      },
+      "Feb": {
+        "gross": 184417138,
+        "hpp": 89193908,
+        "rate": 0.4837
+      },
+      "Mar": {
+        "gross": 288517805,
+        "hpp": 116031483,
+        "rate": 0.4022
+      }
+    },
+    "Peta": {
+      "Jan": {
+        "gross": 316763987,
+        "hpp": 144600494,
+        "rate": 0.4565
+      },
+      "Feb": {
+        "gross": 270969538,
+        "hpp": 128485870,
+        "rate": 0.4742
+      },
+      "Mar": {
+        "gross": 424231322,
+        "hpp": 184904743,
+        "rate": 0.4359
       }
     },
     "Setu Cipayung": {
@@ -5779,108 +5881,6 @@ export const KPI_2026 = {
         "gross": 367609365,
         "hpp": 156670523,
         "rate": 0.4262
-      }
-    },
-    "Karawaci": {
-      "Jan": {
-        "gross": 163327660,
-        "hpp": 74858734,
-        "rate": 0.4583
-      },
-      "Feb": {
-        "gross": 131327525,
-        "hpp": 64195615,
-        "rate": 0.4888
-      },
-      "Mar": {
-        "gross": 178106066,
-        "hpp": 80009616,
-        "rate": 0.4492
-      }
-    },
-    "Melong": {
-      "Jan": {
-        "gross": 157612789,
-        "hpp": 72101113,
-        "rate": 0.4575
-      },
-      "Feb": {
-        "gross": 144162932,
-        "hpp": 66336970,
-        "rate": 0.4602
-      },
-      "Mar": {
-        "gross": 203587542,
-        "hpp": 87070548,
-        "rate": 0.4277
-      }
-    },
-    "Peta": {
-      "Jan": {
-        "gross": 316763987,
-        "hpp": 144600494,
-        "rate": 0.4565
-      },
-      "Feb": {
-        "gross": 270969538,
-        "hpp": 128485870,
-        "rate": 0.4742
-      },
-      "Mar": {
-        "gross": 424231322,
-        "hpp": 184904743,
-        "rate": 0.4359
-      }
-    },
-    "Kiara Artha": {
-      "Jan": {
-        "gross": 208840087,
-        "hpp": 93756063,
-        "rate": 0.4489
-      },
-      "Feb": {
-        "gross": 161556736,
-        "hpp": 77066799,
-        "rate": 0.477
-      },
-      "Mar": {
-        "gross": 300616793,
-        "hpp": 134675114,
-        "rate": 0.448
-      }
-    },
-    "Metro": {
-      "Jan": {
-        "gross": 156045631,
-        "hpp": 69694693,
-        "rate": 0.4466
-      },
-      "Feb": {
-        "gross": 131913713,
-        "hpp": 64371607,
-        "rate": 0.488
-      },
-      "Mar": {
-        "gross": 214151765,
-        "hpp": 88702027,
-        "rate": 0.4142
-      }
-    },
-    "Citraland": {
-      "Jan": {
-        "gross": 196894389,
-        "hpp": 87873248,
-        "rate": 0.4463
-      },
-      "Feb": {
-        "gross": 160818127,
-        "hpp": 80123741,
-        "rate": 0.4982
-      },
-      "Mar": {
-        "gross": 198429092,
-        "hpp": 89311820,
-        "rate": 0.4501
       }
     }
   }
