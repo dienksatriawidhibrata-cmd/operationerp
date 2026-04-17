@@ -4,12 +4,12 @@ import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { OpsBottomNav } from '../../components/BottomNav'
 import {
-  HeroCard, InlineStat, SectionPanel, SubpageShell, ToneBadge, EmptyPanel,
+  AppIcon, HeroCard, InlineStat, SectionPanel, SubpageShell, ToneBadge, EmptyPanel,
 } from '../../components/ui/AppKit'
 import { todayWIB } from '../../lib/utils'
 
 export default function OpsHub() {
-  const { profile } = useAuth()
+  const { profile, signOut } = useAuth()
   const today = todayWIB()
 
   const [stats, setStats] = useState({
@@ -44,6 +44,16 @@ export default function OpsHub() {
       title="Toko"
       subtitle="Ringkasan operasional hari ini"
       eyebrow="Ops Manager"
+      showBack={false}
+      action={
+        <button
+          onClick={signOut}
+          className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500 shadow-[0_18px_45px_-34px_rgba(15,23,42,0.35)] transition-colors hover:border-primary-200 hover:text-primary-700"
+          aria-label="Keluar"
+        >
+          <AppIcon name="logout" size={18} />
+        </button>
+      }
       footer={<OpsBottomNav />}
     >
       <HeroCard
