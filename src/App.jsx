@@ -19,6 +19,7 @@ const BebanOperasional = lazy(() => import('./pages/staff/BebanOperasional'))
 const DMDashboard = lazy(() => import('./pages/dm/Dashboard'))
 const DailyVisit = lazy(() => import('./pages/dm/DailyVisit'))
 const ApprovalSetoran = lazy(() => import('./pages/dm/ApprovalSetoran'))
+const StoreStatus = lazy(() => import('./pages/dm/StoreStatus'))
 const AuditSetoran   = lazy(() => import('./pages/finance/AuditSetoran'))
 const OpexOverview  = lazy(() => import('./pages/OpexOverview'))
 const KPIReport       = lazy(() => import('./pages/kpi/KPIReport'))
@@ -154,6 +155,11 @@ export default function App() {
       <Route path="/dm/approval" element={
         <RequireAuth roles={ALL_MANAGER}>
           <ApprovalSetoran />
+        </RequireAuth>
+      } />
+      <Route path="/dm/stores" element={
+        <RequireAuth roles={ALL_MANAGER}>
+          <StoreStatus />
         </RequireAuth>
       } />
 

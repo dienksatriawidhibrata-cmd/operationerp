@@ -54,10 +54,10 @@ export function DMBottomNav() {
   return (
     <Dock>
       <NavItem to="/dm" icon="home" label="Dashboard" active={pathname === '/dm'} />
+      <NavItem to="/dm/stores" icon="checklist" label="Toko" active={pathname.startsWith('/dm/stores')} />
       <NavItem to="/dm/visit" icon="map" label="Visit" active={pathname.startsWith('/dm/visit')} />
       <NavItem to="/dm/approval" icon="approval" label="Approval" active={pathname.startsWith('/dm/approval')} />
       <NavItem to="/kpi" icon="chart" label="KPI" active={pathname.startsWith('/kpi')} />
-      <NavItem to="/sc" icon="checklist" label="Supply" active={pathname.startsWith('/sc')} />
     </Dock>
   )
 }
@@ -108,17 +108,19 @@ export function FinanceBottomNav() {
 export function OpsBottomNav() {
   const { pathname } = useLocation()
 
-  const tokoActive = (pathname === '/ops' || pathname.startsWith('/dm/approval') || pathname.startsWith('/staff/ceklis') || pathname.startsWith('/dm')) && !pathname.startsWith('/ops/visits')
+  const tokoActive = (pathname === '/ops' || pathname.startsWith('/dm/approval')) && !pathname.startsWith('/ops/visits')
+  const statusActive = pathname.startsWith('/dm/stores')
   const visitActive = pathname.startsWith('/ops/visits')
   const scActive = pathname.startsWith('/sc')
   const perfActive = pathname.startsWith('/kpi') || pathname.startsWith('/opex')
 
   return (
     <Dock>
-      <NavItem to="/ops" icon="home" label="Toko" active={tokoActive} />
+      <NavItem to="/ops" icon="home" label="Hub" active={tokoActive} />
+      <NavItem to="/dm/stores" icon="checklist" label="Status" active={statusActive} />
       <NavItem to="/ops/visits" icon="map" label="Visit" active={visitActive} />
       <NavItem to="/sc" icon="checklist" label="Supply Chain" active={scActive} />
-      <NavItem to="/kpi" icon="chart" label="Performance" active={perfActive} />
+      <NavItem to="/kpi" icon="chart" label="KPI" active={perfActive} />
     </Dock>
   )
 }
