@@ -25,6 +25,7 @@ export default function LaporanHarian() {
   const [catatan, setCatatan] = useState('')
   const [savingLaporan, setSavingLaporan] = useState(false)
   const [doneLaporan, setDoneLaporan] = useState(false)
+  const [isEditingLaporan, setIsEditingLaporan] = useState(false)
 
   const [setoran, setSetoran] = useState(null)
   const [cashPos, setCashPos] = useState('')
@@ -83,6 +84,10 @@ export default function LaporanHarian() {
   const selisih = Number(cashPos || 0) - Number(cashSetor || 0)
 
   const submitLaporan = async () => {
+    if (netSales === '' || netSales === null || netSales === undefined) {
+      setError('Net sales wajib diisi.')
+      return
+    }
     setSavingLaporan(true)
     setError('')
     const payload = {
@@ -103,6 +108,7 @@ export default function LaporanHarian() {
       setError('Gagal: ' + submitErr.message)
     } else {
       setDoneLaporan(true)
+      setIsEditingLaporan(false)
       fetchData()
     }
     setSavingLaporan(false)
@@ -153,7 +159,7 @@ export default function LaporanHarian() {
     setSavingSetoran(false)
   }
 
-  const laporanDone = !!laporan
+  const laporanDone = !!laporan && !isEditingLaporan
   const setoranEditable = !setoran || setoran.status === 'rejected'
   const reportDateLabel = new Date(yesterday).toLocaleDateString('id-ID', {
     day: 'numeric',
@@ -213,11 +219,21 @@ export default function LaporanHarian() {
         <SectionPanel
           eyebrow="Daily Report"
           title="Form Laporan Harian"
-          description="Input performa operasional untuk tanggal H-1."
+          description={`Laporan ini untuk operasional tanggal ${reportDateLabel} (kemarin). Deadline hari ini jam 14.00 WIB.`}
           actions={
-            <ToneBadge tone={laporanDone ? 'ok' : 'warn'}>
-              {laporanDone ? 'Sudah submit' : `Sisa ${sisaWaktuLaporan(yesterday)}`}
-            </ToneBadge>
+            <div className="flex items-center gap-2">
+              {laporan && !isEditingLaporan && (
+                <button
+                  onClick={() => setIsEditingLaporan(true)}
+                  className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                >
+                  Edit
+                </button>
+              )}
+              <ToneBadge tone={laporan ? (isEditingLaporan ? 'warn' : 'ok') : 'warn'}>
+                {laporan ? (isEditingLaporan ? 'Mode edit' : 'Sudah submit') : `Sisa ${sisaWaktuLaporan(yesterday)}`}
+              </ToneBadge>
+            </div>
           }
         >
           <div className="space-y-4">
@@ -277,10 +293,21 @@ export default function LaporanHarian() {
               />
             </div>
 
-            {!laporanDone && (
-              <button onClick={submitLaporan} disabled={savingLaporan} className="btn-primary">
-                {savingLaporan ? 'Menyimpan...' : 'Submit Laporan Harian'}
-              </button>
+            {(!laporan || isEditingLaporan) && (
+              <div className="flex gap-3">
+                {isEditingLaporan && (
+                  <button
+                    type="button"
+                    onClick={() => { setIsEditingLaporan(false); fetchData() }}
+                    className="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-600"
+                  >
+                    Batal
+                  </button>
+                )}
+                <button onClick={submitLaporan} disabled={savingLaporan} className="btn-primary flex-1">
+                  {savingLaporan ? 'Menyimpan...' : isEditingLaporan ? 'Simpan Perubahan' : 'Submit Laporan Harian'}
+                </button>
+              </div>
             )}
           </div>
         </SectionPanel>

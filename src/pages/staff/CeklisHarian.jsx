@@ -30,6 +30,7 @@ export default function CeklisHarian() {
   const [saving, setSaving] = useState(false)
   const [done, setDone] = useState(false)
   const [error, setError] = useState('')
+  const [isEditing, setIsEditing] = useState(false)
 
   const branchId = profile?.branch_id
 
@@ -57,6 +58,7 @@ export default function CeklisHarian() {
   useEffect(() => {
     setDone(false)
     setError('')
+    setIsEditing(false)
   }, [activeShift])
 
   const fetchExisting = async () => {
@@ -96,7 +98,18 @@ export default function CeklisHarian() {
 
   const removeOos = (item) => setOosList((current) => current.filter((entry) => entry !== item))
 
+  const validateForm = () => {
+    const photoItems = items.filter((item) => item.requiresPhoto)
+    const missing = photoItems.filter((item) => !photos[item.key] || photos[item.key].length === 0)
+    return missing.map((item) => item.label)
+  }
+
   const handleSubmit = async () => {
+    const missingPhotos = validateForm()
+    if (missingPhotos.length > 0) {
+      setError(`Foto wajib diisi untuk: ${missingPhotos.join(', ')}`)
+      return
+    }
     setSaving(true)
     setError('')
 
@@ -120,12 +133,13 @@ export default function CeklisHarian() {
       setError('Gagal menyimpan: ' + submitErr.message)
     } else {
       setDone(true)
+      setIsEditing(false)
       await fetchExisting()
     }
     setSaving(false)
   }
 
-  const isReadOnly = !!existing[activeShift]
+  const isReadOnly = !!existing[activeShift] && !isEditing
   const deadline = activeShift === 'pagi' ? '08.00 WIB' : '03.00 WIB'
   const completionCount = items.filter((item) => answers[item.key] !== undefined).length
 
@@ -159,15 +173,28 @@ export default function CeklisHarian() {
       </SectionPanel>
 
       <div className="mt-6 space-y-6">
-        {isReadOnly && !done && (
-          <Alert variant="ok">
-            Ceklis {activeShift} sudah disubmit.
-            {existing[activeShift]?.is_late && ' Tercatat terlambat dari deadline.'}
+        {existing[activeShift] && !isEditing && !done && (
+          <div className="flex items-center justify-between gap-4 rounded-[22px] border border-emerald-200 bg-emerald-50 px-4 py-3.5">
+            <span className="text-sm text-emerald-800">
+              Ceklis {activeShift} sudah disubmit.
+              {existing[activeShift]?.is_late && ' Tercatat terlambat dari deadline.'}
+            </span>
+            <button
+              onClick={() => setIsEditing(true)}
+              className="shrink-0 rounded-xl border border-emerald-300 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
+            >
+              Koreksi
+            </button>
+          </div>
+        )}
+        {isEditing && (
+          <Alert variant="warn">
+            Mode koreksi aktif. Data lama akan ditimpa saat kamu submit ulang.
           </Alert>
         )}
         {done && <Alert variant="ok">Ceklis berhasil disimpan.</Alert>}
         {error && <Alert variant="error">{error}</Alert>}
-        {!isReadOnly && (
+        {!isReadOnly && !isEditing && (
           <Alert variant="info">
             Timestamp otomatis dicatat saat submit. Deadline shift ini: <strong>{deadline}</strong>.
           </Alert>
@@ -321,9 +348,20 @@ export default function CeklisHarian() {
         </SectionPanel>
 
         {!isReadOnly && (
-          <button onClick={handleSubmit} disabled={saving} className="btn-primary">
-            {saving ? 'Menyimpan...' : `Submit Ceklis ${activeShift === 'pagi' ? 'Pagi' : 'Malam'}`}
-          </button>
+          <div className="flex gap-3">
+            {isEditing && (
+              <button
+                type="button"
+                onClick={() => { setIsEditing(false); setError('') }}
+                className="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-600"
+              >
+                Batal
+              </button>
+            )}
+            <button onClick={handleSubmit} disabled={saving} className="btn-primary flex-1">
+              {saving ? 'Menyimpan...' : isEditing ? 'Simpan Koreksi' : `Submit Ceklis ${activeShift === 'pagi' ? 'Pagi' : 'Malam'}`}
+            </button>
+          </div>
         )}
       </div>
     </SubpageShell>
