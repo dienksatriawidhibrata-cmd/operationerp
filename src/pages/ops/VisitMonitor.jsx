@@ -71,6 +71,7 @@ export default function VisitMonitor() {
     ? Math.round(visits.reduce((sum, v) => sum + (v.total_score || 0), 0) / visits.length)
     : 0
 
+  // Grades stored as 'Excellent'/'Good'/'Fair'/'Poor' from visitGrade()
   const gradeCount = visits.reduce((acc, v) => {
     const g = v.grade || '?'
     acc[g] = (acc[g] || 0) + 1
@@ -100,10 +101,10 @@ export default function VisitMonitor() {
         }
       >
         <div className="grid gap-3 sm:grid-cols-4">
-          <InlineStat label="A (≥85)" value={gradeCount['A'] || 0} tone={gradeCount['A'] > 0 ? 'ok' : 'slate'} />
-          <InlineStat label="B (≥70)" value={gradeCount['B'] || 0} tone={gradeCount['B'] > 0 ? 'warn' : 'slate'} />
-          <InlineStat label="C (<70)" value={gradeCount['C'] || 0} tone={gradeCount['C'] > 0 ? 'danger' : 'slate'} />
-          <InlineStat label="Total" value={visits.length} tone="primary" />
+          <InlineStat label="Excellent" value={gradeCount['Excellent'] || 0} tone={(gradeCount['Excellent'] || 0) > 0 ? 'ok' : 'slate'} />
+          <InlineStat label="Good" value={gradeCount['Good'] || 0} tone={(gradeCount['Good'] || 0) > 0 ? 'ok' : 'slate'} />
+          <InlineStat label="Fair" value={gradeCount['Fair'] || 0} tone={(gradeCount['Fair'] || 0) > 0 ? 'warn' : 'slate'} />
+          <InlineStat label="Poor" value={gradeCount['Poor'] || 0} tone={(gradeCount['Poor'] || 0) > 0 ? 'danger' : 'slate'} />
         </div>
       </HeroCard>
 

@@ -37,16 +37,21 @@ export default function BebanOperasional() {
   useEffect(() => {
     if (!branchId) return
     fetchHistory()
-  }, [branchId])
+  }, [branchId, tanggal])
 
   const fetchHistory = async () => {
     const { data } = await supabase
       .from('operational_expenses')
       .select('*')
       .eq('branch_id', branchId)
-      .eq('tanggal', today)
+      .eq('tanggal', tanggal)
       .order('created_at', { ascending: false })
     setHistory(data || [])
+  }
+
+  const handleDelete = async (id) => {
+    await supabase.from('operational_expenses').delete().eq('id', id)
+    fetchHistory()
   }
 
   const filtered = query.length > 0
@@ -160,7 +165,8 @@ export default function BebanOperasional() {
                     key={item.code}
                     type="button"
                     className="w-full border-b border-slate-50 px-4 py-3 text-left last:border-0 hover:bg-primary-50"
-                    onClick={() => {
+                    onPointerDown={(e) => {
+                      e.preventDefault() // prevent blur before selection registers
                       setSelected(item)
                       setQuery(`${item.code} - ${item.name}`)
                       setShowDrop(false)
@@ -242,15 +248,15 @@ export default function BebanOperasional() {
         </SectionPanel>
 
         <SectionPanel
-          eyebrow="Today Ledger"
-          title={`Histori Pengeluaran ${today}`}
-          description="Rekap cepat seluruh pengeluaran yang sudah tercatat hari ini."
+          eyebrow="Ledger"
+          title={`Histori Pengeluaran ${tanggal}`}
+          description="Rekap pengeluaran untuk tanggal yang dipilih. Ganti tanggal di form untuk melihat hari lain."
           actions={<ToneBadge tone={history.length > 0 ? 'info' : 'slate'}>{history.length} item</ToneBadge>}
         >
           {history.length === 0 ? (
             <EmptyPanel
-              title="Belum ada pengeluaran hari ini"
-              description="Begitu ada item yang disimpan, rekap harian akan tampil otomatis di sini."
+              title="Belum ada pengeluaran"
+              description="Belum ada item yang tercatat untuk tanggal ini."
             />
           ) : (
             <div className="space-y-3">
@@ -261,6 +267,14 @@ export default function BebanOperasional() {
                     <div className="mt-1 text-sm text-slate-500">{row.qty} x {fmtRp(row.harga_satuan)}</div>
                   </div>
                   <div className="shrink-0 text-sm font-semibold text-primary-700">{fmtRp(row.total)}</div>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(row.id)}
+                    className="shrink-0 flex h-7 w-7 items-center justify-center rounded-full bg-rose-50 text-rose-400 hover:bg-rose-100 hover:text-rose-600 transition-colors"
+                    title="Hapus entri ini"
+                  >
+                    ×
+                  </button>
                 </div>
               ))}
               <div className="flex items-center justify-between rounded-[22px] border border-primary-100 bg-primary-50 px-4 py-4">

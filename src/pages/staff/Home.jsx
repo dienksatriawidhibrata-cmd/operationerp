@@ -12,6 +12,7 @@ import {
   ToneBadge,
 } from '../../components/ui/AppKit'
 import { fmtRp, todayWIB, yesterdayWIB, sisaWaktuLaporan } from '../../lib/utils'
+import Alert from '../../components/Alert'
 
 export default function StaffHome() {
   const { profile, signOut } = useAuth()
@@ -137,6 +138,12 @@ export default function StaffHome() {
           ))}
         </div>
       </HeroCard>
+
+      {!loading && !profile?.branch_id && (
+        <Alert variant="error" className="mt-6">
+          Akun ini belum dikonfigurasi ke cabang manapun. Hubungi ops manager untuk mengatur akses toko kamu.
+        </Alert>
+      )}
 
       {!loading && status && !status.laporan && (
         <div className="mt-6 rounded-[22px] border border-amber-200 bg-amber-50 px-4 py-3.5 text-sm leading-5.5 text-amber-800 shadow-[0_16px_48px_-36px_rgba(217,119,6,0.55)] sm:rounded-[24px] sm:px-5 sm:py-4 sm:leading-6">
