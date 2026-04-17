@@ -33,16 +33,238 @@ const monthFormatter = new Intl.DateTimeFormat('id-ID', {
   timeZone: 'UTC',
 })
 
+const PERIOD_MODE_OPTIONS = [
+  { key: 'month', label: 'Bulanan' },
+  { key: 'quarter', label: 'Quarter' },
+  { key: 'semester', label: 'Semester' },
+  { key: 'year', label: 'Tahunan' },
+]
+
+const PERIOD_MODE_LABELS = {
+  month: 'bulanan',
+  quarter: 'quarter',
+  semester: 'semester',
+  year: 'tahunan',
+}
+
+function parseMonthValue(value) {
+  if (!value) return null
+  return new Date(`${value}T00:00:00Z`)
+}
+
 function formatMonthLabel(value) {
   if (!value) return '-'
-  const date = new Date(`${value}T00:00:00Z`)
+  const date = parseMonthValue(value)
   return monthFormatter.format(date)
+}
+
+function averageNumbers(values) {
+  const normalized = values
+    .map((value) => {
+      if (value == null || value === '') return null
+      const numeric = Number(value)
+      return Number.isFinite(numeric) ? numeric : null
+    })
+    .filter((value) => value != null)
+
+  if (!normalized.length) return null
+  return normalized.reduce((sum, value) => sum + value, 0) / normalized.length
+}
+
+function sumNumbers(values) {
+  const normalized = values
+    .map((value) => {
+      if (value == null || value === '') return null
+      const numeric = Number(value)
+      return Number.isFinite(numeric) ? numeric : null
+    })
+    .filter((value) => value != null)
+
+  if (!normalized.length) return null
+  return normalized.reduce((sum, value) => sum + value, 0)
+}
+
+function formatScoreValue(value) {
+  if (value == null) return '-'
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) return '-'
+  return Number.isInteger(numeric) ? String(numeric) : numeric.toFixed(1)
+}
+
+function bucketScore(value) {
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) return null
+  return Math.min(5, Math.max(1, Math.round(numeric)))
+}
+
+function getPeriodMeta(bulan, mode) {
+  const date = parseMonthValue(bulan)
+  if (!date) return null
+
+  const year = date.getUTCFullYear()
+  const monthIndex = date.getUTCMonth()
+
+  if (mode === 'month') {
+    return {
+      key: bulan,
+      label: formatMonthLabel(bulan),
+      sortValue: date.getTime(),
+      expectedMonths: 1,
+    }
+  }
+
+  if (mode === 'quarter') {
+    const quarter = Math.floor(monthIndex / 3) + 1
+    return {
+      key: `${year}-Q${quarter}`,
+      label: `Q${quarter} ${year}`,
+      sortValue: Date.UTC(year, (quarter - 1) * 3, 1),
+      expectedMonths: 3,
+    }
+  }
+
+  if (mode === 'semester') {
+    const semester = monthIndex < 6 ? 1 : 2
+    return {
+      key: `${year}-S${semester}`,
+      label: `S${semester} ${year}`,
+      sortValue: Date.UTC(year, semester === 1 ? 0 : 6, 1),
+      expectedMonths: 6,
+    }
+  }
+
+  return {
+    key: `${year}`,
+    label: String(year),
+    sortValue: Date.UTC(year, 0, 1),
+    expectedMonths: 12,
+  }
+}
+
+function buildPeriodOptions(reports, mode) {
+  const grouped = new Map()
+
+  reports.forEach((report) => {
+    const meta = getPeriodMeta(report.bulan, mode)
+    if (!meta) return
+
+    if (!grouped.has(meta.key)) {
+      grouped.set(meta.key, { ...meta, months: new Set() })
+    }
+
+    grouped.get(meta.key).months.add(report.bulan)
+  })
+
+  return [...grouped.values()]
+    .map((option) => {
+      const months = [...option.months].sort((a, b) => parseMonthValue(a) - parseMonthValue(b))
+      const monthCount = months.length
+      const isPartial = monthCount < option.expectedMonths
+
+      return {
+        key: option.key,
+        label: option.label,
+        sortValue: option.sortValue,
+        months,
+        monthCount,
+        expectedMonths: option.expectedMonths,
+        isPartial,
+        coverageLabel:
+          mode === 'month'
+            ? formatMonthLabel(months[0])
+            : isPartial
+              ? `${monthCount}/${option.expectedMonths} bulan`
+              : `${monthCount} bulan`,
+      }
+    })
+    .sort((a, b) => a.sortValue - b.sortValue)
+}
+
+function aggregateTargetActualMetric(entries, strategy = 'sum') {
+  if (!entries.length) return null
+
+  const aggregate = strategy === 'average' ? averageNumbers : sumNumbers
+  const target = aggregate(entries.map((entry) => entry?.target))
+  const actual = aggregate(entries.map((entry) => entry?.actual))
+
+  if (target == null && actual == null) return null
+  return { target, actual }
+}
+
+function aggregateRatioMetric(entries, denominatorKey, numeratorKey, extraKeys = [], precision = 4) {
+  if (!entries.length) return null
+
+  const denominator = sumNumbers(entries.map((entry) => entry?.[denominatorKey]))
+  const numerator = sumNumbers(entries.map((entry) => entry?.[numeratorKey]))
+
+  if (denominator == null && numerator == null) return null
+
+  const aggregated = {
+    [denominatorKey]: denominator || 0,
+    [numeratorKey]: numerator || 0,
+  }
+
+  extraKeys.forEach((key) => {
+    aggregated[key] = sumNumbers(entries.map((entry) => entry?.[key])) || 0
+  })
+
+  aggregated.rate = denominator ? +((numerator || 0) / denominator).toFixed(precision) : 0
+
+  return aggregated
+}
+
+function aggregateMetrics(metricRows) {
+  return {
+    sales: aggregateTargetActualMetric(metricRows.map((metrics) => metrics?.sales).filter(Boolean), 'sum'),
+    avg: aggregateTargetActualMetric(metricRows.map((metrics) => metrics?.avg).filter(Boolean), 'average'),
+    audit: averageNumbers(metricRows.map((metrics) => metrics?.audit)),
+    mysteryShopper: averageNumbers(metricRows.map((metrics) => metrics?.mysteryShopper)),
+    large: aggregateRatioMetric(metricRows.map((metrics) => metrics?.large).filter(Boolean), 'total', 'large', ['small']),
+    oatside: aggregateRatioMetric(metricRows.map((metrics) => metrics?.oatside).filter(Boolean), 'drinks', 'oat'),
+    bundling: aggregateRatioMetric(metricRows.map((metrics) => metrics?.bundling).filter(Boolean), 'total', 'asik'),
+    complain: aggregateRatioMetric(metricRows.map((metrics) => metrics?.complain).filter(Boolean), 'trx', 'count', [], 6),
+    retention: aggregateRatioMetric(metricRows.map((metrics) => metrics?.retention).filter(Boolean), 'total', 'resign'),
+    hpp: aggregateRatioMetric(metricRows.map((metrics) => metrics?.hpp).filter(Boolean), 'gross', 'hpp'),
+  }
+}
+
+function aggregateReportsForPeriod(reports, periodOption) {
+  const grouped = new Map()
+
+  reports.forEach((report) => {
+    if (!grouped.has(report.branch_id)) {
+      grouped.set(report.branch_id, [])
+    }
+    grouped.get(report.branch_id).push(report)
+  })
+
+  return [...grouped.values()].map((branchReports) => {
+    const orderedReports = [...branchReports].sort((a, b) => parseMonthValue(a.bulan) - parseMonthValue(b.bulan))
+    const latestReport = orderedReports[orderedReports.length - 1]
+    const itemKeys = buildItemKeys(orderedReports)
+
+    const updatedValues = orderedReports.map((report) => report.source_updated_at).filter(Boolean).sort()
+
+    return {
+      ...latestReport,
+      total_score: averageNumbers(orderedReports.map((report) => report.total_score)) || 0,
+      item_scores: Object.fromEntries(
+        itemKeys.map((key) => [key, averageNumbers(orderedReports.map((report) => report.item_scores?.[key]))])
+      ),
+      metrics: aggregateMetrics(orderedReports.map((report) => report.metrics || {})),
+      source_updated_at: updatedValues[updatedValues.length - 1] || latestReport.source_updated_at,
+      period_key: periodOption.key,
+      period_label: periodOption.label,
+      period_months: orderedReports.map((report) => report.bulan),
+      month_count: orderedReports.length,
+    }
+  })
 }
 
 function buildDmRanking(reports) {
   const grouped = reports.reduce((acc, report) => {
     if (!acc[report.dm_name]) acc[report.dm_name] = []
-    acc[report.dm_name].push(report.total_score || 0)
+    acc[report.dm_name].push(Number(report.total_score) || 0)
     return acc
   }, {})
 
@@ -73,14 +295,12 @@ function buildScoreSummary(reports, itemKeys) {
       .map((report) => report.item_scores?.[key])
       .filter((score) => score != null)
 
-    const average = scores.length
-      ? scores.reduce((sum, value) => sum + value, 0) / scores.length
-      : null
+    const average = averageNumbers(scores)
 
     return {
       key,
       average,
-      distribution: [1, 2, 3, 4, 5].map((value) => scores.filter((score) => score === value).length),
+      distribution: [1, 2, 3, 4, 5].map((value) => scores.filter((score) => bucketScore(score) === value).length),
       total: scores.length,
     }
   })
@@ -101,7 +321,7 @@ function totalTone(total) {
 
 function ScorePill({ value }) {
   return (
-    <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold ${
+    <span className={`inline-flex min-w-[2.5rem] items-center justify-center rounded-full px-2 py-1 text-[11px] font-bold ${
       value == null
         ? 'bg-slate-200 text-slate-500'
         : value >= 4
@@ -110,7 +330,7 @@ function ScorePill({ value }) {
             ? 'bg-amber-400 text-white'
             : 'bg-rose-500 text-white'
     }`}>
-      {value ?? '-'}
+      {formatScoreValue(value)}
     </span>
   )
 }
@@ -159,7 +379,17 @@ function MetricRow({ label, value, target, format = 'rp' }) {
   )
 }
 
-function StoreDetailView({ report, previousReport, itemKeys, monthOptions, activeMonth, onMonthChange }) {
+function StoreDetailView({
+  report,
+  previousReport,
+  itemKeys,
+  periodMode,
+  periodOptions,
+  activePeriodKey,
+  onPeriodChange,
+  onPeriodModeChange,
+  reportsByPeriodKey,
+}) {
   const m = report.metrics || {}
   const sales = m.sales
   const avg = m.avg
@@ -174,33 +404,43 @@ function StoreDetailView({ report, previousReport, itemKeys, monthOptions, activ
     <div className="space-y-6">
       <SectionPanel
         eyebrow="Period"
-        title="Pilih Bulan"
+        title="Pilih Periode"
+        description="Skor quarter, semester, dan tahunan dihitung dari rata-rata skor bulanan pada bulan yang sudah tersedia."
         actions={
           <SegmentedControl
-            options={monthOptions}
-            value={activeMonth}
-            onChange={onMonthChange}
+            options={PERIOD_MODE_OPTIONS}
+            value={periodMode}
+            onChange={onPeriodModeChange}
           />
         }
       >
         <div className="grid gap-3 sm:grid-cols-3">
-          {monthOptions.map((month) => (
+          {periodOptions.map((period) => {
+            const periodReport = reportsByPeriodKey[period.key] || null
+
+            return (
             <button
-              key={month.key}
+              key={period.key}
               type="button"
-              onClick={() => onMonthChange(month.key)}
+              onClick={() => onPeriodChange(period.key)}
               className={`rounded-[18px] px-4 py-4 text-left transition-colors ${
-                month.key === activeMonth ? 'bg-primary-600 text-white' : 'bg-slate-50 hover:bg-slate-100'
+                period.key === activePeriodKey ? 'bg-primary-600 text-white' : 'bg-slate-50 hover:bg-slate-100'
               }`}
             >
               <div className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${
-                month.key === activeMonth ? 'text-primary-100' : 'text-slate-400'
-              }`}>{month.label}</div>
-              <div className={`mt-2 text-2xl font-semibold ${month.key === activeMonth ? 'text-white' : 'text-slate-950'}`}>
-                {((report.total_score || 0) * 100).toFixed(1)}%
+                period.key === activePeriodKey ? 'text-primary-100' : 'text-slate-400'
+              }`}>{period.label}</div>
+              <div className={`mt-2 text-2xl font-semibold ${period.key === activePeriodKey ? 'text-white' : 'text-slate-950'}`}>
+                {periodReport ? `${((periodReport.total_score || 0) * 100).toFixed(1)}%` : '-'}
               </div>
+              {periodMode !== 'month' && (
+                <div className={`mt-1 text-xs ${period.key === activePeriodKey ? 'text-primary-100' : 'text-slate-500'}`}>
+                  {period.coverageLabel}
+                </div>
+              )}
             </button>
-          ))}
+            )
+          })}
         </div>
       </SectionPanel>
 
@@ -349,7 +589,8 @@ export default function KPIReport() {
   const [reports, setReports] = useState([])
   const [loadingReports, setLoadingReports] = useState(true)
   const [loadError, setLoadError] = useState('')
-  const [activeMonth, setActiveMonth] = useState('')
+  const [periodMode, setPeriodMode] = useState('month')
+  const [activePeriodKey, setActivePeriodKey] = useState('')
   const [openStoreName, setOpenStoreName] = useState(null)
   const [dmFilter, setDmFilter] = useState('all')
 
@@ -419,36 +660,45 @@ export default function KPIReport() {
     return [...seen.values()]
   }, [reports])
 
-  const monthOptions = useMemo(() => {
-    return [...new Set(reports.map((report) => report.bulan))]
-      .sort((a, b) => new Date(a) - new Date(b))
-      .map((bulan) => ({
-        key: bulan,
-        label: formatMonthLabel(bulan),
-      }))
-  }, [reports])
+  const periodOptions = useMemo(() => buildPeriodOptions(reports, periodMode), [reports, periodMode])
+  const resolvedActivePeriodKey = useMemo(() => {
+    if (!periodOptions.length) return ''
+    return periodOptions.some((option) => option.key === activePeriodKey)
+      ? activePeriodKey
+      : periodOptions[periodOptions.length - 1].key
+  }, [periodOptions, activePeriodKey])
 
   useEffect(() => {
-    if (!monthOptions.length) {
-      setActiveMonth('')
-      return
+    if (activePeriodKey !== resolvedActivePeriodKey) {
+      setActivePeriodKey(resolvedActivePeriodKey)
     }
+  }, [activePeriodKey, resolvedActivePeriodKey])
 
-    const isStillValid = monthOptions.some((option) => option.key === activeMonth)
-    if (!isStillValid) {
-      setActiveMonth(monthOptions[monthOptions.length - 1].key)
-    }
-  }, [monthOptions, activeMonth])
+  const reportsByPeriodKey = useMemo(() => {
+    return Object.fromEntries(
+      periodOptions.map((option) => [
+        option.key,
+        aggregateReportsForPeriod(
+          reports.filter((report) => option.months.includes(report.bulan)),
+          option
+        ),
+      ])
+    )
+  }, [reports, periodOptions])
 
-  const monthReports = useMemo(() => {
-    return reports.filter((report) => report.bulan === activeMonth)
-  }, [reports, activeMonth])
+  const activePeriodOption = useMemo(() => {
+    return periodOptions.find((option) => option.key === resolvedActivePeriodKey) || null
+  }, [periodOptions, resolvedActivePeriodKey])
 
-  const itemKeys = useMemo(() => buildItemKeys(monthReports), [monthReports])
+  const activePeriodReports = useMemo(() => {
+    return reportsByPeriodKey[resolvedActivePeriodKey] || []
+  }, [reportsByPeriodKey, resolvedActivePeriodKey])
+
+  const itemKeys = useMemo(() => buildItemKeys(activePeriodReports), [activePeriodReports])
 
   const sortedStores = useMemo(() => {
-    return [...monthReports].sort((a, b) => (b.total_score || 0) - (a.total_score || 0))
-  }, [monthReports])
+    return [...activePeriodReports].sort((a, b) => (Number(b.total_score) || 0) - (Number(a.total_score) || 0))
+  }, [activePeriodReports])
 
   const dmNames = useMemo(() => {
     return [...new Set(sortedStores.map((report) => report.dm_name).filter(Boolean))].sort()
@@ -463,25 +713,52 @@ export default function KPIReport() {
   }, [sortedStores, activeDmFilter])
 
   const dmRanking = useMemo(() => buildDmRanking(sortedStores), [sortedStores])
+  const periodStatsByKey = useMemo(() => {
+    return Object.fromEntries(
+      periodOptions.map((option) => {
+        const optionReports = reportsByPeriodKey[option.key] || []
+        const averageTotal = optionReports.length
+          ? optionReports.reduce((sum, report) => sum + (Number(report.total_score) || 0), 0) / optionReports.length
+          : 0
+
+        return [
+          option.key,
+          {
+            averageTotal,
+            stores: optionReports.length,
+          },
+        ]
+      })
+    )
+  }, [periodOptions, reportsByPeriodKey])
+
+  const storeReportsByPeriodKey = useMemo(() => {
+    return Object.fromEntries(
+      periodOptions.map((option) => [
+        option.key,
+        (reportsByPeriodKey[option.key] || [])[0] || null,
+      ])
+    )
+  }, [periodOptions, reportsByPeriodKey])
+
   const avgTotal = sortedStores.length
-    ? sortedStores.reduce((sum, report) => sum + (report.total_score || 0), 0) / sortedStores.length
+    ? sortedStores.reduce((sum, report) => sum + (Number(report.total_score) || 0), 0) / sortedStores.length
     : 0
   const topStores = sortedStores.slice(0, 3)
-  const bottomStores = [...sortedStores].sort((a, b) => (a.total_score || 0) - (b.total_score || 0)).slice(0, 3)
+  const bottomStores = [...sortedStores].sort((a, b) => (Number(a.total_score) || 0) - (Number(b.total_score) || 0)).slice(0, 3)
   const itemSummary = useMemo(() => buildScoreSummary(sortedStores, itemKeys), [sortedStores, itemKeys])
 
-  const previousMonth = useMemo(() => {
-    const index = monthOptions.findIndex((option) => option.key === activeMonth)
-    return index > 0 ? monthOptions[index - 1].key : ''
-  }, [monthOptions, activeMonth])
+  const previousPeriodKey = useMemo(() => {
+    const index = periodOptions.findIndex((option) => option.key === resolvedActivePeriodKey)
+    return index > 0 ? periodOptions[index - 1].key : ''
+  }, [periodOptions, resolvedActivePeriodKey])
 
   const previousReportsByBranch = useMemo(() => {
     return Object.fromEntries(
-      reports
-        .filter((report) => report.bulan === previousMonth)
+      (reportsByPeriodKey[previousPeriodKey] || [])
         .map((report) => [report.branch_id, report])
     )
-  }, [reports, previousMonth])
+  }, [reportsByPeriodKey, previousPeriodKey])
 
   const lastUpdated = useMemo(() => {
     const values = reports.map((report) => report.source_updated_at).filter(Boolean).sort()
@@ -490,7 +767,7 @@ export default function KPIReport() {
 
   useEffect(() => {
     setOpenStoreName(null)
-  }, [activeMonth, activeDmFilter])
+  }, [resolvedActivePeriodKey, activeDmFilter, periodMode])
 
   if (loadingReports) {
     return (
@@ -523,7 +800,7 @@ export default function KPIReport() {
     )
   }
 
-  if (!uniqueBranches.length || !monthOptions.length || !sortedStores.length) {
+  if (!uniqueBranches.length || !periodOptions.length || !sortedStores.length) {
     return (
       <SubpageShell
         title="KPI Report"
@@ -541,11 +818,16 @@ export default function KPIReport() {
 
   const myReport = isStoreRole(profile?.role) ? sortedStores[0] || null : null
   const myPreviousReport = myReport ? previousReportsByBranch[myReport.branch_id] || null : null
+  const activePeriodLabel = activePeriodOption?.label || '-'
+  const activePeriodSubtitle =
+    activePeriodOption && periodMode !== 'month'
+      ? `${activePeriodLabel} / ${activePeriodOption.coverageLabel}`
+      : activePeriodLabel
 
   return (
     <SubpageShell
       title="KPI Report 2026"
-      subtitle={`${formatMonthLabel(activeMonth)} / update ${lastUpdated || '-'}`}
+      subtitle={`${activePeriodSubtitle} / update ${lastUpdated || '-'}`}
       eyebrow="Performance"
       footer={footer}
     >
@@ -554,13 +836,13 @@ export default function KPIReport() {
         title={`KPI ${((myReport || sortedStores[0] || { total_score: avgTotal }).total_score * 100).toFixed(1)}%`}
         description={
           isStoreRole(profile?.role)
-            ? 'Skor dan detail KPI toko kamu bulan ini. Klik bulan di bawah untuk lihat riwayat.'
-            : 'Semua ranking, DM scorecard, dan analisis item di halaman ini mengikuti scope toko, district, atau area akun yang sedang login lewat policy Supabase.'
+            ? 'Skor dan detail KPI toko kamu mengikuti periode aktif. Klik kartu periode di bawah untuk melihat progress bulanan, quarter, semester, atau tahunan.'
+            : 'Semua ranking, DM scorecard, dan analisis item di halaman ini mengikuti scope toko, district, atau area akun yang sedang login lewat policy Supabase dan periode yang sedang dipilih.'
         }
         meta={
           <>
             <ToneBadge tone={totalTone(myReport?.total_score || avgTotal)}>
-              {isStoreRole(profile?.role) ? formatMonthLabel(activeMonth) : `${sortedStores.length} toko`}
+              {isStoreRole(profile?.role) ? activePeriodLabel : `${sortedStores.length} toko`}
             </ToneBadge>
             {!isStoreRole(profile?.role) && <ToneBadge tone="info">{dmRanking.length} manager tercakup</ToneBadge>}
           </>
@@ -568,7 +850,7 @@ export default function KPIReport() {
       >
         {isStoreRole(profile?.role) ? (
           <div className="grid gap-3 sm:grid-cols-3">
-            <InlineStat label="Score Bulan Ini" value={`${((myReport?.total_score || 0) * 100).toFixed(1)}%`} tone="primary" />
+            <InlineStat label="Score Periode" value={`${((myReport?.total_score || 0) * 100).toFixed(1)}%`} tone="primary" />
             <InlineStat label="Net Sales" value={formatMetricValue('sales', myReport?.metrics?.sales)} tone="slate" />
             <InlineStat label="Audit" value={formatMetricValue('audit', myReport?.metrics?.audit)} tone="slate" />
           </div>
@@ -588,9 +870,12 @@ export default function KPIReport() {
             report={myReport}
             previousReport={myPreviousReport}
             itemKeys={itemKeys}
-            monthOptions={monthOptions}
-            activeMonth={activeMonth}
-            onMonthChange={setActiveMonth}
+            periodMode={periodMode}
+            periodOptions={periodOptions}
+            activePeriodKey={resolvedActivePeriodKey}
+            onPeriodChange={setActivePeriodKey}
+            onPeriodModeChange={setPeriodMode}
+            reportsByPeriodKey={storeReportsByPeriodKey}
           />
         ) : null}
 
@@ -598,42 +883,39 @@ export default function KPIReport() {
         <>
         <SectionPanel
           eyebrow="Period"
-          title="Pilih Bulan"
-          description="KPI tampil per bulan dan tetap terfilter mengikuti scope akses user."
+          title="Pilih Periode"
+          description={`KPI tampil per ${PERIOD_MODE_LABELS[periodMode] || 'periode'} dan tetap terfilter mengikuti scope akses user. Untuk quarter, semester, dan tahunan, skor dihitung dari rata-rata skor bulanan yang tersedia.`}
           actions={
             <SegmentedControl
-              options={monthOptions}
-              value={activeMonth}
-              onChange={setActiveMonth}
+              options={PERIOD_MODE_OPTIONS}
+              value={periodMode}
+              onChange={setPeriodMode}
             />
           }
         >
           <div className="grid gap-3 sm:grid-cols-3">
-            {monthOptions.map((month) => {
-              const reportsForMonth = reports.filter((report) => report.bulan === month.key)
-              const monthAverage = reportsForMonth.length
-                ? reportsForMonth.reduce((sum, report) => sum + (report.total_score || 0), 0) / reportsForMonth.length
-                : 0
+            {periodOptions.map((period) => {
+              const periodStats = periodStatsByKey[period.key] || { averageTotal: 0, stores: 0 }
 
               return (
                 <button
-                  key={month.key}
+                  key={period.key}
                   type="button"
-                  onClick={() => setActiveMonth(month.key)}
+                  onClick={() => setActivePeriodKey(period.key)}
                   className={`rounded-[18px] px-4 py-4 text-left transition-colors ${
-                    month.key === activeMonth ? 'bg-primary-600 text-white' : 'bg-slate-50 hover:bg-slate-100'
+                    period.key === resolvedActivePeriodKey ? 'bg-primary-600 text-white' : 'bg-slate-50 hover:bg-slate-100'
                   }`}
                 >
                   <div className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${
-                    month.key === activeMonth ? 'text-primary-100' : 'text-slate-400'
+                    period.key === resolvedActivePeriodKey ? 'text-primary-100' : 'text-slate-400'
                   }`}>
-                    {month.label}
+                    {period.label}
                   </div>
-                  <div className={`mt-2 text-2xl font-semibold ${month.key === activeMonth ? 'text-white' : 'text-slate-950'}`}>
-                    {(monthAverage * 100).toFixed(1)}%
+                  <div className={`mt-2 text-2xl font-semibold ${period.key === resolvedActivePeriodKey ? 'text-white' : 'text-slate-950'}`}>
+                    {(periodStats.averageTotal * 100).toFixed(1)}%
                   </div>
-                  <div className={`mt-1 text-xs ${month.key === activeMonth ? 'text-primary-100' : 'text-slate-500'}`}>
-                    {reportsForMonth.length} toko sesuai scope
+                  <div className={`mt-1 text-xs ${period.key === resolvedActivePeriodKey ? 'text-primary-100' : 'text-slate-500'}`}>
+                    {periodStats.stores} toko sesuai scope{periodMode !== 'month' ? ` / ${period.coverageLabel}` : ''}
                   </div>
                 </button>
               )
@@ -642,7 +924,7 @@ export default function KPIReport() {
         </SectionPanel>
 
         <div className="grid gap-4 xl:grid-cols-2">
-          <SectionPanel eyebrow="Top Performer" title="3 Toko Terbaik" description={`${formatMonthLabel(activeMonth)} / scope aktif`}>
+          <SectionPanel eyebrow="Top Performer" title="3 Toko Terbaik" description={`${activePeriodLabel} / scope aktif`}>
             <div className="space-y-2">
               {topStores.map((report, index) => (
                 <div key={`${report.branch_id}-${report.bulan}`} className="flex items-center gap-3 rounded-[20px] bg-emerald-50 px-4 py-3">
@@ -657,7 +939,7 @@ export default function KPIReport() {
             </div>
           </SectionPanel>
 
-          <SectionPanel eyebrow="Needs Attention" title="3 Toko Terendah" description={`${formatMonthLabel(activeMonth)} / scope aktif`}>
+          <SectionPanel eyebrow="Needs Attention" title="3 Toko Terendah" description={`${activePeriodLabel} / scope aktif`}>
             <div className="space-y-2">
               {bottomStores.map((report) => (
                 <div key={`${report.branch_id}-${report.bulan}`} className="flex items-center gap-3 rounded-[20px] bg-rose-50 px-4 py-3">
@@ -699,7 +981,7 @@ export default function KPIReport() {
         <SectionPanel
           eyebrow="Store Ranking"
           title="Ranking Toko"
-          description="Klik toko untuk melihat detail KPI per item. Filter manager hanya muncul dari scope data yang kamu miliki."
+          description="Klik toko untuk melihat detail KPI per item pada periode aktif. Filter manager hanya muncul dari scope data yang kamu miliki."
           actions={
             <SegmentedControl
               options={[{ key: 'all', label: 'Semua DM' }, ...dmNames.map((name) => ({ key: name, label: name }))]}
@@ -726,7 +1008,11 @@ export default function KPIReport() {
         <SectionPanel
           eyebrow="Item Analysis"
           title="Rata-rata Skor per Item"
-          description="Membantu melihat item KPI mana yang paling perlu dibenahi secara lintas toko di scope kamu."
+          description={
+            periodMode === 'month'
+              ? 'Membantu melihat item KPI mana yang paling perlu dibenahi secara lintas toko di scope kamu.'
+              : 'Untuk periode non-bulanan, skor item per toko dirata-ratakan dari skor bulanan lalu dipetakan ke bucket terdekat untuk distribusinya.'
+          }
         >
           <div className="space-y-3">
             {itemSummary.map((item) => (
