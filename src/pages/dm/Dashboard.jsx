@@ -10,6 +10,7 @@ import {
   showBrowserNotification,
 } from '../../lib/notifications'
 import { DMBottomNav, OpsBottomNav } from '../../components/BottomNav'
+import PhotoViewer from '../../components/PhotoViewer'
 import {
   ActionCard,
   AppCanvas,
@@ -233,7 +234,7 @@ export default function DMDashboard() {
     const requests = [
       supabase
         .from('daily_checklists')
-        .select('id,branch_id,shift,is_late,submitted_at')
+        .select('id,branch_id,shift,is_late,submitted_at,photos,answers,notes,item_oos')
         .in('branch_id', branchIds)
         .eq('tanggal', today),
       supabase
@@ -1560,6 +1561,52 @@ function InsightCard({ item }) {
   )
 }
 
+const PLATFORM_KEYS = ['toko_buka', 'gofood_aktif', 'grabfood_aktif', 'shopeefood_aktif']
+const PLATFORM_LABELS = { toko_buka: 'Toko', gofood_aktif: 'GoFood', grabfood_aktif: 'GrabFood', shopeefood_aktif: 'ShopeeFood' }
+const AREA_PHOTO_KEYS = ['staff_grooming', 'bar_bersih', 'kitchen_bersih', 'indoor_ns_bersih', 'outdoor_bersih']
+
+function ChecklistPreview({ checklist }) {
+  const answers = checklist.answers || {}
+  const photos = checklist.photos || {}
+  const notes = checklist.notes || ''
+  const oos = checklist.item_oos || []
+
+  const previewUrls = AREA_PHOTO_KEYS
+    .flatMap((key) => photos[key] || [])
+    .slice(0, 4)
+
+  const platformStatus = PLATFORM_KEYS.map((key) => ({
+    label: PLATFORM_LABELS[key],
+    ok: !!answers[key],
+  }))
+
+  return (
+    <div className="mt-2 space-y-2">
+      <div className="flex flex-wrap gap-1">
+        {platformStatus.map(({ label, ok }) => (
+          <span
+            key={label}
+            className={`inline-flex items-center rounded-lg px-2 py-0.5 text-[10px] font-semibold ${ok ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-600'}`}
+          >
+            {ok ? '✓' : '✗'} {label}
+          </span>
+        ))}
+      </div>
+      {previewUrls.length > 0 && (
+        <PhotoViewer urls={previewUrls} emptyText="" />
+      )}
+      {oos.length > 0 && (
+        <div className="text-[11px] text-amber-700">
+          OOS: {oos.join(', ')}
+        </div>
+      )}
+      {notes && (
+        <div className="line-clamp-2 text-[11px] text-slate-500">{notes}</div>
+      )}
+    </div>
+  )
+}
+
 function StoreHealthCard({ store, isOpsManager, badge }) {
   const visitScore = store.visitPeriod ? scorePercent(store.visitPeriod) : null
   const budgetRatio = store.selectedBudget?.actualRatio ?? store.selectedBudget?.projectedRatio ?? null
@@ -1602,7 +1649,14 @@ function StoreHealthCard({ store, isOpsManager, badge }) {
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <div className="rounded-2xl bg-slate-50 px-3.5 py-3">
           <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">Ceklis Pagi</div>
-          <div className="mt-2 text-sm font-semibold text-slate-900">{store.ceklisPagi ? 'Sudah masuk' : 'Belum masuk'}</div>
+          {store.ceklisPagi ? (
+            <>
+              <div className="mt-2 text-sm font-semibold text-slate-900">Sudah masuk</div>
+              <ChecklistPreview checklist={store.ceklisPagi} />
+            </>
+          ) : (
+            <div className="mt-2 text-sm font-semibold text-slate-900">Belum masuk</div>
+          )}
         </div>
         <div className="rounded-2xl bg-slate-50 px-3.5 py-3">
           <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">Laporan H-1</div>
