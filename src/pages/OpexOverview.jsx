@@ -5,56 +5,27 @@ import { fmtRp, fmtDateShort, todayWIB, downloadCsv } from '../lib/utils'
 import Alert from '../components/Alert'
 import { DMBottomNav, FinanceBottomNav, OpsBottomNav } from '../components/BottomNav'
 
-const PERIODS = [
-  { key: 'day',   label: 'Harian' },
-  { key: 'week',  label: 'Mingguan' },
-  { key: 'month', label: 'Bulanan' },
-]
-
-function getDateRange(period, anchorDate) {
-  const [year, month, day] = anchorDate.split('-').map(Number)
-  const base = new Date(Date.UTC(year, month - 1, day))
-
-  if (period === 'day') {
-    return {
-      start: anchorDate,
-      end: anchorDate,
-      label: new Date(anchorDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
-    }
-  }
-
-  if (period === 'month') {
-    const start = `${year}-${String(month).padStart(2, '0')}-01`
-    const endDate = new Date(Date.UTC(year, month, 0))
-    const end = `${year}-${String(month).padStart(2, '0')}-${String(endDate.getUTCDate()).padStart(2, '0')}`
-    return {
-      start,
-      end,
-      label: new Date(anchorDate).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }),
-    }
-  }
-
-  // week
-  const weekDay = base.getUTCDay()
-  const diff = weekDay === 0 ? 6 : weekDay - 1
-  base.setUTCDate(base.getUTCDate() - diff)
-  const end = new Date(base)
-  end.setUTCDate(base.getUTCDate() + 6)
-  const startIso = base.toISOString().split('T')[0]
-  const endIso   = end.toISOString().split('T')[0]
-  return {
-    start: startIso,
-    end: endIso,
-    label: `${new Date(startIso).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} – ${new Date(endIso).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}`,
-  }
+function fmtDateLong(d) {
+  return new Date(d + 'T00:00:00Z').toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+}
+function fmtDateMed(d) {
+  return new Date(d + 'T00:00:00Z').toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
+}
+function rangeLabel(from, to) {
+  if (from === to) return fmtDateLong(from)
+  return `${fmtDateMed(from)} – ${fmtDateLong(to)}`
+}
+function monthStart(isoDate) {
+  const [y, m] = isoDate.split('-')
+  return `${y}-${m}-01`
 }
 
 export default function OpexOverview() {
   const { profile, signOut } = useAuth()
   const isFinance = profile?.role === 'finance_supervisor'
 
-  const [period, setPeriod]           = useState('month')
-  const [anchorDate, setAnchorDate]   = useState(todayWIB())
+  const [dateFrom, setDateFrom]       = useState(monthStart(todayWIB()))
+  const [dateTo, setDateTo]           = useState(todayWIB())
   const [items, setItems]             = useState([])
   const [branches, setBranches]       = useState([])
   const [loading, setLoading]         = useState(true)
@@ -70,7 +41,7 @@ export default function OpexOverview() {
   const [viewMode, setViewMode] = useState('by_store')
 
   useEffect(() => { fetchBranches() }, [profile?.id])
-  useEffect(() => { fetchOpex() }, [period, anchorDate])
+  useEffect(() => { fetchOpex() }, [dateFrom, dateTo])
 
   const fetchBranches = async () => {
     const { data } = await supabase
@@ -84,12 +55,11 @@ export default function OpexOverview() {
   const fetchOpex = async () => {
     setLoading(true)
     setError('')
-    const range = getDateRange(period, anchorDate)
     const { data, error: fetchErr } = await supabase
       .from('operational_expenses')
       .select('*, branch:branches(id,name,store_id,district,area)')
-      .gte('tanggal', range.start)
-      .lte('tanggal', range.end)
+      .gte('tanggal', dateFrom)
+      .lte('tanggal', dateTo)
       .order('tanggal', { ascending: false })
       .order('created_at', { ascending: false })
 
@@ -151,10 +121,9 @@ export default function OpexOverview() {
 
   const totalOpex      = filtered.reduce((s, i) => s + Number(i.total || 0), 0)
   const storeCount     = new Set(filtered.map(i => i.branch_id)).size
-  const range          = getDateRange(period, anchorDate)
 
   const handleDownload = () => {
-    const filename = `opex_${range.start}_${range.end}.csv`
+    const filename = `opex_${dateFrom}_${dateTo}.csv`
     const headers = [
       'Tanggal', 'Toko', 'District', 'Area',
       'Kode', 'Kategori', 'Item', 'Detail',
@@ -210,7 +179,7 @@ export default function OpexOverview() {
           <div>
             <p className="text-primary-200 text-xs">Ops Manager</p>
             <h1 className="text-lg font-bold mt-0.5">Beban Operasional</h1>
-            <p className="text-primary-300 text-[11px] mt-1">{range.label}</p>
+            <p className="text-primary-300 text-[11px] mt-1">{rangeLabel(dateFrom, dateTo)}</p>
           </div>
           <button onClick={signOut} className="text-primary-300 hover:text-white p-1">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -224,26 +193,19 @@ export default function OpexOverview() {
       <div className="flex-1 overflow-y-auto pb-24 px-4 pt-4 space-y-3">
         {error && <Alert variant="error">{error}</Alert>}
 
-        {/* Period selector */}
-        <div className="grid grid-cols-3 gap-2">
-          {PERIODS.map(p => (
-            <button key={p.key} onClick={() => setPeriod(p.key)}
-              className={`py-2 text-xs font-bold rounded-xl border transition-colors ${
-                period === p.key
-                  ? 'bg-primary-600 text-white border-primary-600'
-                  : 'bg-white text-gray-500 border-gray-200'
-              }`}>
-              {p.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Anchor date + filters */}
+        {/* Date range + filters */}
         <div className="card p-3 space-y-3">
-          <div>
-            <label className="label">Tanggal Acuan</label>
-            <input className="input" type="date" value={anchorDate}
-              onChange={e => setAnchorDate(e.target.value)} />
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="label">Dari</label>
+              <input className="input" type="date" value={dateFrom} max={dateTo}
+                onChange={e => setDateFrom(e.target.value)} />
+            </div>
+            <div>
+              <label className="label">Sampai</label>
+              <input className="input" type="date" value={dateTo} min={dateFrom} max={todayWIB()}
+                onChange={e => setDateTo(e.target.value)} />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-2">
@@ -343,7 +305,7 @@ export default function OpexOverview() {
           <div className="text-center py-12 text-gray-400">
             <div className="text-4xl mb-3">🧾</div>
             <p className="font-medium">Tidak ada data opex</p>
-            <p className="text-xs mt-1">Coba ubah filter atau periode</p>
+            <p className="text-xs mt-1">Coba ubah filter atau rentang tanggal</p>
           </div>
         ) : viewMode === 'by_store' ? (
           <ByStoreView groups={byStore} />
