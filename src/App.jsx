@@ -203,7 +203,7 @@ export default function App() {
         </RequireAuth>
       } />
       <Route path="/sc/sj" element={
-        <RequireAuth roles={['warehouse_admin','warehouse_spv','distribution_spv','ops_manager','sc_supervisor']}>
+        <RequireAuth roles={[...STORE_ROLES,'warehouse_admin','warehouse_spv','distribution_spv','ops_manager','sc_supervisor']}>
           <SCSuratJalan />
         </RequireAuth>
       } />

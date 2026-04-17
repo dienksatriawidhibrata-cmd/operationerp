@@ -43,6 +43,7 @@ export function StaffBottomNav() {
       <NavItem to="/staff/ceklis" icon="checklist" label="Ceklis" active={pathname.startsWith('/staff/ceklis')} />
       <NavItem to="/staff/laporan" icon="chart" label="Laporan" active={pathname.startsWith('/staff/laporan')} />
       <NavItem to="/staff/opex" icon="opex" label="Opex" active={pathname.startsWith('/staff/opex')} />
+      <NavItem to="/sc/sj" icon="finance" label="Pengiriman" active={pathname.startsWith('/sc/sj')} />
     </Dock>
   )
 }

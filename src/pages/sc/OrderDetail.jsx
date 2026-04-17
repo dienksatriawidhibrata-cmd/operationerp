@@ -254,7 +254,7 @@ export default function OrderDetail() {
 
         {/* Action: Issue SJ */}
         {order.status === 'sj_ready' && !sj && (
-          <Link to={`/sc/sj/new?order=${id}`} className="btn-primary block text-center">
+          <Link to={`/sc/sj?order=${id}`} className="btn-primary block text-center">
             Terbitkan Surat Jalan
           </Link>
         )}
