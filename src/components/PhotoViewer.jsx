@@ -67,6 +67,7 @@ export default function PhotoViewer({ urls = [], emptyText = 'Tidak ada foto' })
               <img
                 src={toEmbedUrl(url)}
                 alt={`Foto ${idx + 1}`}
+                loading="lazy"
                 className="h-full w-full object-cover"
                 onError={() => setBroken((current) => ({ ...current, [idx]: true }))}
               />
