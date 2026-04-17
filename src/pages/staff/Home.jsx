@@ -139,7 +139,7 @@ export default function StaffHome() {
       </HeroCard>
 
       {!loading && status && !status.laporan && (
-        <div className="mt-6 rounded-[24px] border border-amber-200 bg-amber-50 px-5 py-4 text-sm leading-6 text-amber-800 shadow-[0_16px_48px_-36px_rgba(217,119,6,0.55)]">
+        <div className="mt-6 rounded-[22px] border border-amber-200 bg-amber-50 px-4 py-3.5 text-sm leading-5.5 text-amber-800 shadow-[0_16px_48px_-36px_rgba(217,119,6,0.55)] sm:rounded-[24px] sm:px-5 sm:py-4 sm:leading-6">
           Laporan harian <strong>{new Date(yesterday).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</strong> belum disubmit.
           Sisa waktu: <strong>{sisaWaktuLaporan(yesterday)}</strong>.
         </div>
@@ -238,14 +238,14 @@ function StatusSnapshot({ label, value, detail, tone }) {
   }
 
   return (
-    <div className="rounded-[22px] border border-white/80 bg-slate-50/85 px-4 py-4">
+    <div className="rounded-[20px] border border-white/80 bg-slate-50/85 px-3.5 py-3.5 sm:rounded-[22px] sm:px-4 sm:py-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">{label}</div>
-          <div className="mt-2 text-base font-semibold text-slate-950">{value}</div>
-          <div className="mt-1 text-sm leading-6 text-slate-500">{detail}</div>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">{label}</div>
+          <div className="mt-1.5 text-[15px] font-semibold text-slate-950 sm:text-base">{value}</div>
+          <div className="mt-1 text-sm leading-5.5 text-slate-500 sm:leading-6">{detail}</div>
         </div>
-        <span className={`rounded-full px-3 py-1.5 text-[11px] font-semibold ${toneClass[tone] || toneClass.slate}`}>
+        <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold sm:px-3 sm:py-1.5 sm:text-[11px] ${toneClass[tone] || toneClass.slate}`}>
           {tone === 'danger' ? 'Perlu cek' : tone === 'warn' ? 'Tertahan' : tone === 'ok' ? 'Aman' : 'Info'}
         </span>
       </div>

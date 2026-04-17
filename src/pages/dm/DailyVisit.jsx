@@ -210,7 +210,7 @@ export default function DailyVisit() {
         title="Pilih Toko"
         description="Pilih outlet yang ingin diaudit hari ini. Satu toko hanya punya satu audit per hari."
       >
-        <div className="grid gap-4 sm:grid-cols-[1.4fr_0.6fr]">
+          <div className="grid gap-3 sm:grid-cols-[1.4fr_0.6fr]">
           <div>
             <label className="label">Toko Audit</label>
             <select
@@ -230,7 +230,7 @@ export default function DailyVisit() {
               </div>
             )}
           </div>
-          <div className="grid gap-3 sm:grid-cols-1">
+          <div className="grid gap-2.5 sm:grid-cols-1">
             <InlineStat label="Total Score" value={totalScore} tone="primary" />
             <InlineStat label="Grade" value={grade.label} tone={totalScore >= 85 ? 'emerald' : totalScore >= 70 ? 'amber' : 'rose'} />
           </div>
@@ -272,9 +272,9 @@ export default function DailyVisit() {
               title={`${section.emoji || ''} ${section.label}`.trim()}
               description="Beri nilai dan unggah foto untuk setiap item di section ini."
             >
-              <div className="space-y-5">
+              <div className="space-y-4">
                 {sectionItems.map((item) => (
-                  <div key={item.key} className="rounded-[22px] bg-slate-50/85 px-4 py-4">
+                  <div key={item.key} className="rounded-[20px] bg-slate-50/85 px-3.5 py-3.5 sm:rounded-[22px] sm:px-4 sm:py-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <span className="text-sm font-medium text-slate-700">{item.label}</span>
                       <ScoreDots value={scores[item.key] || 0} onChange={(value) => setScore(item.key, value)} disabled={isReadOnly} />

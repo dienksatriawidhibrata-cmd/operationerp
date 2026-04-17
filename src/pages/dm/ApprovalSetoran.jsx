@@ -37,7 +37,8 @@ export default function ApprovalSetoran() {
 
   const fetchSetoran = async () => {
     setLoading(true)
-    let query = supabase.from('daily_deposits')
+    let query = supabase
+      .from('daily_deposits')
       .select('*, branch:branches!inner(name,store_id,district,area)')
       .eq('status', tab)
       .order('submitted_at', { ascending: false })
@@ -59,12 +60,15 @@ export default function ApprovalSetoran() {
 
   const approve = async (item) => {
     setActioning(true)
-    const { error } = await supabase.from('daily_deposits').update({
-      status: 'approved',
-      approved_by: profile.id,
-      approved_at: new Date().toISOString(),
-      rejection_reason: null,
-    }).eq('id', item.id)
+    const { error } = await supabase
+      .from('daily_deposits')
+      .update({
+        status: 'approved',
+        approved_by: profile.id,
+        approved_at: new Date().toISOString(),
+        rejection_reason: null,
+      })
+      .eq('id', item.id)
 
     if (error) {
       setMsg({ type: 'error', text: 'Gagal: ' + error.message })
@@ -83,12 +87,15 @@ export default function ApprovalSetoran() {
     }
 
     setActioning(true)
-    const { error } = await supabase.from('daily_deposits').update({
-      status: 'rejected',
-      rejection_reason: rejReason,
-      approved_by: profile.id,
-      approved_at: new Date().toISOString(),
-    }).eq('id', item.id)
+    const { error } = await supabase
+      .from('daily_deposits')
+      .update({
+        status: 'rejected',
+        rejection_reason: rejReason,
+        approved_by: profile.id,
+        approved_at: new Date().toISOString(),
+      })
+      .eq('id', item.id)
 
     if (error) {
       setMsg({ type: 'error', text: 'Gagal: ' + error.message })
@@ -108,18 +115,28 @@ export default function ApprovalSetoran() {
 
   const summaryStats = [
     { label: 'Total Item', value: items.length, tone: 'primary' },
-    { label: 'Ada Selisih', value: items.filter((item) => Number(item.selisih || 0) !== 0).length, tone: 'rose' },
-    { label: 'Total Selisih', value: fmtRp(totalSelisih), tone: totalSelisih > 0 ? 'amber' : 'slate' },
+    {
+      label: 'Ada Selisih',
+      value: items.filter((item) => Number(item.selisih || 0) !== 0).length,
+      tone: 'rose',
+    },
+    {
+      label: 'Total Selisih',
+      value: fmtRp(totalSelisih),
+      tone: totalSelisih > 0 ? 'amber' : 'slate',
+    },
   ]
 
   return (
     <SubpageShell
       title="Approval Setoran"
-      subtitle={profile?.role === 'district_manager'
-        ? `District ${profile?.managed_districts?.join(', ') || '-'}`
-        : profile?.role === 'area_manager'
-          ? `Area ${profile?.managed_areas?.join(', ') || '-'}`
-          : 'Monitoring setoran harian'}
+      subtitle={
+        profile?.role === 'district_manager'
+          ? `District ${profile?.managed_districts?.join(', ') || '-'}`
+          : profile?.role === 'area_manager'
+            ? `Area ${profile?.managed_areas?.join(', ') || '-'}`
+            : 'Monitoring setoran harian'
+      }
       eyebrow="Approval Flow"
       showBack={false}
       footer={profile?.role === 'ops_manager' ? <OpsBottomNav /> : <DMBottomNav />}
@@ -201,20 +218,20 @@ function SetoranCard({ item, expanded, onToggle, onApprove, onReject, rejReason,
   const hasSelisih = selisih !== 0
 
   return (
-    <article className="rounded-[26px] border border-white/85 bg-white shadow-[0_20px_55px_-40px_rgba(15,23,42,0.35)]">
+    <article className="rounded-[24px] border border-white/85 bg-white shadow-[0_20px_55px_-40px_rgba(15,23,42,0.35)]">
       <button
         onClick={onToggle}
-        className="flex w-full items-center gap-4 px-5 py-5 text-left transition-colors hover:bg-slate-50/70"
+        className="flex w-full items-center gap-3 px-4 py-4 text-left transition-colors hover:bg-slate-50/70 sm:px-5 sm:py-5"
       >
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-50 text-primary-700">
+        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary-50 text-primary-700 sm:h-12 sm:w-12">
           <span className="text-sm font-bold">{item.branch?.store_id?.split('-')[1] || '--'}</span>
         </div>
         <div className="min-w-0 flex-1">
-          <div className="truncate text-base font-semibold text-slate-950">
+          <div className="truncate text-[15px] font-semibold text-slate-950 sm:text-base">
             {item.branch?.name?.replace('Bagi Kopi ', '') || '-'}
           </div>
           <div className="mt-1 text-sm text-slate-500">
-            {fmtDateShort(item.tanggal)} • {item.branch?.district || '-'} / {item.branch?.area || '-'}
+            {fmtDateShort(item.tanggal)} / {item.branch?.district || '-'} / {item.branch?.area || '-'}
           </div>
           <div className="mt-1 text-sm text-slate-500">
             {fmtRp(item.cash_disetorkan)}
@@ -230,7 +247,7 @@ function SetoranCard({ item, expanded, onToggle, onApprove, onReject, rejReason,
       </button>
 
       {expanded && (
-        <div className="border-t border-slate-100 px-5 py-5">
+        <div className="border-t border-slate-100 px-4 py-4 sm:px-5 sm:py-5">
           <div className="grid gap-3 sm:grid-cols-2">
             <InfoMetric label="Cash POS" value={fmtRp(item.cash_pos)} />
             <InfoMetric label="Cash Disetorkan" value={fmtRp(item.cash_disetorkan)} />
@@ -238,7 +255,7 @@ function SetoranCard({ item, expanded, onToggle, onApprove, onReject, rejReason,
 
           {hasSelisih && (
             <div className="mt-4 rounded-[22px] border border-rose-200 bg-rose-50 px-4 py-4">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-rose-500">Selisih Cash</div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-rose-500">Selisih Cash</div>
               <div className="mt-2 text-2xl font-semibold text-rose-700">{fmtRp(Math.abs(selisih))}</div>
               {item.alasan_selisih && (
                 <div className="mt-2 text-sm leading-6 text-rose-700">{item.alasan_selisih}</div>
@@ -247,7 +264,7 @@ function SetoranCard({ item, expanded, onToggle, onApprove, onReject, rejReason,
           )}
 
           <div className="mt-4">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Foto Bukti Setoran</div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Foto Bukti Setoran</div>
             <div className="mt-3">
               <PhotoViewer urls={item.foto_bukti || []} emptyText="Tidak ada foto bukti" />
             </div>
@@ -305,9 +322,9 @@ function SetoranCard({ item, expanded, onToggle, onApprove, onReject, rejReason,
 
 function InfoMetric({ label, value }) {
   return (
-    <div className="rounded-[22px] bg-slate-50 px-4 py-4">
-      <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">{label}</div>
-      <div className="mt-2 text-xl font-semibold text-slate-950">{value}</div>
+    <div className="rounded-[20px] bg-slate-50 px-3.5 py-3.5">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">{label}</div>
+      <div className="mt-1.5 text-lg font-semibold text-slate-950 sm:text-xl">{value}</div>
     </div>
   )
 }

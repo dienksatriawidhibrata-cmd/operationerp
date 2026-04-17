@@ -6,28 +6,28 @@ function NavItem({ to, icon, label, active }) {
   return (
     <Link
       to={to}
-      className={`group flex min-w-0 flex-1 flex-col items-center gap-1 rounded-2xl px-2 py-2.5 transition-all ${
+      className={`group flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-[20px] px-1.5 py-2 transition-all sm:gap-1 sm:px-2 sm:py-2.5 ${
         active
           ? 'bg-white text-primary-700 shadow-[0_16px_32px_-24px_rgba(37,99,235,0.85)]'
           : 'text-slate-400 hover:text-slate-600'
       }`}
     >
       <div
-        className={`flex h-9 w-9 items-center justify-center rounded-2xl transition-colors ${
+        className={`flex h-8 w-8 items-center justify-center rounded-2xl transition-colors sm:h-9 sm:w-9 ${
           active ? 'bg-primary-50 text-primary-700' : 'bg-transparent'
         }`}
       >
-        <AppIcon name={icon} size={18} />
+        <AppIcon name={icon} size={17} />
       </div>
-      <span className="truncate text-[10px] font-semibold tracking-[0.16em] uppercase">{label}</span>
+      <span className="truncate text-[10px] font-semibold tracking-[0.04em] sm:text-[11px] sm:tracking-[0.06em]">{label}</span>
     </Link>
   )
 }
 
 function Dock({ children }) {
   return (
-    <nav className="fixed inset-x-0 bottom-4 z-30 flex justify-center px-4">
-      <div className="flex w-full max-w-[520px] items-center gap-1 rounded-[28px] border border-white/80 bg-white/88 p-2 shadow-[0_26px_70px_-40px_rgba(15,23,42,0.55)] backdrop-blur-xl">
+    <nav className="fixed inset-x-0 bottom-3 z-30 flex justify-center px-4">
+      <div className="flex w-full max-w-[520px] items-center gap-1 rounded-[24px] border border-white/80 bg-white/88 p-1.5 shadow-[0_26px_70px_-40px_rgba(15,23,42,0.55)] backdrop-blur-xl sm:rounded-[28px] sm:p-2">
         {children}
       </div>
     </nav>
