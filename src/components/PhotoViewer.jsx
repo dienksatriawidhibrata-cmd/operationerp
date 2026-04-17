@@ -77,10 +77,11 @@ export default function PhotoViewer({ urls = [], emptyText = 'Tidak ada foto' })
 
       {isOpen && (
         <div
-          className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/95"
+          className="fixed inset-0 z-50 flex flex-col bg-black/95"
           onClick={close}
         >
-          <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between bg-gradient-to-b from-black/60 to-transparent px-4 py-3">
+          {/* Header */}
+          <div className="flex flex-none items-center justify-between bg-gradient-to-b from-black/60 to-transparent px-4 py-3">
             <span className="text-sm font-medium text-white/70">
               {lightboxIdx + 1} / {total}
             </span>
@@ -88,11 +89,12 @@ export default function PhotoViewer({ urls = [], emptyText = 'Tidak ada foto' })
               className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-xl text-white transition-colors hover:bg-white/25"
               onClick={close}
             >
-              x
+              ×
             </button>
           </div>
 
-          <div className="relative flex h-full w-full items-center justify-center px-12 py-14 sm:px-14" onClick={close}>
+          {/* Image area — flex-1 so it fills remaining space between header and dots */}
+          <div className="relative min-h-0 flex-1 flex items-center justify-center px-12 py-4 sm:px-14" onClick={close}>
             {imgLoading && (
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="h-8 w-8 animate-spin rounded-full border-2 border-white border-t-transparent" />
@@ -109,6 +111,24 @@ export default function PhotoViewer({ urls = [], emptyText = 'Tidak ada foto' })
             />
           </div>
 
+          {/* Dots */}
+          {total > 1 && (
+            <div className="flex flex-none justify-center gap-1.5 pb-4 pt-1">
+              {urls.map((_, idx) => (
+                <button
+                  key={idx}
+                  className={`h-2 w-2 rounded-full transition-colors ${idx === lightboxIdx ? 'bg-white' : 'bg-white/40'}`}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    setImgLoading(true)
+                    setLightboxIdx(idx)
+                  }}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Prev / next arrows */}
           {total > 1 && (
             <>
               <button
@@ -124,22 +144,6 @@ export default function PhotoViewer({ urls = [], emptyText = 'Tidak ada foto' })
                 &gt;
               </button>
             </>
-          )}
-
-          {total > 1 && (
-            <div className="absolute inset-x-0 bottom-4 flex justify-center gap-1.5">
-              {urls.map((_, idx) => (
-                <button
-                  key={idx}
-                  className={`h-2 w-2 rounded-full transition-colors ${idx === lightboxIdx ? 'bg-white' : 'bg-white/40'}`}
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    setImgLoading(true)
-                    setLightboxIdx(idx)
-                  }}
-                />
-              ))}
-            </div>
           )}
         </div>
       )}
