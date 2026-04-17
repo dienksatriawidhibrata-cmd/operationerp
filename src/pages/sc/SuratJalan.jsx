@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
+
+const STORE_ROLES = ['staff', 'asst_head_store', 'head_store']
 import { todayWIB } from '../../lib/utils'
 import PhotoUpload from '../../components/PhotoUpload'
 import Alert from '../../components/Alert'
-import { SCBottomNav } from '../../components/BottomNav'
+import { SCBottomNav, StaffBottomNav } from '../../components/BottomNav'
 import {
   EmptyPanel, InlineStat, SectionPanel, SegmentedControl, SubpageShell, ToneBadge,
 } from '../../components/ui/AppKit'
@@ -206,25 +208,35 @@ function NewSJForm() {
 // ── SJ List ───────────────────────────────────────────────
 
 function SJList() {
-  const [list, setList]       = useState([])
-  const [loading, setLoading] = useState(true)
-  const [filter, setFilter]   = useState('all')
+  const { profile }   = useAuth()
+  const isStoreRole   = STORE_ROLES.includes(profile?.role)
+  const [list, setList]             = useState([])
+  const [loading, setLoading]       = useState(true)
+  const [filter, setFilter]         = useState('all')
+  const [pendingAction, setPending] = useState(null) // { id, status, label }
 
   useEffect(() => { fetchList() }, [])
 
   const fetchList = async () => {
-    const { data } = await supabase
+    let query = supabase
       .from('surat_jalan')
       .select('*, branch:branches(name), order:supply_orders(order_number)')
       .order('issued_at', { ascending: false })
-      .limit(50)
+    if (isStoreRole && profile?.branch_id) {
+      query = query.eq('branch_id', profile.branch_id)
+    }
+    const { data } = await query
     setList(data || [])
     setLoading(false)
   }
 
-  const updateStatus = async (sj, status) => {
-    await supabase.from('surat_jalan').update({ status }).eq('id', sj.id)
-    if (status === 'delivered') {
+  const confirmAction = async () => {
+    if (!pendingAction) return
+    const { id, status } = pendingAction
+    const sj = list.find(s => s.id === id)
+    setPending(null)
+    await supabase.from('surat_jalan').update({ status }).eq('id', id)
+    if (status === 'delivered' && sj) {
       await supabase.from('supply_orders').update({ status: 'completed' }).eq('id', sj.order_id)
     }
     fetchList()
@@ -244,12 +256,31 @@ function SJList() {
   return (
     <SectionPanel
       eyebrow="Surat Jalan"
-      title="Daftar Surat Jalan"
-      description="Semua SJ yang sudah diterbitkan. Update status setelah barang dikirim atau diterima."
+      title={isStoreRole ? 'Pengiriman ke Toko' : 'Daftar Surat Jalan'}
+      description={isStoreRole ? 'Daftar pengiriman barang yang ditujukan ke toko kamu.' : 'Semua SJ yang sudah diterbitkan. Update status setelah barang dikirim atau diterima.'}
       actions={
         <SegmentedControl options={tabs} value={filter} onChange={setFilter} />
       }
     >
+      {pendingAction && (
+        <div className="mb-4 flex items-center gap-3 rounded-[18px] border border-amber-200 bg-amber-50 px-4 py-3">
+          <span className="flex-1 text-sm text-amber-800">
+            {pendingAction.label} — yakin?
+          </span>
+          <button
+            onClick={confirmAction}
+            className="rounded-xl bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700"
+          >
+            Ya, lanjutkan
+          </button>
+          <button
+            onClick={() => setPending(null)}
+            className="rounded-xl border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-100"
+          >
+            Batal
+          </button>
+        </div>
+      )}
       {filtered.length === 0 ? (
         <EmptyPanel title="Belum ada surat jalan" description="SJ akan muncul setelah diterbitkan dari halaman order." />
       ) : (
@@ -269,15 +300,17 @@ function SJList() {
                 </ToneBadge>
               </div>
               <div className="flex gap-2">
-                <Link
-                  to={`/sc/orders/${sj.order_id}`}
-                  className="rounded-xl bg-primary-50 px-3 py-1.5 text-xs font-semibold text-primary-700 hover:bg-primary-100"
-                >
-                  Lihat Order
-                </Link>
-                {sj.status === 'issued' && (
+                {!isStoreRole && (
+                  <Link
+                    to={`/sc/orders/${sj.order_id}`}
+                    className="rounded-xl bg-primary-50 px-3 py-1.5 text-xs font-semibold text-primary-700 hover:bg-primary-100"
+                  >
+                    Lihat Order
+                  </Link>
+                )}
+                {sj.status === 'issued' && !isStoreRole && (
                   <button
-                    onClick={() => updateStatus(sj, 'shipped')}
+                    onClick={() => setPending({ id: sj.id, status: 'shipped', label: `Tandai "${sj.sj_number}" sedang dalam perjalanan` })}
                     className="rounded-xl bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-100"
                   >
                     Tandai Dikirim
@@ -285,7 +318,7 @@ function SJList() {
                 )}
                 {sj.status === 'shipped' && (
                   <button
-                    onClick={() => updateStatus(sj, 'delivered')}
+                    onClick={() => setPending({ id: sj.id, status: 'delivered', label: `Tandai "${sj.sj_number}" sudah diterima toko` })}
                     className="rounded-xl bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
                   >
                     Tandai Diterima
@@ -303,15 +336,17 @@ function SJList() {
 // ── Main export ───────────────────────────────────────────
 
 export default function SuratJalanPage() {
-  const [params] = useSearchParams()
-  const isNew    = params.has('order')
+  const [params]  = useSearchParams()
+  const { profile } = useAuth()
+  const isNew     = params.has('order') && !STORE_ROLES.includes(profile?.role)
+  const isStore   = STORE_ROLES.includes(profile?.role)
 
   return (
     <SubpageShell
-      title={isNew ? 'Terbitkan Surat Jalan' : 'Surat Jalan'}
-      subtitle={isNew ? 'Buat SJ dari konfirmasi distribution' : 'Kelola semua surat jalan pengiriman'}
+      title={isNew ? 'Terbitkan Surat Jalan' : isStore ? 'Pengiriman Barang' : 'Surat Jalan'}
+      subtitle={isNew ? 'Buat SJ dari konfirmasi distribution' : isStore ? 'Status kiriman barang ke toko kamu' : 'Kelola semua surat jalan pengiriman'}
       eyebrow="Surat Jalan"
-      footer={<SCBottomNav />}
+      footer={isStore ? <StaffBottomNav /> : <SCBottomNav />}
     >
       {isNew ? <NewSJForm /> : <SJList />}
     </SubpageShell>

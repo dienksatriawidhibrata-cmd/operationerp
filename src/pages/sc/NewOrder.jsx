@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
@@ -37,7 +37,7 @@ export default function NewOrder() {
   const [saving, setSaving] = useState(false)
   const [error, setError]   = useState('')
 
-  useState(() => {
+  useEffect(() => {
     supabase.from('branches').select('id,name,store_id').eq('is_active', true).order('name')
       .then(({ data }) => setBranches(data || []))
   }, [])

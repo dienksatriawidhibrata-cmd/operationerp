@@ -55,6 +55,7 @@ export default function StageConfirm({ stage }) {
   const [saving, setSaving]         = useState(false)
   const [error, setError]           = useState('')
   const [done, setDone]             = useState(false)
+  const [isReconfirm, setIsReconfirm] = useState(false)
 
   useEffect(() => { fetchPendingOrders() }, [stage])
 
@@ -83,6 +84,15 @@ export default function StageConfirm({ stage }) {
       .order('sku_name')
 
     setOrigItems(oItems || [])
+
+    // Check if this stage was already confirmed (re-confirmation scenario)
+    const { data: existingStageConf } = await supabase
+      .from('supply_confirmations')
+      .select('id, status')
+      .eq('order_id', order.id)
+      .eq('stage', stage)
+      .maybeSingle()
+    setIsReconfirm(existingStageConf?.status === 'confirmed')
 
     // Init qty map from previous stage (or from order items if first stage)
     const prevCI = []
@@ -123,6 +133,7 @@ export default function StageConfirm({ stage }) {
     setQtyMap({})
     setError('')
     setDone(false)
+    setIsReconfirm(false)
   }
 
   const handleConfirm = async () => {
@@ -178,7 +189,6 @@ export default function StageConfirm({ stage }) {
 
     setDone(true)
     await fetchPendingOrders()
-    setTimeout(() => { handleBack() }, 2000)
     setSaving(false)
   }
 
@@ -256,6 +266,11 @@ export default function StageConfirm({ stage }) {
 
       <div className="mt-6 space-y-6">
         {done && <Alert variant="ok">Konfirmasi {meta.label} berhasil disimpan. Order berlanjut ke tahap berikutnya.</Alert>}
+        {isReconfirm && !done && (
+          <Alert variant="warn">
+            Stage ini sudah pernah dikonfirmasi. Submit ulang akan menimpa data konfirmasi sebelumnya.
+          </Alert>
+        )}
         {error && <Alert variant="error">{error}</Alert>}
 
         <SectionPanel
@@ -341,7 +356,11 @@ export default function StageConfirm({ stage }) {
           </div>
         </SectionPanel>
 
-        {!done && (
+        {done ? (
+          <button onClick={handleBack} className="btn-primary">
+            Kembali ke Daftar Order
+          </button>
+        ) : (
           <button onClick={handleConfirm} disabled={saving} className="btn-primary">
             {saving ? 'Menyimpan...' : `Konfirmasi ${meta.label} (${origItems.length} item)`}
           </button>
