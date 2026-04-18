@@ -131,6 +131,7 @@ export function OpsBottomNav() {
       <NavItem to="/ops/visits" icon="map" label="Visit" active={visitActive} />
       <NavItem to="/sc" icon="checklist" label="Supply Chain" active={scActive} />
       <NavItem to="/kpi" icon="chart" label="KPI" active={perfActive} />
+      <NavItem to="/trainer" icon="users" label="Trainer" active={pathname.startsWith('/trainer')} />
     </Dock>
   )
 }
