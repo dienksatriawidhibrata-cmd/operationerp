@@ -11,6 +11,7 @@ import {
 } from '../../lib/notifications'
 import { DMBottomNav, OpsBottomNav } from '../../components/BottomNav'
 import PhotoViewer from '../../components/PhotoViewer'
+import TaskWidget from '../../components/TaskWidget'
 import {
   ActionCard,
   AppCanvas,
@@ -700,38 +701,42 @@ export default function DMDashboard() {
       />
 
       <main className="mx-auto max-w-7xl px-4 pb-36 pt-4 sm:px-6 lg:px-8 lg:pb-32 lg:pt-8">
-        <HeroCard
-          eyebrow={roleName}
-          title={`Halo, ${shortName}.`}
-          description={loading ? 'Memuat ringkasan operasional...' : buildHeroSummary(stores)}
-          meta={
-            <>
-              <ToneBadge tone="info">
-                <AppIcon name="calendar" size={14} />
-                {todayLabel}
-              </ToneBadge>
-              <ToneBadge tone={criticalAlertCount > 0 ? 'danger' : 'ok'}>
-                <AppIcon name={criticalAlertCount > 0 ? 'warning' : 'spark'} size={14} />
-                {criticalAlertCount > 0 ? `${criticalAlertCount} alert prioritas` : 'Tidak ada alert kritis'}
-              </ToneBadge>
-              <ToneBadge tone={summary.pendingSetoran > 0 ? 'warn' : 'ok'}>
-                <AppIcon name="finance" size={14} />
-                {summary.pendingSetoran > 0 ? `${summary.pendingSetoran} setoran pending` : 'Approval setoran bersih'}
-              </ToneBadge>
-            </>
-          }
-          actions={
-            <SoftButton tone="light" icon="refresh" onClick={fetchDashboard}>
-              Refresh
-            </SoftButton>
-          }
-        >
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {snapshotStats.map((item) => (
-              <InlineStat key={item.label} label={item.label} value={item.value} tone={item.tone} />
-            ))}
-          </div>
-        </HeroCard>
+        <div className="grid items-start gap-4 lg:grid-cols-[1fr_300px]">
+          <HeroCard
+            eyebrow={roleName}
+            title={`Halo, ${shortName}.`}
+            description={loading ? 'Memuat ringkasan operasional...' : buildHeroSummary(stores)}
+            meta={
+              <>
+                <ToneBadge tone="info">
+                  <AppIcon name="calendar" size={14} />
+                  {todayLabel}
+                </ToneBadge>
+                <ToneBadge tone={criticalAlertCount > 0 ? 'danger' : 'ok'}>
+                  <AppIcon name={criticalAlertCount > 0 ? 'warning' : 'spark'} size={14} />
+                  {criticalAlertCount > 0 ? `${criticalAlertCount} alert prioritas` : 'Tidak ada alert kritis'}
+                </ToneBadge>
+                <ToneBadge tone={summary.pendingSetoran > 0 ? 'warn' : 'ok'}>
+                  <AppIcon name="finance" size={14} />
+                  {summary.pendingSetoran > 0 ? `${summary.pendingSetoran} setoran pending` : 'Approval setoran bersih'}
+                </ToneBadge>
+              </>
+            }
+            actions={
+              <SoftButton tone="light" icon="refresh" onClick={fetchDashboard}>
+                Refresh
+              </SoftButton>
+            }
+          >
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {snapshotStats.map((item) => (
+                <InlineStat key={item.label} label={item.label} value={item.value} tone={item.tone} />
+              ))}
+            </div>
+          </HeroCard>
+
+          <TaskWidget profile={profile} />
+        </div>
 
         <div className="mt-4 space-y-3">
         {loading ? (
