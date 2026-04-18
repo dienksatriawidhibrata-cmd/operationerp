@@ -155,6 +155,31 @@ export default function OpsHub() {
             </Link>
           </div>
         </SectionPanel>
+
+        <SectionPanel eyebrow="Monitoring" title="Audit & Tugas">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Link
+              to="/ops/visit-monitor"
+              className="flex items-center gap-3 rounded-[22px] bg-violet-50 border border-violet-100 px-5 py-4 hover:bg-violet-100 transition-colors"
+            >
+              <span className="text-2xl">🔍</span>
+              <div>
+                <div className="text-sm font-semibold text-slate-900">Audit Log Visit</div>
+                <div className="text-xs text-violet-600">Detail skor & foto per kunjungan DM/AM</div>
+              </div>
+            </Link>
+            <Link
+              to="/tasks"
+              className="flex items-center gap-3 rounded-[22px] bg-primary-50 border border-primary-100 px-5 py-4 hover:bg-primary-100 transition-colors"
+            >
+              <span className="text-2xl">✅</span>
+              <div>
+                <div className="text-sm font-semibold text-slate-900">Manajemen Tugas</div>
+                <div className="text-xs text-primary-600">Assign & pantau tugas untuk DM/AM</div>
+              </div>
+            </Link>
+          </div>
+        </SectionPanel>
       </div>
     </SubpageShell>
   )

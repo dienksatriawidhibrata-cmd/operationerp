@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { todayWIB, fmtDate } from '../lib/utils'
 
@@ -193,11 +194,17 @@ export default function TaskWidget({ profile }) {
       </div>
 
       {/* Footer */}
-      {done.length > 0 && !loading && (
-        <div className="border-t border-slate-100 px-4 py-2 text-center text-[11px] text-slate-400">
-          {done.length} tugas selesai
-        </div>
-      )}
+      <div className="border-t border-slate-100 px-4 py-2.5 flex items-center justify-between">
+        <span className="text-[11px] text-slate-400">
+          {done.length > 0 && !loading ? `${done.length} selesai` : ''}
+        </span>
+        <Link
+          to="/tasks"
+          className="text-[11px] font-semibold text-primary-600 hover:text-primary-800 transition-colors"
+        >
+          Lihat semua →
+        </Link>
+      </div>
     </div>
   )
 }

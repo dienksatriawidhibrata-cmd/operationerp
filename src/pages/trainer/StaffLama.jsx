@@ -101,6 +101,7 @@ export default function StaffLama() {
   const [search, setSearch]   = useState('')
   const [filterPos, setFilterPos] = useState('all')
   const [selectedCell, setSelectedCell] = useState(null)
+  const [editingId, setEditingId] = useState(null)
 
   const [form, setForm] = useState({
     employee_name: '', nip: '', position: 'head_store', branch_id: '',
@@ -151,8 +152,7 @@ export default function StaffLama() {
     e.preventDefault()
     setSaving(true)
     const quadrant = getQuadrant(potAvg, perfAvg)
-    const { error } = await supabase.from('trainer_existing_staff').insert({
-      trainer_id:      profile.id,
+    const payload = {
       employee_name:   form.employee_name.trim(),
       nip:             form.nip.trim() || null,
       position:        form.position,
@@ -164,7 +164,12 @@ export default function StaffLama() {
       pot_avg:         potAvg,
       quadrant:        quadrant.label,
       recommendation:  quadrant.action,
-    })
+    }
+
+    const { error } = editingId
+      ? await supabase.from('trainer_existing_staff').update(payload).eq('id', editingId)
+      : await supabase.from('trainer_existing_staff').insert({ ...payload, trainer_id: profile.id })
+
     setSaving(false)
     if (!error) {
       setForm({
@@ -173,9 +178,35 @@ export default function StaffLama() {
         perf_scores: emptyPerfScores('head_store'),
         pot_scores: emptyPotScores(),
       })
+      setEditingId(null)
       setTab('matrix')
       fetchData()
     }
+  }
+
+  const handleEdit = (row) => {
+    setForm({
+      employee_name:   row.employee_name,
+      nip:             row.nip || '',
+      position:        row.position,
+      branch_id:       row.branch_id || '',
+      assessment_date: row.assessment_date,
+      perf_scores:     row.perf_scores || emptyPerfScores(row.position),
+      pot_scores:      row.pot_scores  || emptyPotScores(),
+    })
+    setEditingId(row.id)
+    setTab('form')
+  }
+
+  const handleCancelEdit = () => {
+    setForm({
+      employee_name: '', nip: '', position: 'head_store', branch_id: '',
+      assessment_date: today,
+      perf_scores: emptyPerfScores('head_store'),
+      pot_scores: emptyPotScores(),
+    })
+    setEditingId(null)
+    setTab('list')
   }
 
   const setPerfScore = (id, val) =>
@@ -236,7 +267,7 @@ export default function StaffLama() {
           options={[
             { key: 'matrix', label: '9-Box' },
             { key: 'list',   label: 'Daftar' },
-            { key: 'form',   label: '+ Tambah' },
+            { key: 'form',   label: editingId ? '✎ Edit' : '+ Tambah' },
           ]}
           value={tab}
           onChange={setTab}
@@ -335,14 +366,23 @@ export default function StaffLama() {
                             <div className="text-[11px] text-slate-400 mt-0.5 italic">{r.recommendation}</div>
                           )}
                         </div>
-                        <div className="shrink-0 text-right">
-                          {q && (
-                            <span className={`inline-block rounded-full px-2.5 py-1 text-[10px] font-semibold ring-1 ring-current/20 ${q.bg} ${q.text}`}>
-                              {r.quadrant}
-                            </span>
-                          )}
-                          <div className="text-xs text-slate-500 mt-1">
-                            P {Number(r.perf_avg).toFixed(1)} · T {Number(r.pot_avg).toFixed(1)}
+                        <div className="shrink-0 flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleEdit(r)}
+                            className="rounded-lg border border-slate-200 px-2.5 py-1 text-[11px] font-semibold text-slate-500 hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700 transition-colors"
+                          >
+                            Edit
+                          </button>
+                          <div className="text-right">
+                            {q && (
+                              <span className={`inline-block rounded-full px-2.5 py-1 text-[10px] font-semibold ring-1 ring-current/20 ${q.bg} ${q.text}`}>
+                                {r.quadrant}
+                              </span>
+                            )}
+                            <div className="text-xs text-slate-500 mt-1">
+                              P {Number(r.perf_avg).toFixed(1)} · T {Number(r.pot_avg).toFixed(1)}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -405,14 +445,23 @@ export default function StaffLama() {
                           <div className="text-[11px] text-slate-400 mt-0.5 italic">{r.recommendation}</div>
                         )}
                       </div>
-                      <div className="shrink-0 text-right">
-                        {q && (
-                          <span className={`inline-block rounded-full px-2.5 py-1 text-[10px] font-semibold ring-1 ring-current/20 ${q.bg} ${q.text}`}>
-                            {r.quadrant}
-                          </span>
-                        )}
-                        <div className="text-xs text-slate-500 mt-1">
-                          P {Number(r.perf_avg).toFixed(1)} · T {Number(r.pot_avg).toFixed(1)}
+                      <div className="shrink-0 flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleEdit(r)}
+                          className="rounded-lg border border-slate-200 px-2.5 py-1 text-[11px] font-semibold text-slate-500 hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700 transition-colors"
+                        >
+                          Edit
+                        </button>
+                        <div className="text-right">
+                          {q && (
+                            <span className={`inline-block rounded-full px-2.5 py-1 text-[10px] font-semibold ring-1 ring-current/20 ${q.bg} ${q.text}`}>
+                              {r.quadrant}
+                            </span>
+                          )}
+                          <div className="text-xs text-slate-500 mt-1">
+                            P {Number(r.perf_avg).toFixed(1)} · T {Number(r.pot_avg).toFixed(1)}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -566,11 +615,11 @@ export default function StaffLama() {
               type="submit" disabled={saving}
               className="btn-primary flex-1 flex items-center justify-center gap-2"
             >
-              {saving ? 'Menyimpan...' : 'Simpan Evaluasi'}
+              {saving ? 'Menyimpan...' : editingId ? 'Simpan Perubahan' : 'Simpan Evaluasi'}
             </button>
             <button
               type="button"
-              onClick={() => setTab('matrix')}
+              onClick={editingId ? handleCancelEdit : () => setTab('matrix')}
               className="rounded-xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50"
             >
               Batal

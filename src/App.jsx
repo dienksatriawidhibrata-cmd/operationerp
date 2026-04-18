@@ -25,8 +25,10 @@ const StoreStatus = lazy(() => import('./pages/dm/StoreStatus'))
 const AuditSetoran   = lazy(() => import('./pages/finance/AuditSetoran'))
 const OpexOverview  = lazy(() => import('./pages/OpexOverview'))
 const KPIReport       = lazy(() => import('./pages/kpi/KPIReport'))
-const OpsHub         = lazy(() => import('./pages/ops/Hub'))
-const OpsVisitStatus = lazy(() => import('./pages/ops/VisitStatus'))
+const OpsHub          = lazy(() => import('./pages/ops/Hub'))
+const OpsVisitStatus  = lazy(() => import('./pages/ops/VisitStatus'))
+const OpsVisitMonitor = lazy(() => import('./pages/ops/VisitMonitor'))
+const TasksPage       = lazy(() => import('./pages/tasks/TasksPage'))
 const TrainerDashboard = lazy(() => import('./pages/trainer/Dashboard'))
 const TrainerStaffBaru = lazy(() => import('./pages/trainer/StaffBaru'))
 const TrainerStaffLama = lazy(() => import('./pages/trainer/StaffLama'))
@@ -44,9 +46,10 @@ function RootRedirect() {
   if (loading && !user) return <AuthScreen message="Menyiapkan sesi login..." />
   if (!user) return <Navigate to="/login" replace />
   if (!profile) return <AuthScreen message={profileError || 'Menghubungkan data profil...'} />
+  if (profile.is_active === false) return <DeactivatedScreen onSignOut={signOut} />
 
   const role = profile.role
-  if (['staff', 'asst_head_store', 'head_store'].includes(role)) return <Navigate to="/staff" replace />
+  if (['staff', 'asst_head_store', 'head_store'].includes(role)) return <Navigate to="/staff/ceklis" replace />
   if (['district_manager', 'area_manager'].includes(role)) return <Navigate to="/dm" replace />
   if (role === 'ops_manager') return <Navigate to="/ops" replace />
   if (role === 'trainer') return <Navigate to="/trainer" replace />
@@ -60,11 +63,12 @@ function RootRedirect() {
 }
 
 function RequireAuth({ children, roles }) {
-  const { user, profile, loading, profileError } = useAuth()
+  const { user, profile, loading, profileError, signOut } = useAuth()
 
   if (loading && (!user || !profile)) return <AuthScreen message="Menyiapkan sesi login..." />
   if (!user) return <Navigate to="/login" replace />
   if (!profile) return <AuthScreen message={profileError || 'Menghubungkan data profil...'} />
+  if (profile.is_active === false) return <DeactivatedScreen onSignOut={signOut} />
   if (roles && !roles.includes(profile.role)) return <Navigate to="/" replace />
 
   return <Suspense fallback={<PageLoader />}>{children}</Suspense>
@@ -96,13 +100,24 @@ function NoRouteScreen({ role }) {
     <div className="min-h-screen bg-primary-50 flex items-center justify-center px-6">
       <div className="max-w-sm w-full bg-white rounded-2xl shadow-sm border border-primary-100 p-6 text-center space-y-4">
         <div className="text-4xl">🔒</div>
-        <div className="text-sm font-semibold text-gray-800">Halaman belum tersedia</div>
-        <div className="text-xs text-gray-500">
-          Role <span className="font-mono bg-gray-100 px-1.5 py-0.5 rounded text-gray-700">{role}</span> belum memiliki halaman yang dikonfigurasi. Hubungi admin.
+        <div className="text-sm font-semibold text-slate-800">Halaman belum tersedia</div>
+        <div className="text-xs text-slate-500">
+          Role <span className="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-slate-700">{role}</span> belum memiliki halaman yang dikonfigurasi. Hubungi admin.
         </div>
-        <button onClick={signOut} className="text-xs text-primary-600 font-semibold underline">
-          Keluar
-        </button>
+        <button onClick={signOut} className="text-xs text-primary-600 font-semibold underline">Keluar</button>
+      </div>
+    </div>
+  )
+}
+
+function DeactivatedScreen({ onSignOut }) {
+  return (
+    <div className="min-h-screen bg-primary-50 flex items-center justify-center px-6">
+      <div className="max-w-sm w-full bg-white rounded-2xl shadow-sm border border-rose-100 p-6 text-center space-y-4">
+        <div className="text-4xl">🚫</div>
+        <div className="text-sm font-semibold text-slate-800">Akun Dinonaktifkan</div>
+        <div className="text-xs text-slate-500">Akun kamu telah dinonaktifkan oleh admin. Hubungi admin untuk informasi lebih lanjut.</div>
+        <button onClick={onSignOut} className="btn-primary text-sm">Keluar</button>
       </div>
     </div>
   )
@@ -147,6 +162,11 @@ export default function App() {
           <OpsVisitStatus />
         </RequireAuth>
       } />
+      <Route path="/ops/visit-monitor" element={
+        <RequireAuth roles={['ops_manager']}>
+          <OpsVisitMonitor />
+        </RequireAuth>
+      } />
 
       <Route path="/dm" element={
         <RequireAuth roles={ALL_MANAGER}>
@@ -189,6 +209,12 @@ export default function App() {
       <Route path="/kpi" element={
         <RequireAuth roles={KPI_ALLOWED_ROLES}>
           <KPIReport />
+        </RequireAuth>
+      } />
+
+      <Route path="/tasks" element={
+        <RequireAuth roles={[...MANAGER_ROLES]}>
+          <TasksPage />
         </RequireAuth>
       } />
 
