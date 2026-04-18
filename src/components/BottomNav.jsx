@@ -39,11 +39,9 @@ export function StaffBottomNav() {
 
   return (
     <Dock>
-      <NavItem to="/staff" icon="home" label="Beranda" active={pathname === '/staff'} />
       <NavItem to="/staff/ceklis" icon="checklist" label="Ceklis" active={pathname.startsWith('/staff/ceklis')} />
-      <NavItem to="/staff/laporan" icon="chart" label="Laporan" active={pathname.startsWith('/staff/laporan')} />
-      <NavItem to="/staff/opex" icon="opex" label="Opex" active={pathname.startsWith('/staff/opex')} />
-      <NavItem to="/sc/sj" icon="finance" label="Pengiriman" active={pathname.startsWith('/sc')} />
+      <NavItem to="/sc/sj" icon="finance" label="Terima Barang" active={pathname.startsWith('/sc')} />
+      <NavItem to="/kpi" icon="chart" label="KPI" active={pathname.startsWith('/kpi')} />
     </Dock>
   )
 }

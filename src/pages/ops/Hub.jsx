@@ -122,7 +122,7 @@ export default function OpsHub() {
 
         {/* Full DM Dashboard shortcut */}
         <SectionPanel eyebrow="Dashboard Lanjut" title="Laporan Lengkap">
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-3">
             <Link
               to="/dm"
               className="flex items-center gap-3 rounded-[22px] bg-primary-50 border border-primary-100 px-5 py-4 hover:bg-primary-100 transition-colors"
@@ -141,6 +141,16 @@ export default function OpsHub() {
               <div>
                 <div className="text-sm font-semibold text-slate-900">Audit Finance</div>
                 <div className="text-xs text-slate-400">Rekap setoran & audit keuangan</div>
+              </div>
+            </Link>
+            <Link
+              to="/trainer"
+              className="flex items-center gap-3 rounded-[22px] bg-emerald-50 border border-emerald-100 px-5 py-4 hover:bg-emerald-100 transition-colors"
+            >
+              <span className="text-2xl">🎓</span>
+              <div>
+                <div className="text-sm font-semibold text-slate-900">Trainer Hub</div>
+                <div className="text-xs text-emerald-600">Penilaian staff baru & lama</div>
               </div>
             </Link>
           </div>
