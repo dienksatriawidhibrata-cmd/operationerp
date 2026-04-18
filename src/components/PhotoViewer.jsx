@@ -5,18 +5,25 @@ import { toEmbedUrl, toFullUrl } from '../lib/drive'
  * Tampilkan array foto inline dengan lightbox.
  * Klik thumbnail untuk membuka viewer fullscreen di dalam apps.
  * Support navigasi prev/next antar foto.
+ *
+ * Props:
+ *   urls       – foto yang ditampilkan sebagai thumbnail
+ *   allUrls    – (opsional) seluruh foto gabungan lintas-kategori untuk navigasi lightbox
+ *   allOffset  – index awal `urls` di dalam `allUrls`
  */
-export default function PhotoViewer({ urls = [], emptyText = 'Tidak ada foto' }) {
+export default function PhotoViewer({ urls = [], emptyText = 'Tidak ada foto', allUrls, allOffset = 0 }) {
+  // navUrls = semua foto yang bisa dinavigasi di lightbox
+  const navUrls = allUrls || urls
   const [lightboxIdx, setLightboxIdx] = useState(null)
   const [broken, setBroken] = useState({})
   const [imgLoading, setImgLoading] = useState(false)
 
   const isOpen = lightboxIdx !== null
-  const total = urls?.length ?? 0
+  const total = navUrls?.length ?? 0
 
-  const open = (idx) => {
+  const open = (localIdx) => {
     setImgLoading(true)
-    setLightboxIdx(idx)
+    setLightboxIdx(allOffset + localIdx)
   }
   const close = () => setLightboxIdx(null)
   const prev = (event) => {
@@ -47,7 +54,7 @@ export default function PhotoViewer({ urls = [], emptyText = 'Tidak ada foto' })
     return <p className="text-xs italic text-gray-400">{emptyText}</p>
   }
 
-  const currentUrl = isOpen ? urls[lightboxIdx] : null
+  const currentUrl = isOpen ? navUrls[lightboxIdx] : null
 
   return (
     <>

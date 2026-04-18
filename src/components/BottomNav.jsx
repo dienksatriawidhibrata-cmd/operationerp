@@ -94,6 +94,18 @@ export function SCBottomNav() {
   )
 }
 
+export function TrainerBottomNav() {
+  const { pathname } = useLocation()
+
+  return (
+    <Dock>
+      <NavItem to="/trainer"            icon="home"     label="Dashboard" active={pathname === '/trainer'} />
+      <NavItem to="/trainer/staff-baru" icon="users"    label="Staff Baru" active={pathname.startsWith('/trainer/staff-baru')} />
+      <NavItem to="/trainer/staff-lama" icon="matrix"   label="Staff Lama" active={pathname.startsWith('/trainer/staff-lama')} />
+    </Dock>
+  )
+}
+
 export function FinanceBottomNav() {
   const { pathname } = useLocation()
 
