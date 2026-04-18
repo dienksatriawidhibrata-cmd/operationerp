@@ -96,8 +96,17 @@ function CeklisContent({ checklist }) {
   const photos = checklist.photos || {}
   const platformItems = checklist.shift === 'pagi' ? PLATFORM_ITEMS_PAGI : PLATFORM_ITEMS_MALAM
 
-  const allAreaPhotos = AREA_KEYS.flatMap(({ key }) => photos[key] || [])
   const groomingPhotos = photos.staff_grooming || []
+  const allAreaPhotos = AREA_KEYS.flatMap(({ key }) => photos[key] || [])
+
+  // flat array for cross-category lightbox navigation
+  const allPhotos = [...(checklist.shift === 'pagi' ? groomingPhotos : []), ...allAreaPhotos]
+  const areaOffsets = {}
+  let runningOffset = checklist.shift === 'pagi' ? groomingPhotos.length : 0
+  AREA_KEYS.forEach(({ key }) => {
+    areaOffsets[key] = runningOffset
+    runningOffset += (photos[key] || []).length
+  })
 
   return (
     <div className="space-y-4">
@@ -122,7 +131,7 @@ function CeklisContent({ checklist }) {
       {checklist.shift === 'pagi' && (
         <div>
           <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Staff Grooming</div>
-          <PhotoViewer urls={groomingPhotos} emptyText="Tidak ada foto grooming" />
+          <PhotoViewer urls={groomingPhotos} emptyText="Tidak ada foto grooming" allUrls={allPhotos} allOffset={0} />
         </div>
       )}
 
@@ -141,7 +150,7 @@ function CeklisContent({ checklist }) {
                   <div className="text-xs font-medium text-slate-700">{label}</div>
                   {areaPhotos.length > 0 && (
                     <div className="mt-1.5">
-                      <PhotoViewer urls={areaPhotos} emptyText="" />
+                      <PhotoViewer urls={areaPhotos} emptyText="" allUrls={allPhotos} allOffset={areaOffsets[key]} />
                     </div>
                   )}
                 </div>
@@ -474,7 +483,7 @@ export default function StoreStatus() {
   // ── Store list component ──────────────────────────────────
 
   const StoreList = ({ onSelect }) => (
-    <div className="space-y-1 overflow-y-auto">
+    <div className="space-y-1 overflow-y-auto flex-1 min-h-0">
       {loadingBranches ? (
         <div className="flex justify-center py-8">
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary-600 border-t-transparent" />
@@ -568,11 +577,11 @@ export default function StoreStatus() {
       )}
 
       {/* Desktop + mobile content layout */}
-      <div className="lg:grid lg:grid-cols-[260px_1fr] lg:gap-4">
+      <div className="lg:grid lg:grid-cols-[260px_1fr] lg:gap-4 lg:h-[calc(100vh-7rem)]">
 
         {/* Desktop: left sidebar store list */}
-        <aside className="hidden lg:block">
-          <div className="sticky top-4 overflow-hidden rounded-[22px] border border-slate-200 bg-white p-3 shadow-sm">
+        <aside className="hidden lg:flex lg:flex-col lg:overflow-hidden">
+          <div className="overflow-hidden rounded-[22px] border border-slate-200 bg-white p-3 shadow-sm flex flex-col min-h-0 flex-1">
             <div className="mb-3 flex items-center gap-2 px-1">
               <span className="flex h-2 w-2 rounded-full bg-emerald-400" />
               <span className="text-[11px] text-slate-400">Ceklis pagi masuk</span>
@@ -584,7 +593,7 @@ export default function StoreStatus() {
         </aside>
 
         {/* Right: detail panel */}
-        <main>
+        <main className="lg:overflow-y-auto lg:pb-24">
           {/* Desktop date nav */}
           <div className="mb-4 hidden items-center gap-3 lg:flex">
             <button

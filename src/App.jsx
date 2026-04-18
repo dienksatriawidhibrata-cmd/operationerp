@@ -8,6 +8,7 @@ import {
   SC_ROLES,
   STORE_ROLES,
   SUPPLY_CHAIN_VIEW_ROLES,
+  TRAINER_ROLES,
 } from './lib/access'
 
 import Login from './pages/Login'
@@ -26,6 +27,9 @@ const OpexOverview  = lazy(() => import('./pages/OpexOverview'))
 const KPIReport       = lazy(() => import('./pages/kpi/KPIReport'))
 const OpsHub         = lazy(() => import('./pages/ops/Hub'))
 const OpsVisitStatus = lazy(() => import('./pages/ops/VisitStatus'))
+const TrainerDashboard = lazy(() => import('./pages/trainer/Dashboard'))
+const TrainerStaffBaru = lazy(() => import('./pages/trainer/StaffBaru'))
+const TrainerStaffLama = lazy(() => import('./pages/trainer/StaffLama'))
 const SCDashboard    = lazy(() => import('./pages/sc/Dashboard'))
 const SCNewOrder     = lazy(() => import('./pages/sc/NewOrder'))
 const SCOrderDetail  = lazy(() => import('./pages/sc/OrderDetail'))
@@ -45,6 +49,7 @@ function RootRedirect() {
   if (['staff', 'asst_head_store', 'head_store'].includes(role)) return <Navigate to="/staff" replace />
   if (['district_manager', 'area_manager'].includes(role)) return <Navigate to="/dm" replace />
   if (role === 'ops_manager') return <Navigate to="/ops" replace />
+  if (role === 'trainer') return <Navigate to="/trainer" replace />
   if (role === 'finance_supervisor') return <Navigate to="/finance" replace />
   if (role === 'picking_spv') return <Navigate to="/sc/picking" replace />
   if (role === 'qc_spv') return <Navigate to="/sc/qc" replace />
@@ -184,6 +189,23 @@ export default function App() {
       <Route path="/kpi" element={
         <RequireAuth roles={KPI_ALLOWED_ROLES}>
           <KPIReport />
+        </RequireAuth>
+      } />
+
+      {/* ── Trainer ── */}
+      <Route path="/trainer" element={
+        <RequireAuth roles={TRAINER_ROLES}>
+          <TrainerDashboard />
+        </RequireAuth>
+      } />
+      <Route path="/trainer/staff-baru" element={
+        <RequireAuth roles={TRAINER_ROLES}>
+          <TrainerStaffBaru />
+        </RequireAuth>
+      } />
+      <Route path="/trainer/staff-lama" element={
+        <RequireAuth roles={TRAINER_ROLES}>
+          <TrainerStaffLama />
         </RequireAuth>
       } />
 
