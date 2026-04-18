@@ -56,6 +56,72 @@ const EMPTY_OPEX_SUMMARY = {
 }
 
 const BOH_CATEGORY = 'Beban Operasional Harian'
+
+function buildHeroSummary(stores) {
+  if (!stores.length) return 'Data toko sedang dimuat...'
+
+  const total = stores.length
+  const sName = (s) => s.name?.replace('Bagi Kopi ', '') || s.store_id || '?'
+  const fmt = (list) => {
+    if (list.length <= 3) return list.join(', ')
+    return `${list.slice(0, 3).join(', ')} +${list.length - 3} lainnya`
+  }
+
+  const parts = []
+
+  // Ceklis pagi
+  const belumPagi = stores.filter((s) => !s.ceklisPagi).map(sName)
+  const terlambatPagi = stores.filter((s) => s.ceklisPagi?.is_late).map(sName)
+
+  if (belumPagi.length === 0) {
+    parts.push('Seluruh toko sudah mengerjakan ceklis pagi.')
+  } else if (belumPagi.length === total) {
+    parts.push('Belum ada toko yang submit ceklis pagi.')
+  } else {
+    parts.push(`${belumPagi.length} dari ${total} toko belum ceklis pagi (${fmt(belumPagi)}).`)
+  }
+  if (terlambatPagi.length > 0) {
+    parts.push(`${terlambatPagi.length} toko terlambat submit (${fmt(terlambatPagi)}).`)
+  }
+
+  // Ceklis malam — hanya tampil kalau sebagian sudah masuk (artinya malam sudah dimulai)
+  const sudahMalam = stores.filter((s) => s.ceklisMalam).length
+  if (sudahMalam > 0) {
+    const belumMalam = stores.filter((s) => !s.ceklisMalam).map(sName)
+    if (belumMalam.length === 0) {
+      parts.push('Ceklis malam semua toko sudah masuk.')
+    } else {
+      parts.push(`${belumMalam.length} toko belum ceklis malam (${fmt(belumMalam)}).`)
+    }
+  }
+
+  // Setoran kemarin
+  const belumSetoran = stores.filter((s) => !s.setoran).map(sName)
+  const pendingSetoran = stores.filter((s) => s.setoran?.status === 'submitted').map(sName)
+
+  if (belumSetoran.length === total) {
+    parts.push('Belum ada toko yang submit setoran kemarin.')
+  } else if (belumSetoran.length > 0) {
+    parts.push(`${belumSetoran.length} dari ${total} toko belum setoran (${fmt(belumSetoran)}).`)
+  }
+  if (pendingSetoran.length > 0) {
+    parts.push(`${pendingSetoran.length} setoran menunggu approval (${fmt(pendingSetoran)}).`)
+  }
+  if (belumSetoran.length === 0 && pendingSetoran.length === 0) {
+    parts.push('Setoran semua toko sudah diproses.')
+  }
+
+  // OPEX hari ini
+  const totalOpex = stores.reduce((sum, s) => sum + (s.opexTodayTotal || 0), 0)
+  const storesWithOpex = stores.filter((s) => s.opexTodayCount > 0).length
+  if (totalOpex === 0) {
+    parts.push('Belum ada pengeluaran tercatat hari ini.')
+  } else {
+    parts.push(`Total pengeluaran hari ini ${fmtRp(totalOpex)} dari ${storesWithOpex} toko.`)
+  }
+
+  return parts.join(' ')
+}
 const BROWSER_NOTIFICATION_LIMIT = 4
 const REFETCH_INTERVAL_MS = 5 * 60 * 1000
 const SALES_SAFETY_FACTOR = 0.925
@@ -636,8 +702,8 @@ export default function DMDashboard() {
       <main className="mx-auto max-w-7xl px-4 pb-36 pt-4 sm:px-6 lg:px-8 lg:pb-32 lg:pt-8">
         <HeroCard
           eyebrow={roleName}
-          title={`Halo, ${shortName}. Operasional ${summary.total || 0} toko siap dipantau.`}
-          description="Aku jadikan halaman ini sebagai blueprint visual baru: lebih lega, lebih cepat dipindai, dan tetap menjaga alur kerja approval, visit, serta kontrol biaya."
+          title={`Halo, ${shortName}.`}
+          description={loading ? 'Memuat ringkasan operasional...' : buildHeroSummary(stores)}
           meta={
             <>
               <ToneBadge tone="info">
