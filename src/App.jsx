@@ -142,7 +142,7 @@ export default function App() {
         </RequireAuth>
       } />
       <Route path="/staff/laporan" element={
-        <RequireAuth roles={[...STORE_ROLES, ...ALL_MANAGER]}>
+        <RequireAuth roles={['head_store', ...ALL_MANAGER]}>
           <LaporanHarian />
         </RequireAuth>
       } />
