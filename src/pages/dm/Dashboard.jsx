@@ -667,76 +667,124 @@ export default function DMDashboard() {
 
   return (
     <AppCanvas>
-      <header className="hidden bg-primary-600 text-white px-4 pt-5 pb-6">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-primary-200 text-sm">{roleName}</p>
-            <h1 className="text-xl font-bold mt-0.5">{shortName}</h1>
-            <p className="text-primary-300 text-xs mt-1">
-              {loading ? '...' : `${summary.total} toko`} · {new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short' })}
-            </p>
+      {/* Compact Sticky Header */}
+      <div className="sticky top-0 z-50 bg-white border-b border-blue-50 px-5 py-4 flex justify-between items-center">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-lg shrink-0">
+            <AppIcon name="users" size={20} />
           </div>
-          <button onClick={signOut} className="text-primary-300 hover:text-white p-1">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-          </button>
+          <div>
+            <h1 className="text-[10px] text-blue-600 font-bold uppercase tracking-widest">{roleName}</h1>
+            <p className="font-extrabold text-gray-900 text-lg leading-tight">{shortName}</p>
+          </div>
         </div>
-      </header>
-
-      <ShellHeader
-        brandTitle="Bagi Kopi Operations"
-        brandSubtitle="Operational Control"
-        profileName={profile?.full_name || shortName}
-        profileRole={roleName}
-        primaryAction={
-          <button
-            onClick={signOut}
-            className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500 shadow-[0_18px_45px_-34px_rgba(15,23,42,0.35)] transition-colors hover:border-primary-200 hover:text-primary-700"
-            aria-label="Keluar"
-          >
+        <div className="flex gap-2">
+          {notifPermission !== 'granted' && (
+            <button onClick={enableBrowserNotifications} className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 relative">
+              <AppIcon name="bell" size={18} />
+              {criticalAlertCount > 0 && <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 border-2 border-white rounded-full" />}
+            </button>
+          )}
+          <button onClick={signOut} className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 hover:bg-blue-100 transition-colors">
             <AppIcon name="logout" size={18} />
           </button>
-        }
-      />
-
-      <main className="mx-auto max-w-7xl px-4 pb-36 pt-4 sm:px-6 lg:px-8 lg:pb-32 lg:pt-8">
-        <div className="grid items-start gap-4 lg:grid-cols-[1fr_300px]">
-          <HeroCard
-            eyebrow={roleName}
-            title={`Halo, ${shortName}.`}
-            description={loading ? 'Memuat ringkasan operasional...' : buildHeroSummary(stores)}
-            meta={
-              <>
-                <ToneBadge tone="info">
-                  <AppIcon name="calendar" size={14} />
-                  {todayLabel}
-                </ToneBadge>
-                <ToneBadge tone={criticalAlertCount > 0 ? 'danger' : 'ok'}>
-                  <AppIcon name={criticalAlertCount > 0 ? 'warning' : 'spark'} size={14} />
-                  {criticalAlertCount > 0 ? `${criticalAlertCount} alert prioritas` : 'Tidak ada alert kritis'}
-                </ToneBadge>
-                <ToneBadge tone={summary.pendingSetoran > 0 ? 'warn' : 'ok'}>
-                  <AppIcon name="finance" size={14} />
-                  {summary.pendingSetoran > 0 ? `${summary.pendingSetoran} setoran pending` : 'Approval setoran bersih'}
-                </ToneBadge>
-              </>
-            }
-            actions={
-              <SoftButton tone="light" icon="refresh" onClick={fetchDashboard}>
-                Refresh
-              </SoftButton>
-            }
-          >
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              {snapshotStats.map((item) => (
-                <InlineStat key={item.label} label={item.label} value={item.value} tone={item.tone} />
-              ))}
-            </div>
-          </HeroCard>
-
-          <TaskWidget profile={profile} />
         </div>
+      </div>
+
+      <main className="mx-auto max-w-7xl px-4 pb-36 pt-5 sm:px-6 lg:px-8 lg:pb-32">
+
+        {/* Store Status Overview */}
+        <div className="bg-gradient-to-br from-white to-blue-50/50 p-5 rounded-[2.5rem] border border-blue-100 shadow-sm mb-5">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xs font-bold text-blue-900 uppercase">Status Ceklis Toko (Hari Ini)</h2>
+            <span className="text-[10px] text-gray-500 font-medium">{loading ? '...' : `${summary.total} Toko`}</span>
+          </div>
+          <div className="grid grid-cols-3 gap-4 mb-5">
+            {[
+              { label: 'Ceklis Pagi', val: summary.ceklisOK, color: '#22c55e' },
+              { label: 'Laporan H-1', val: summary.laporanOK, color: '#f97316' },
+              { label: 'Setoran', val: summary.total - summary.pendingSetoran, color: '#6366f1' },
+            ].map((item, i) => {
+              const offset = loading || summary.total === 0 ? 150 : 150 - (item.val / summary.total) * 150
+              return (
+                <div key={item.label} className={`text-center ${i === 1 ? 'border-x border-blue-100' : ''}`}>
+                  <p className="text-[9px] font-bold text-gray-400 mb-2 uppercase">{item.label}</p>
+                  <div className="relative inline-flex items-center justify-center">
+                    <svg className="w-14 h-14" style={{ transform: 'rotate(-90deg)' }}>
+                      <circle strokeWidth="4" stroke="#e5e7eb" fill="transparent" r="24" cx="28" cy="28" />
+                      <circle strokeWidth="4" strokeDasharray="150" strokeDashoffset={offset} strokeLinecap="round" stroke={item.color} fill="transparent" r="24" cx="28" cy="28" />
+                    </svg>
+                    <span className="absolute text-xs font-bold">{loading ? '-' : `${item.val}/${summary.total}`}</span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          <Link to="/dm/stores" className="flex w-full py-3 bg-blue-600 text-white rounded-2xl font-bold text-xs items-center justify-center gap-2 hover:bg-blue-700 transition-colors">
+            <AppIcon name="checklist" size={16} />
+            Detail Kepatuhan Toko
+          </Link>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="grid grid-cols-4 gap-4 mb-5">
+          {[
+            { to: '/staff/laporan', icon: 'chart', label: 'Laporan\nHarian' },
+            { to: '/kpi', icon: 'checklist', label: 'Monitoring\nKPI' },
+            { to: '/dm/approval', icon: 'approval', label: 'Approval\nSetoran', badge: summary.pendingSetoran > 0 },
+            { to: '/dm/visits', icon: 'map', label: 'Daily\nVisit' },
+          ].map((action) => (
+            <Link key={action.to} to={action.to} className="flex flex-col items-center gap-2">
+              <div className="w-14 h-14 bg-white border border-blue-100 rounded-2xl flex items-center justify-center text-blue-600 shadow-sm active:scale-95 transition-transform relative">
+                <AppIcon name={action.icon} size={22} />
+                {action.badge && <span className="absolute -top-1 -right-1 bg-red-500 w-3 h-3 rounded-full border border-white" />}
+              </div>
+              <span className="text-[9px] font-bold text-center leading-tight text-gray-700">
+                {action.label.split('\n').map((l, i) => <span key={i}>{l}{i === 0 ? <br /> : ''}</span>)}
+              </span>
+            </Link>
+          ))}
+        </div>
+
+        {/* Performance Snapshot */}
+        <div className="flex gap-3 mb-5">
+          <div className="flex-1 bg-white p-4 rounded-3xl border border-blue-100 shadow-sm">
+            <p className="text-[9px] text-gray-400 font-bold uppercase mb-1">Ceklis Hari Ini</p>
+            <div className="flex items-end justify-between">
+              <h4 className="text-xl font-black text-blue-900">
+                {loading || summary.total === 0 ? '-' : `${Math.round(summary.ceklisOK / summary.total * 100)}%`}
+              </h4>
+              <span className="text-[8px] text-green-500 font-bold mb-1">{summary.ceklisOK}/{summary.total}</span>
+            </div>
+            <div className="w-full bg-gray-100 h-1.5 rounded-full mt-2">
+              <div className="bg-blue-600 h-1.5 rounded-full" style={{ width: summary.total > 0 ? `${(summary.ceklisOK / summary.total) * 100}%` : '0%' }} />
+            </div>
+          </div>
+          <div className="flex-1 bg-blue-600 p-4 rounded-3xl shadow-lg text-white">
+            <p className="text-[9px] text-blue-100 font-bold uppercase mb-1">Coverage Visit</p>
+            <div className="flex items-end justify-between">
+              <h4 className="text-xl font-black">{visitCoveragePct}%</h4>
+              <AppIcon name="map" size={16} className="mb-1 opacity-80" />
+            </div>
+            <p className="text-[8px] mt-1 opacity-80">{visitSummary.visitedCount}/{summary.total} toko</p>
+          </div>
+        </div>
+
+        {criticalAlertCount > 0 && (
+          <div className="bg-gradient-to-r from-blue-700 to-blue-500 p-5 rounded-[2rem] text-white relative overflow-hidden shadow-lg mb-5">
+            <div className="relative z-10">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="bg-yellow-400 text-blue-900 text-[8px] font-black px-2 py-0.5 rounded uppercase">Urgent</span>
+                <span className="text-[9px] font-bold opacity-80">{todayLabel}</span>
+              </div>
+              <h3 className="font-bold text-sm mb-1">{criticalAlertCount} Alert Prioritas</h3>
+              <p className="text-[10px] opacity-90 leading-relaxed line-clamp-2">{buildHeroSummary(stores)}</p>
+            </div>
+            <AppIcon name="warning" size={72} className="absolute -right-4 -bottom-4 opacity-10" />
+          </div>
+        )}
+
+        <TaskWidget profile={profile} />
 
         <div className="mt-4 space-y-3">
         {loading ? (
@@ -745,79 +793,43 @@ export default function DMDashboard() {
           </div>
         ) : (
           <>
-            <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {/* Snapshot Cards */}
+            <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
               {overviewCards.map((card) => (
-                <MetricCard
+                <button
                   key={card.title}
-                  title={card.title}
-                  value={card.value}
-                  total={card.total}
-                  note={card.note}
-                  icon={card.icon}
-                  tone={card.tone}
-                  onClick={() => {
-                    if (card.title === 'Visit Periode') {
-                      setActiveTab('kunjungan')
-                      return
-                    }
-                    setActiveTab('toko')
-                  }}
-                />
+                  onClick={() => card.title === 'Visit Periode' ? setActiveTab('kunjungan') : setActiveTab('toko')}
+                  className="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm text-left active:scale-[0.97] transition-transform"
+                >
+                  <p className="text-[8px] font-bold text-gray-400 uppercase mb-1">{card.title}</p>
+                  <p className="text-xl font-black text-blue-900">
+                    {card.value}{card.total != null ? <span className="text-sm text-gray-400 font-semibold">/{card.total}</span> : ''}
+                  </p>
+                </button>
               ))}
             </div>
 
-            <div className="mb-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                <ActionCard
-                  to="/dm/visits"
-                  icon="map"
-                  title="Daily Visit"
-                  description="Audit outlet, isi skor, dan lihat log kunjungan."
-                  accent="violet"
-                />
-                <ActionCard
-                  to="/dm/approval"
-                  icon="approval"
-                  title="Approval Setoran"
-                  description="Review setoran pending dan tindak lanjuti kas harian."
-                  accent="emerald"
-                />
-                {kpiEnabled && (
-                  <ActionCard
-                    to="/kpi"
-                    icon="chart"
-                    title="KPI Report"
-                    description="Pantau KPI yang sudah otomatis terfilter sesuai area atau district kamu."
-                    accent="primary"
-                  />
-                )}
-                {supplyChainEnabled && (
-                  <ActionCard
-                    to="/sc"
-                    icon="checklist"
-                    title="Supply Chain"
-                    description="Lihat order aktif dan pengiriman barang sesuai outlet di scope kamu."
-                    accent="violet"
-                  />
-                )}
-                {isOpsManager && (
-                  <ActionCard
-                    to="/finance"
-                    icon="finance"
-                    title="Finance Audit"
-                    description="Pantau audit setoran lintas area, district, dan toko."
-                    accent="amber"
-                  />
-                )}
-                {isOpsManager && (
-                  <ActionCard
-                    to="/opex"
-                    icon="opex"
-                    title="Opex Overview"
-                    description="Bandingkan BOH dan pantau pengajuan biaya operasional."
-                    accent="primary"
-                  />
-                )}
-              </div>
+            {/* SOP Links */}
+            <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              {[
+                { to: '/dm/visits', icon: 'map', label: 'SOP Visit', sub: 'Daily audit toko', bg: 'bg-blue-50 border-blue-100 text-blue-600' },
+                { to: '/dm/approval', icon: 'approval', label: 'Approval', sub: 'Setoran harian', bg: 'bg-emerald-50 border-emerald-100 text-emerald-600' },
+                ...(kpiEnabled ? [{ to: '/kpi', icon: 'chart', label: 'KPI Report', sub: 'Performa wilayah', bg: 'bg-primary-50 border-primary-100 text-primary-600' }] : []),
+                ...(supplyChainEnabled ? [{ to: '/sc', icon: 'finance', label: 'Supply Chain', sub: 'Order & pengiriman', bg: 'bg-violet-50 border-violet-100 text-violet-600' }] : []),
+                ...(isOpsManager ? [{ to: '/finance', icon: 'finance', label: 'Finance Audit', sub: 'Rekap setoran', bg: 'bg-amber-50 border-amber-100 text-amber-600' }] : []),
+                ...(isOpsManager ? [{ to: '/opex', icon: 'opex', label: 'Opex Overview', sub: 'Pantau BOH', bg: 'bg-primary-50 border-primary-100 text-primary-600' }] : []),
+              ].map((link) => (
+                <Link key={link.to} to={link.to} className={`flex items-center gap-3 rounded-[1.5rem] border px-4 py-3 hover:opacity-80 transition-opacity ${link.bg}`}>
+                  <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center shadow-sm shrink-0">
+                    <AppIcon name={link.icon} size={18} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-black text-gray-900 leading-tight">{link.label}</p>
+                    <p className="text-[9px] text-gray-500 leading-tight">{link.sub}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
 
             <DashSection
               icon="🏪"

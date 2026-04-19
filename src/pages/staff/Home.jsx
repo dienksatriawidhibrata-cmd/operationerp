@@ -1,19 +1,11 @@
+import { Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { StaffBottomNav } from '../../components/BottomNav'
 import { canViewKPI, canViewSupplyChain } from '../../lib/access'
-import {
-  ActionCard,
-  AppIcon,
-  HeroCard,
-  InlineStat,
-  SectionPanel,
-  SubpageShell,
-  ToneBadge,
-} from '../../components/ui/AppKit'
+import { AppIcon } from '../../components/ui/AppKit'
 import { fmtRp, todayWIB, yesterdayWIB, sisaWaktuLaporan } from '../../lib/utils'
-import Alert from '../../components/Alert'
 
 export default function StaffHome() {
   const { profile, signOut } = useAuth()
@@ -67,224 +59,201 @@ export default function StaffHome() {
   }
 
   const isStoreLevel = ['staff', 'asst_head_store', 'head_store'].includes(profile?.role)
+  const isHeadStore = profile?.role === 'head_store'
   const kpiEnabled = canViewKPI(profile?.role)
   const supplyChainEnabled = canViewSupplyChain(profile?.role)
   const shortName = profile?.full_name?.split(' ')[0] || '-'
   const branchName = profile?.branch?.name || 'Bagi Kopi'
-  const greetingLabel = getGreetingLabel()
 
-  const statCards = [
-    {
-      label: 'Ceklis Pagi',
-      value: status?.ceklisPagi ? (status.ceklisPagi.is_late ? 'Late' : 'Done') : 'Miss',
-      tone: status?.ceklisPagi ? (status.ceklisPagi.is_late ? 'amber' : 'emerald') : 'rose',
-    },
-    {
-      label: 'Ceklis Malam',
-      value: status?.ceklisMalam ? 'Done' : 'Open',
-      tone: status?.ceklisMalam ? 'emerald' : 'slate',
-    },
-    {
-      label: 'Laporan H-1',
-      value: status?.laporan ? 'Done' : 'Pending',
-      tone: status?.laporan ? 'emerald' : 'amber',
-    },
-    {
-      label: 'Opex Hari Ini',
-      value: fmtRp(status?.totalOpex || 0),
-      tone: status?.totalOpex > 0 ? 'primary' : 'slate',
-    },
+  function getGreetingLabel() {
+    const hour = new Date(new Date().getTime() + 7 * 3600 * 1000).getUTCHours()
+    if (hour < 11) return 'Selamat pagi'
+    if (hour < 15) return 'Selamat siang'
+    if (hour < 18) return 'Selamat sore'
+    return 'Selamat malam'
+  }
+
+  const quickActions = [
+    ...(isHeadStore || !isStoreLevel ? [{
+      to: '/staff/laporan', icon: 'chart', label: 'Laporan\nHarian',
+    }] : []),
+    ...(kpiEnabled ? [{ to: '/kpi', icon: 'checklist', label: 'KPI\nToko' }] : []),
+    ...(supplyChainEnabled ? [{ to: '/sc/sj', icon: 'finance', label: 'Terima\nBarang' }] : []),
+    { to: '/staff/opex', icon: 'opex', label: 'Beban\nOperasional' },
+    ...(!isStoreLevel ? [{ to: '/dm', icon: 'home', label: 'Dashboard\nManajer' }] : []),
   ]
 
   return (
-    <SubpageShell
-      title="Store Operations"
-      subtitle={branchName}
-      eyebrow={greetingLabel}
-      showBack={false}
-      action={
-        <button
-          onClick={signOut}
-          className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500 shadow-[0_18px_45px_-34px_rgba(15,23,42,0.35)] transition-colors hover:border-primary-200 hover:text-primary-700"
-          aria-label="Keluar"
-        >
-          <AppIcon name="logout" size={18} />
-        </button>
-      }
-      footer={<StaffBottomNav />}
-    >
-      <HeroCard
-        eyebrow={profile?.branch?.store_id || 'Store Ops'}
-        title={`Halo, ${shortName}. Jaga ritme operasional toko hari ini.`}
-        description="Semua alur penting seperti ceklis, laporan, dan OPEX aku rapikan di halaman ini supaya lebih cepat dipindai dan langsung terasa prioritasnya."
-        meta={
-          <>
-            <ToneBadge tone="info">
-              <AppIcon name="calendar" size={14} />
-              {new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-            </ToneBadge>
-            <ToneBadge tone={status?.laporan ? 'ok' : 'warn'}>
-              <AppIcon name="chart" size={14} />
-              {status?.laporan ? 'Laporan H-1 aman' : `Sisa ${sisaWaktuLaporan(yesterday)}`}
-            </ToneBadge>
-          </>
-        }
-      >
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {(loading ? [
-            { label: 'Ceklis Pagi', value: '...', tone: 'slate' },
-            { label: 'Ceklis Malam', value: '...', tone: 'slate' },
-            { label: 'Laporan H-1', value: '...', tone: 'slate' },
-            { label: 'Opex Hari Ini', value: '...', tone: 'slate' },
-          ] : statCards).map((item) => (
-            <InlineStat key={item.label} label={item.label} value={item.value} tone={item.tone} />
+    <div className="min-h-screen bg-[#f0f7ff] pb-28">
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-50 bg-white/90 backdrop-blur-md px-5 py-4 flex justify-between items-center border-b border-blue-50">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-full bg-blue-100 flex items-center justify-center border-2 border-blue-400 text-blue-700 font-bold text-base shrink-0">
+            {shortName.charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">{getGreetingLabel()}</p>
+            <p className="font-bold text-gray-800 text-base leading-tight">{shortName}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="text-right hidden sm:block">
+            <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">{profile?.role?.replace(/_/g, ' ')}</p>
+            <p className="text-xs font-semibold text-gray-600">{branchName}</p>
+          </div>
+          <button onClick={signOut} className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 hover:bg-blue-100 transition-colors">
+            <AppIcon name="logout" size={18} />
+          </button>
+        </div>
+      </div>
+
+      <div className="px-5 pt-5">
+        {/* Branch not configured */}
+        {!loading && !profile?.branch_id && (
+          <div className="mb-4 p-4 rounded-3xl bg-rose-50 border border-rose-100">
+            <p className="text-sm text-rose-700 font-semibold">Akun belum dikonfigurasi ke cabang manapun. Hubungi ops manager.</p>
+          </div>
+        )}
+
+        {/* Ceklis Status Card */}
+        <div className="bg-white p-4 rounded-[2rem] border border-blue-50 shadow-sm mb-5">
+          <div className="grid grid-cols-3 gap-3 mb-4">
+            {/* Ceklis Pagi */}
+            <div className="border-r border-gray-100 pr-2">
+              <div className="flex items-center gap-1 text-blue-500 mb-1.5">
+                <AppIcon name="spark" size={11} />
+                <span className="text-[9px] font-bold uppercase tracking-widest">Pagi</span>
+              </div>
+              <p className="text-sm font-bold text-gray-800">Ceklis Pagi</p>
+              <div className="w-full bg-gray-100 h-1.5 rounded-full mt-2">
+                <div className={`h-1.5 rounded-full transition-all ${
+                  loading ? 'w-0' :
+                  status?.ceklisPagi
+                    ? (status.ceklisPagi.is_late ? 'bg-amber-400 w-full' : 'bg-green-500 w-full')
+                    : 'w-0'
+                }`} />
+              </div>
+              <p className="text-[9px] text-gray-400 mt-1">
+                {loading ? '...' : status?.ceklisPagi ? (status.ceklisPagi.is_late ? 'Terlambat' : 'Selesai') : 'Belum'}
+              </p>
+            </div>
+
+            {/* Laporan H-1 */}
+            <div className="border-r border-gray-100 px-2">
+              <div className="flex items-center gap-1 text-orange-400 mb-1.5">
+                <AppIcon name="chart" size={11} />
+                <span className="text-[9px] font-bold uppercase tracking-widest">Laporan</span>
+              </div>
+              <p className="text-sm font-bold text-gray-800">H-1</p>
+              <div className="w-full bg-gray-100 h-1.5 rounded-full mt-2">
+                <div className={`h-1.5 rounded-full transition-all ${!loading && status?.laporan ? 'bg-orange-400 w-full' : 'w-0'}`} />
+              </div>
+              <p className="text-[9px] text-gray-400 mt-1">
+                {loading ? '...' : status?.laporan ? 'Submitted' : 'Pending'}
+              </p>
+            </div>
+
+            {/* Ceklis Malam */}
+            <div className="pl-2">
+              <div className="flex items-center gap-1 text-indigo-500 mb-1.5">
+                <AppIcon name="checklist" size={11} />
+                <span className="text-[9px] font-bold uppercase tracking-widest">Malam</span>
+              </div>
+              <p className="text-sm font-bold text-gray-800">Ceklis Mal.</p>
+              <div className="w-full bg-gray-100 h-1.5 rounded-full mt-2">
+                <div className={`h-1.5 rounded-full transition-all ${!loading && status?.ceklisMalam ? 'bg-indigo-500 w-full' : 'w-0'}`} />
+              </div>
+              <p className="text-[9px] text-gray-400 mt-1">
+                {loading ? '...' : status?.ceklisMalam ? 'Selesai' : 'Terbuka'}
+              </p>
+            </div>
+          </div>
+
+          {isStoreLevel && (
+            <Link
+              to="/staff/ceklis"
+              className="block w-full py-3 bg-blue-600 text-white rounded-2xl font-bold text-sm text-center hover:bg-blue-700 transition-colors active:scale-[0.98]"
+            >
+              Mulai Input Ceklis
+            </Link>
+          )}
+        </div>
+
+        {/* Quick Actions Grid */}
+        <div className={`grid gap-3 mb-5 ${quickActions.length <= 3 ? 'grid-cols-3' : 'grid-cols-4'}`}>
+          {quickActions.slice(0, 4).map((action) => (
+            <Link key={action.to} to={action.to} className="flex flex-col items-center gap-2">
+              <div className="w-14 h-14 bg-white border border-blue-100 rounded-2xl flex items-center justify-center text-blue-600 shadow-sm active:scale-95 transition-transform">
+                <AppIcon name={action.icon} size={22} />
+              </div>
+              <span className="text-[10px] font-bold text-center leading-tight text-gray-700">
+                {action.label.split('\n').map((line, i) => (
+                  <span key={i}>{line}{i === 0 && action.label.includes('\n') ? <br /> : ''}</span>
+                ))}
+              </span>
+            </Link>
           ))}
         </div>
-      </HeroCard>
 
-      {!loading && !profile?.branch_id && (
-        <Alert variant="error" className="mt-6">
-          Akun ini belum dikonfigurasi ke cabang manapun. Hubungi ops manager untuk mengatur akses toko kamu.
-        </Alert>
-      )}
-
-      {!loading && status && !status.laporan && (
-        <div className="mt-6 rounded-[22px] border border-amber-200 bg-amber-50 px-4 py-3.5 text-sm leading-5.5 text-amber-800 shadow-[0_16px_48px_-36px_rgba(217,119,6,0.55)] sm:rounded-[24px] sm:px-5 sm:py-4 sm:leading-6">
-          Laporan harian <strong>{new Date(yesterday).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</strong> belum disubmit.
-          Sisa waktu: <strong>{sisaWaktuLaporan(yesterday)}</strong>.
-        </div>
-      )}
-
-      <div className="mt-6 grid gap-6 xl:grid-cols-[1.3fr_0.7fr]">
-        <SectionPanel
-          eyebrow="Workflow"
-          title="Menu Utama"
-          description="Akses cepat ke alur yang paling sering kamu kerjakan di toko."
-        >
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {isStoreLevel && (
-              <ActionCard
-                to="/staff/ceklis"
-                icon="checklist"
-                title="Ceklis Harian"
-                description="Isi checklist pagi dan malam beserta foto area."
-                accent="emerald"
-              />
-            )}
-            <ActionCard
-              to="/staff/laporan"
-              icon="chart"
-              title="Laporan Harian"
-              description="Input net sales, kunjungan, dan status setoran harian."
-              accent="primary"
-            />
-            <ActionCard
-              to="/staff/opex"
-              icon="opex"
-              title="Beban Operasional"
-              description="Catat pengeluaran toko beserta bukti nota."
-              accent="violet"
-            />
-            {kpiEnabled && (
-              <ActionCard
-                to="/kpi"
-                icon="chart"
-                title="KPI Toko"
-                description="Lihat performa KPI sesuai scope toko atau wilayah kamu."
-                accent="amber"
-              />
-            )}
-            {supplyChainEnabled && (
-              <ActionCard
-                to="/sc"
-                icon="checklist"
-                title="Supply Chain"
-                description="Pantau order aktif dan pengiriman barang sesuai cabang kamu."
-                accent="emerald"
-              />
-            )}
-            {!isStoreLevel && (
-              <ActionCard
-                to="/dm"
-                icon="home"
-                title="Dashboard Manajer"
-                description="Pantau semua toko, visit, approval, dan kontrol biaya."
-                accent="amber"
-              />
-            )}
+        {/* Status Stats Row */}
+        <div className="flex gap-3 mb-5">
+          <div className="flex-1 bg-gradient-to-br from-blue-600 to-blue-800 p-4 rounded-3xl text-white relative overflow-hidden">
+            <div className="relative z-10">
+              <div className="flex items-center gap-1 text-[10px] opacity-80 mb-1">
+                <span>Opex Hari Ini</span>
+              </div>
+              <p className="font-bold text-base mb-2">{loading ? '...' : fmtRp(status?.totalOpex || 0)}</p>
+              <div className="w-full bg-white/20 h-1.5 rounded-full overflow-hidden">
+                <div className="bg-white h-1.5 w-[70%]" />
+              </div>
+            </div>
+            <AppIcon name="opex" size={56} className="absolute -right-3 -bottom-3 opacity-10" />
           </div>
-        </SectionPanel>
-
-        <SectionPanel
-          eyebrow="Snapshot"
-          title="Ringkasan Operasional"
-          description="Status cepat untuk melihat hal yang paling perlu dikerjakan."
-        >
-          <div className="space-y-3">
-            <StatusSnapshot
-              label="Ceklis Pagi"
-              value={status?.ceklisPagi ? 'Sudah masuk' : 'Belum masuk'}
-              detail={status?.ceklisPagi
-                ? (status.ceklisPagi.is_late
-                  ? 'Tercatat terlambat dari deadline'
-                  : new Date(status.ceklisPagi.submitted_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB')
-                : 'Perlu follow up'}
-              tone={status?.ceklisPagi ? (status.ceklisPagi.is_late ? 'warn' : 'ok') : 'danger'}
-            />
-            <StatusSnapshot
-              label="Ceklis Malam"
-              value={status?.ceklisMalam ? 'Sudah diisi' : 'Masih terbuka'}
-              detail={status?.ceklisMalam ? 'Checklist penutupan aman' : 'Belum ada input malam'}
-              tone={status?.ceklisMalam ? 'ok' : 'info'}
-            />
-            <StatusSnapshot
-              label="Laporan H-1"
-              value={status?.laporan ? 'Sudah submit' : 'Belum submit'}
-              detail={status?.laporan ? 'Laporan operasional sudah tercatat' : `Deadline jam 14.00 WIB, sisa ${sisaWaktuLaporan(yesterday)}`}
-              tone={status?.laporan ? 'ok' : 'warn'}
-            />
-            <StatusSnapshot
-              label="Opex Hari Ini"
-              value={fmtRp(status?.totalOpex || 0)}
-              detail={status?.totalOpex > 0 ? 'Pengeluaran hari ini sudah tercatat' : 'Belum ada pengeluaran tercatat'}
-              tone={status?.totalOpex > 0 ? 'info' : 'slate'}
-            />
+          <div className="flex-1 bg-blue-50 p-4 rounded-3xl border border-blue-100 flex items-center gap-3">
+            <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-blue-600 shadow-sm shrink-0">
+              <AppIcon name="approval" size={18} />
+            </div>
+            <div>
+              <p className="text-[10px] text-blue-600 font-bold">Laporan H-1</p>
+              <p className="text-xl font-black text-blue-900 leading-tight">
+                {loading ? '-' : status?.laporan ? 'Done' : 'Open'}
+              </p>
+            </div>
           </div>
-        </SectionPanel>
-      </div>
-    </SubpageShell>
-  )
-}
-
-function StatusSnapshot({ label, value, detail, tone }) {
-  const toneClass = {
-    danger: 'bg-rose-50 text-rose-700',
-    warn: 'bg-amber-50 text-amber-700',
-    ok: 'bg-emerald-50 text-emerald-700',
-    info: 'bg-primary-50 text-primary-700',
-    slate: 'bg-slate-100 text-slate-600',
-  }
-
-  return (
-    <div className="rounded-[20px] border border-white/80 bg-slate-50/85 px-3.5 py-3.5 sm:rounded-[22px] sm:px-4 sm:py-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">{label}</div>
-          <div className="mt-1.5 text-[15px] font-semibold text-slate-950 sm:text-base">{value}</div>
-          <div className="mt-1 text-sm leading-5.5 text-slate-500 sm:leading-6">{detail}</div>
         </div>
-        <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold sm:px-3 sm:py-1.5 sm:text-[11px] ${toneClass[tone] || toneClass.slate}`}>
-          {tone === 'danger' ? 'Perlu cek' : tone === 'warn' ? 'Tertahan' : tone === 'ok' ? 'Aman' : 'Info'}
-        </span>
+
+        {/* Pending laporan warning */}
+        {!loading && status && !status.laporan && profile?.branch_id && (isHeadStore || !isStoreLevel) && (
+          <div className="mb-5 bg-gradient-to-r from-amber-600 to-amber-500 p-5 rounded-[2rem] text-white relative overflow-hidden shadow-lg">
+            <div className="relative z-10">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="bg-white/20 text-[8px] font-bold px-2 py-0.5 rounded uppercase">Reminder</span>
+              </div>
+              <p className="font-bold text-sm mb-1">Laporan Harian Belum Disubmit</p>
+              <p className="text-[10px] opacity-90">
+                Tanggal {new Date(yesterday).toLocaleDateString('id-ID', { day: 'numeric', month: 'long' })}. Sisa waktu: {sisaWaktuLaporan(yesterday)}
+              </p>
+            </div>
+            <AppIcon name="warning" size={72} className="absolute -right-4 -bottom-4 opacity-10" />
+          </div>
+        )}
+
+        {/* Notice Board */}
+        <div className="bg-slate-900 p-5 rounded-[2.5rem] text-white relative overflow-hidden">
+          <div className="relative z-10">
+            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Status Operasional</p>
+            <h4 className="text-sm font-bold mb-1">{branchName}</h4>
+            <p className="text-[10px] opacity-60 leading-relaxed">
+              {loading
+                ? 'Memuat status...'
+                : `Ceklis: ${status?.ceklisPagi ? 'Pagi ✓' : 'Pagi -'} ${status?.ceklisMalam ? '· Malam ✓' : '· Malam -'} · Laporan: ${status?.laporan ? '✓' : 'Pending'}`}
+            </p>
+          </div>
+          <AppIcon name="store" size={72} className="absolute -right-3 -bottom-3 opacity-5" />
+        </div>
       </div>
+
+      <StaffBottomNav />
     </div>
   )
-}
-
-function getGreetingLabel() {
-  const hour = new Date(new Date().getTime() + 7 * 3600 * 1000).getUTCHours()
-  if (hour < 11) return 'Selamat pagi'
-  if (hour < 15) return 'Selamat siang'
-  if (hour < 18) return 'Selamat sore'
-  return 'Selamat malam'
 }

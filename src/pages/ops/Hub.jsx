@@ -3,9 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { OpsBottomNav } from '../../components/BottomNav'
-import {
-  AppIcon, HeroCard, InlineStat, SectionPanel, SubpageShell, ToneBadge, EmptyPanel,
-} from '../../components/ui/AppKit'
+import { AppIcon } from '../../components/ui/AppKit'
 import { todayWIB } from '../../lib/utils'
 
 export default function OpsHub() {
@@ -39,148 +37,165 @@ export default function OpsHub() {
     setLoading(false)
   }
 
+  const shortName = profile?.full_name?.split(' ')[0] ?? 'Manager'
+
+  const pillars = [
+    {
+      icon: 'store',
+      label: 'Retail Pillar',
+      sub: `${loading ? '-' : stats.totalBranches} Toko Aktif`,
+      status: stats.pendingSetoran > 0 ? 'Pending' : 'Normal',
+      detail: stats.pendingSetoran > 0 ? `${stats.pendingSetoran} setoran pending` : `Ceklis masuk ${stats.ceklisToday}`,
+      statusColor: stats.pendingSetoran > 0 ? 'text-orange-500' : 'text-green-500',
+      bg: 'bg-orange-50 text-orange-600',
+    },
+    {
+      icon: 'finance',
+      label: 'Supply Chain',
+      sub: `${loading ? '-' : stats.activeOrders} Order Aktif`,
+      status: stats.activeOrders > 0 ? 'Berjalan' : 'Aman',
+      detail: stats.activeOrders > 0 ? `${stats.activeOrders} order diproses` : 'Tidak ada order tertunda',
+      statusColor: stats.activeOrders > 0 ? 'text-blue-500' : 'text-green-500',
+      bg: 'bg-blue-50 text-blue-600',
+    },
+    {
+      icon: 'users',
+      label: 'Trainer & Dev',
+      sub: 'Staff Onboarding',
+      status: 'Active',
+      detail: 'Lihat dashboard trainer',
+      statusColor: 'text-indigo-600',
+      bg: 'bg-indigo-50 text-indigo-600',
+    },
+  ]
+
+  const quickActions = [
+    { to: '/dm/approval', icon: 'approval', label: 'Approval\nSetoran', bg: 'bg-amber-50 border-amber-100 text-amber-600' },
+    { to: '/dm', icon: 'home', label: 'DM\nDashboard', bg: 'bg-blue-50 border-blue-100 text-blue-600' },
+    { to: '/ops/visits', icon: 'map', label: 'Visit\nMonitor', bg: 'bg-violet-50 border-violet-100 text-violet-600' },
+    { to: '/tasks', icon: 'checklist', label: 'Manajemen\nTugas', bg: 'bg-emerald-50 border-emerald-100 text-emerald-600' },
+  ]
+
+  const reportLinks = [
+    { to: '/dm', icon: 'home', label: 'DM Dashboard', sub: 'Ringkasan semua toko', bg: 'bg-blue-50 border-blue-100', color: 'text-blue-600' },
+    { to: '/finance', icon: 'finance', label: 'Audit Finance', sub: 'Rekap setoran & audit', bg: 'bg-slate-100', color: 'text-slate-600' },
+    { to: '/trainer', icon: 'users', label: 'Trainer Hub', sub: 'Penilaian staff', bg: 'bg-emerald-50 border-emerald-100', color: 'text-emerald-600' },
+    { to: '/ops/visit-monitor', icon: 'map', label: 'Audit Log Visit', sub: 'Skor & foto kunjungan', bg: 'bg-violet-50 border-violet-100', color: 'text-violet-600' },
+  ]
+
   return (
-    <SubpageShell
-      title="Toko"
-      subtitle="Ringkasan operasional hari ini"
-      eyebrow="Ops Manager"
-      showBack={false}
-      action={
-        <button
-          onClick={signOut}
-          className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500 shadow-[0_18px_45px_-34px_rgba(15,23,42,0.35)] transition-colors hover:border-primary-200 hover:text-primary-700"
-          aria-label="Keluar"
-        >
-          <AppIcon name="logout" size={18} />
-        </button>
-      }
-      footer={<OpsBottomNav />}
-    >
-      <HeroCard
-        eyebrow="Selamat Datang"
-        title={`Halo, ${profile?.full_name?.split(' ')[0] ?? 'Manager'}`}
-        description="Dashboard operasional terpadu. Pantau setoran, ceklis, dan opex seluruh toko dari sini."
-        meta={
-          <>
-            {stats.pendingSetoran > 0 && (
-              <ToneBadge tone="warn">{stats.pendingSetoran} setoran pending</ToneBadge>
-            )}
-            <ToneBadge tone="info">{today}</ToneBadge>
-          </>
-        }
-      >
-        <div className="grid gap-3 sm:grid-cols-4">
-          <InlineStat label="Toko Aktif"    value={loading ? '—' : stats.totalBranches}  tone="primary" />
-          <InlineStat label="Ceklis Hari Ini" value={loading ? '—' : stats.ceklisToday}  tone={stats.ceklisToday > 0 ? 'ok' : 'slate'} />
-          <InlineStat label="Setoran Pending" value={loading ? '—' : stats.pendingSetoran} tone={stats.pendingSetoran > 0 ? 'warn' : 'ok'} />
-          <InlineStat label="Order SC Aktif" value={loading ? '—' : stats.activeOrders}  tone={stats.activeOrders > 0 ? 'info' : 'slate'} />
+    <div className="min-h-screen bg-[#f8fbff] pb-28">
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-50 bg-white/80 backdrop-blur-md px-6 py-4 flex justify-between items-center border-b border-blue-50">
+        <div>
+          <h1 className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em]">Operations Manager</h1>
+          <p className="text-xl font-extrabold text-gray-900">Command Center</p>
         </div>
-      </HeroCard>
-
-      <div className="mt-6 space-y-4">
-        {/* Quick Actions */}
-        <SectionPanel eyebrow="Menu Toko" title="Akses Cepat">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <Link
-              to="/dm/approval"
-              className="flex items-center gap-3 rounded-[22px] bg-amber-50 border border-amber-100 px-5 py-4 hover:bg-amber-100 transition-colors"
-            >
-              <span className="text-2xl">💰</span>
-              <div>
-                <div className="text-sm font-semibold text-slate-900">Approval Setoran</div>
-                <div className="text-xs text-amber-600">
-                  {stats.pendingSetoran > 0 ? `${stats.pendingSetoran} perlu review` : 'Semua beres'}
-                </div>
-              </div>
-            </Link>
-
-            <Link
-              to="/opex"
-              className="flex items-center gap-3 rounded-[22px] bg-slate-100 px-5 py-4 hover:bg-slate-200 transition-colors"
-            >
-              <span className="text-2xl">📊</span>
-              <div>
-                <div className="text-sm font-semibold text-slate-900">Opex</div>
-                <div className="text-xs text-slate-400">Beban operasional toko</div>
-              </div>
-            </Link>
-
-            <Link
-              to="/dm/visit"
-              className="flex items-center gap-3 rounded-[22px] bg-slate-100 px-5 py-4 hover:bg-slate-200 transition-colors"
-            >
-              <span className="text-2xl">📋</span>
-              <div>
-                <div className="text-sm font-semibold text-slate-900">Ceklis & Audit</div>
-                <div className="text-xs text-slate-400">
-                  {stats.ceklisToday > 0 ? `${stats.ceklisToday} ceklis masuk` : 'Audit harian'}
-                </div>
-              </div>
-            </Link>
-          </div>
-        </SectionPanel>
-
-        {/* Full DM Dashboard shortcut */}
-        <SectionPanel eyebrow="Dashboard Lanjut" title="Laporan Lengkap">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <Link
-              to="/dm"
-              className="flex items-center gap-3 rounded-[22px] bg-primary-50 border border-primary-100 px-5 py-4 hover:bg-primary-100 transition-colors"
-            >
-              <span className="text-2xl">🏪</span>
-              <div>
-                <div className="text-sm font-semibold text-slate-900">DM Dashboard</div>
-                <div className="text-xs text-primary-600">Ringkasan semua branch, setoran, opex</div>
-              </div>
-            </Link>
-            <Link
-              to="/finance"
-              className="flex items-center gap-3 rounded-[22px] bg-slate-100 px-5 py-4 hover:bg-slate-200 transition-colors"
-            >
-              <span className="text-2xl">🧾</span>
-              <div>
-                <div className="text-sm font-semibold text-slate-900">Audit Finance</div>
-                <div className="text-xs text-slate-400">Rekap setoran & audit keuangan</div>
-              </div>
-            </Link>
-            <Link
-              to="/trainer"
-              className="flex items-center gap-3 rounded-[22px] bg-emerald-50 border border-emerald-100 px-5 py-4 hover:bg-emerald-100 transition-colors"
-            >
-              <span className="text-2xl">🎓</span>
-              <div>
-                <div className="text-sm font-semibold text-slate-900">Trainer Hub</div>
-                <div className="text-xs text-emerald-600">Penilaian staff baru & lama</div>
-              </div>
-            </Link>
-          </div>
-        </SectionPanel>
-
-        <SectionPanel eyebrow="Monitoring" title="Audit & Tugas">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Link
-              to="/ops/visit-monitor"
-              className="flex items-center gap-3 rounded-[22px] bg-violet-50 border border-violet-100 px-5 py-4 hover:bg-violet-100 transition-colors"
-            >
-              <span className="text-2xl">🔍</span>
-              <div>
-                <div className="text-sm font-semibold text-slate-900">Audit Log Visit</div>
-                <div className="text-xs text-violet-600">Detail skor & foto per kunjungan DM/AM</div>
-              </div>
-            </Link>
-            <Link
-              to="/tasks"
-              className="flex items-center gap-3 rounded-[22px] bg-primary-50 border border-primary-100 px-5 py-4 hover:bg-primary-100 transition-colors"
-            >
-              <span className="text-2xl">✅</span>
-              <div>
-                <div className="text-sm font-semibold text-slate-900">Manajemen Tugas</div>
-                <div className="text-xs text-primary-600">Assign & pantau tugas untuk DM/AM</div>
-              </div>
-            </Link>
-          </div>
-        </SectionPanel>
+        <div className="flex gap-2">
+          {stats.pendingSetoran > 0 && (
+            <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 relative">
+              <AppIcon name="bell" size={18} />
+              <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 border-2 border-white rounded-full" />
+            </div>
+          )}
+          <button onClick={signOut} className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 hover:bg-blue-100 transition-colors">
+            <AppIcon name="logout" size={18} />
+          </button>
+        </div>
       </div>
-    </SubpageShell>
+
+      <div className="p-5">
+        {/* Global Health Stats */}
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          <div className="bg-blue-600 p-4 rounded-[2rem] text-white shadow-lg shadow-blue-200 active:scale-[0.97] transition-transform">
+            <p className="text-[9px] font-bold opacity-80 uppercase mb-1">Toko Aktif</p>
+            <h3 className="text-xl font-black">{loading ? '...' : stats.totalBranches}</h3>
+            <p className="text-[9px] mt-2 font-bold opacity-70">
+              {stats.ceklisToday > 0 ? `${stats.ceklisToday} ceklis masuk` : 'Menunggu ceklis'}
+            </p>
+          </div>
+          <div className="bg-white p-4 rounded-[2rem] border border-blue-100 shadow-sm">
+            <p className="text-[9px] text-gray-400 font-bold uppercase mb-1">Setoran Pending</p>
+            <h3 className={`text-xl font-black ${stats.pendingSetoran > 0 ? 'text-orange-500' : 'text-blue-900'}`}>
+              {loading ? '...' : stats.pendingSetoran}
+            </h3>
+            <div className="w-full bg-blue-50 h-1.5 rounded-full mt-2">
+              <div
+                className="bg-blue-600 h-1.5 rounded-full transition-all"
+                style={{ width: stats.totalBranches > 0 ? `${Math.max(0, 100 - (stats.pendingSetoran / stats.totalBranches) * 100)}%` : '100%' }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Pillar Performance */}
+        <h2 className="font-extrabold text-gray-800 text-sm mb-4">Pillar Performance</h2>
+        <div className="space-y-3 mb-6">
+          {pillars.map((pillar) => (
+            <div key={pillar.label} className="flex items-center justify-between bg-white p-4 rounded-3xl border border-gray-100 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${pillar.bg}`}>
+                  <AppIcon name={pillar.icon} size={20} />
+                </div>
+                <div>
+                  <p className="text-xs font-black">{pillar.label}</p>
+                  <p className="text-[10px] text-gray-400">{pillar.sub}</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className={`text-xs font-black ${pillar.statusColor}`}>{pillar.status}</p>
+                <p className="text-[9px] text-gray-400">{pillar.detail}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Quick Actions */}
+        <h2 className="font-extrabold text-gray-800 text-sm mb-4">Akses Cepat</h2>
+        <div className="grid grid-cols-4 gap-3 mb-6">
+          {quickActions.map((action) => (
+            <Link key={action.to} to={action.to} className="flex flex-col items-center gap-2">
+              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center border shadow-sm active:scale-95 transition-transform ${action.bg}`}>
+                <AppIcon name={action.icon} size={22} />
+              </div>
+              <span className="text-[9px] font-bold text-center leading-tight text-gray-700">
+                {action.label.split('\n').map((l, i) => <span key={i}>{l}{i === 0 ? <br /> : ''}</span>)}
+              </span>
+            </Link>
+          ))}
+        </div>
+
+        {/* Laporan Lengkap */}
+        <h2 className="font-extrabold text-gray-800 text-sm mb-4">Laporan Lengkap</h2>
+        <div className="grid grid-cols-2 gap-3 mb-6">
+          {reportLinks.map((link) => (
+            <Link
+              key={link.to}
+              to={link.to}
+              className={`flex items-center gap-3 rounded-[1.5rem] border px-4 py-3.5 hover:opacity-80 transition-opacity ${link.bg}`}
+            >
+              <div className={`w-9 h-9 rounded-xl bg-white flex items-center justify-center shadow-sm ${link.color}`}>
+                <AppIcon name={link.icon} size={18} />
+              </div>
+              <div>
+                <p className="text-xs font-black text-gray-900 leading-tight">{link.label}</p>
+                <p className="text-[9px] text-gray-400 leading-tight">{link.sub}</p>
+              </div>
+            </Link>
+          ))}
+        </div>
+
+        {/* Notice */}
+        <div className="bg-slate-900 p-5 rounded-[2.5rem] text-white relative overflow-hidden">
+          <div className="relative z-10">
+            <h4 className="text-sm font-bold mb-1 italic">"Efisiensi adalah kunci keberlanjutan."</h4>
+            <p className="text-[10px] opacity-60">Halo {shortName} — Status sistem hari ini: terkendali.</p>
+          </div>
+          <AppIcon name="spark" size={80} className="absolute right-4 top-4 opacity-5" />
+        </div>
+      </div>
+
+      <OpsBottomNav />
+    </div>
   )
 }
