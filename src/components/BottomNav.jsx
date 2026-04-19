@@ -34,14 +34,35 @@ function Dock({ children }) {
   )
 }
 
+function LogoutNavItem() {
+  const { signOut } = useAuth()
+  return (
+    <button
+      onClick={signOut}
+      className="flex flex-shrink-0 flex-col items-center gap-0.5 rounded-[20px] px-1.5 py-2 text-slate-300 hover:text-rose-400 transition-all sm:gap-1 sm:px-2 sm:py-2.5"
+    >
+      <div className="flex h-8 w-8 items-center justify-center rounded-2xl sm:h-9 sm:w-9">
+        <AppIcon name="logout" size={17} />
+      </div>
+      <span className="truncate text-[10px] font-semibold tracking-[0.04em] sm:text-[11px] sm:tracking-[0.06em]">Keluar</span>
+    </button>
+  )
+}
+
 export function StaffBottomNav() {
   const { pathname } = useLocation()
+  const { profile } = useAuth()
+  const isHeadStore = profile?.role === 'head_store'
 
   return (
     <Dock>
       <NavItem to="/staff/ceklis" icon="checklist" label="Ceklis" active={pathname.startsWith('/staff/ceklis')} />
+      {isHeadStore && (
+        <NavItem to="/staff/laporan" icon="opex" label="Laporan" active={pathname.startsWith('/staff/laporan')} />
+      )}
       <NavItem to="/sc/sj" icon="finance" label="Terima Barang" active={pathname.startsWith('/sc')} />
       <NavItem to="/kpi" icon="chart" label="KPI" active={pathname.startsWith('/kpi')} />
+      <LogoutNavItem />
     </Dock>
   )
 }
@@ -56,6 +77,7 @@ export function DMBottomNav() {
       <NavItem to="/dm/visits" icon="map" label="Visit" active={pathname.startsWith('/dm/visit') || pathname.startsWith('/ops/visits')} />
       <NavItem to="/dm/approval" icon="approval" label="Approval" active={pathname.startsWith('/dm/approval')} />
       <NavItem to="/kpi" icon="chart" label="KPI" active={pathname.startsWith('/kpi')} />
+      <LogoutNavItem />
     </Dock>
   )
 }
@@ -88,6 +110,7 @@ export function SCBottomNav() {
       {isWarehouse && (
         <NavItem to="/sc/sj" icon="finance" label="SJ" active={pathname.startsWith('/sc/sj')} />
       )}
+      <LogoutNavItem />
     </Dock>
   )
 }
@@ -100,6 +123,7 @@ export function TrainerBottomNav() {
       <NavItem to="/trainer"            icon="home"     label="Dashboard" active={pathname === '/trainer'} />
       <NavItem to="/trainer/staff-baru" icon="users"    label="Staff Baru" active={pathname.startsWith('/trainer/staff-baru')} />
       <NavItem to="/trainer/staff-lama" icon="matrix"   label="Staff Lama" active={pathname.startsWith('/trainer/staff-lama')} />
+      <LogoutNavItem />
     </Dock>
   )
 }
@@ -111,6 +135,7 @@ export function FinanceBottomNav() {
     <Dock>
       <NavItem to="/finance" icon="finance" label="Audit" active={pathname === '/finance'} />
       <NavItem to="/opex" icon="opex" label="Opex" active={pathname.startsWith('/opex')} />
+      <LogoutNavItem />
     </Dock>
   )
 }
@@ -132,6 +157,7 @@ export function OpsBottomNav() {
       <NavItem to="/sc" icon="checklist" label="Supply Chain" active={scActive} />
       <NavItem to="/kpi" icon="chart" label="KPI" active={perfActive} />
       <NavItem to="/trainer" icon="users" label="Trainer" active={pathname.startsWith('/trainer')} />
+      <LogoutNavItem />
     </Dock>
   )
 }
