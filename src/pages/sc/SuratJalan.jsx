@@ -604,7 +604,7 @@ function SJList() {
                     Tandai Dikirim
                   </button>
                 )}
-                {sj.status === 'shipped' && canDeliver && (
+                {(sj.status === 'shipped' || (isStoreOnly && sj.status === 'issued')) && canDeliver && (
                   <button
                     onClick={() => navigate(`/sc/sj?receive=${sj.id}`)}
                     className="rounded-xl bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"

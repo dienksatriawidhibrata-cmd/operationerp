@@ -43,8 +43,9 @@ export default function TasksPage() {
     const { data } = await supabase
       .from('profiles')
       .select('id, full_name, role')
-      .in('role', ['district_manager', 'area_manager'])
+      .in('role', ['district_manager', 'area_manager', 'head_store', 'asst_head_store'])
       .eq('is_active', true)
+      .order('role')
       .order('full_name')
     setManagers(data || [])
   }
@@ -82,7 +83,10 @@ export default function TasksPage() {
   const done    = tasks.filter((t) => t.is_done)
 
   const shortName = (s) => s?.full_name?.split(' ').slice(0, 2).join(' ') || '-'
-  const roleBadge = (role) => role === 'district_manager' ? 'DM' : role === 'area_manager' ? 'AM' : role
+  const roleBadge = (role) => {
+    const map = { district_manager: 'DM', area_manager: 'AM', head_store: 'HS', asst_head_store: 'AHS' }
+    return map[role] ?? role
+  }
 
   const BottomNav = isOpsManager ? OpsBottomNav : DMBottomNav
 
@@ -127,10 +131,21 @@ export default function TasksPage() {
                   value={form.assigned_to}
                   onChange={(e) => setForm((f) => ({ ...f, assigned_to: e.target.value }))}
                 >
-                  <option value="">Pilih manager...</option>
-                  {managers.map((m) => (
-                    <option key={m.id} value={m.id}>{m.full_name}</option>
-                  ))}
+                  <option value="">Pilih assignee...</option>
+                  {['district_manager', 'area_manager'].some((r) => managers.find((m) => m.role === r)) && (
+                    <optgroup label="Manager">
+                      {managers.filter((m) => ['district_manager', 'area_manager'].includes(m.role)).map((m) => (
+                        <option key={m.id} value={m.id}>{m.full_name} ({roleBadge(m.role)})</option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {['head_store', 'asst_head_store'].some((r) => managers.find((m) => m.role === r)) && (
+                    <optgroup label="Store">
+                      {managers.filter((m) => ['head_store', 'asst_head_store'].includes(m.role)).map((m) => (
+                        <option key={m.id} value={m.id}>{m.full_name} ({roleBadge(m.role)})</option>
+                      ))}
+                    </optgroup>
+                  )}
                 </select>
               </div>
               <div>
