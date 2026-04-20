@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { fmtRp, fmtDateShort, todayWIB, downloadCsv } from '../lib/utils'
-import { DMBottomNav, FinanceBottomNav, OpsBottomNav } from '../components/BottomNav'
+import { SmartBottomNav } from '../components/BottomNav'
 import {
   EmptyPanel, InlineStat, SectionPanel, SegmentedControl, SoftButton, SubpageShell, ToneBadge,
 } from '../components/ui/AppKit'
@@ -157,7 +157,7 @@ export default function OpexOverview() {
     )
   }
 
-  const BottomNav = isFinance ? FinanceBottomNav : profile?.role === 'ops_manager' ? OpsBottomNav : DMBottomNav
+  const BottomNav = SmartBottomNav
 
   return (
     <SubpageShell

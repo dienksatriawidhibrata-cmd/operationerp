@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { AppIcon } from './ui/AppKit'
+import { isManagerRole, isStoreRole, isFinanceRole, isSupplyChainRole } from '../lib/access'
 
 function NavItem({ to, icon, label, active }) {
   return (
@@ -143,21 +144,31 @@ export function FinanceBottomNav() {
 export function OpsBottomNav() {
   const { pathname } = useLocation()
 
-  const tokoActive = (pathname === '/ops' || pathname.startsWith('/dm/approval')) && !pathname.startsWith('/ops/visits')
-  const statusActive = pathname.startsWith('/dm/stores')
-  const visitActive = pathname.startsWith('/ops/visits')
+  const dashActive = pathname === '/ops'
+  const retailActive = pathname.startsWith('/dm') || pathname.startsWith('/kpi') ||
+    pathname.startsWith('/opex') || pathname.startsWith('/ops/visits') || pathname.startsWith('/finance')
   const scActive = pathname.startsWith('/sc')
-  const perfActive = pathname.startsWith('/kpi') || pathname.startsWith('/opex')
+  const trainerActive = pathname.startsWith('/trainer')
+  const supportActive = pathname.startsWith('/tasks')
 
   return (
     <Dock>
-      <NavItem to="/ops" icon="home" label="Hub" active={tokoActive} />
-      <NavItem to="/dm/stores" icon="checklist" label="Status" active={statusActive} />
-      <NavItem to="/ops/visits" icon="map" label="Visit" active={visitActive} />
-      <NavItem to="/sc" icon="checklist" label="Supply Chain" active={scActive} />
-      <NavItem to="/kpi" icon="chart" label="KPI" active={perfActive} />
-      <NavItem to="/trainer" icon="users" label="Trainer" active={pathname.startsWith('/trainer')} />
-      <LogoutNavItem />
+      <NavItem to="/ops"     icon="home"      label="Dashboard"     active={dashActive} />
+      <NavItem to="/dm"      icon="store"     label="Retail"        active={retailActive} />
+      <NavItem to="/sc"      icon="finance"   label="Supply Chain"  active={scActive} />
+      <NavItem to="/trainer" icon="users"     label="Trainer"       active={trainerActive} />
+      <NavItem to="/tasks"   icon="checklist" label="Support"       active={supportActive} />
     </Dock>
   )
+}
+
+export function SmartBottomNav() {
+  const { profile } = useAuth()
+  const role = profile?.role
+  if (role === 'ops_manager')    return <OpsBottomNav />
+  if (isManagerRole(role))       return <DMBottomNav />
+  if (isStoreRole(role))         return <StaffBottomNav />
+  if (role === 'trainer')        return <TrainerBottomNav />
+  if (isFinanceRole(role))       return <FinanceBottomNav />
+  return <SCBottomNav />
 }

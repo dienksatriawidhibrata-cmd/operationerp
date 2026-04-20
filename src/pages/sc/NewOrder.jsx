@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { parseOrderFile } from '../../lib/excelParser'
 import { todayWIB } from '../../lib/utils'
 import Alert from '../../components/Alert'
-import { SCBottomNav } from '../../components/BottomNav'
+import { SmartBottomNav } from '../../components/BottomNav'
 import {
   EmptyPanel, InlineStat, SectionPanel, SubpageShell, ToneBadge,
 } from '../../components/ui/AppKit'
@@ -129,7 +129,7 @@ export default function NewOrder() {
       title="Buat Order Baru"
       subtitle="Upload file Excel / CSV dari sistem PO"
       eyebrow="New Supply Order"
-      footer={<SCBottomNav />}
+      footer={<SmartBottomNav />}
     >
       <SectionPanel
         eyebrow="Order Info"

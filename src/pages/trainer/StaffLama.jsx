@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
-import { TrainerBottomNav } from '../../components/BottomNav'
+import { SmartBottomNav } from '../../components/BottomNav'
 import {
   AppIcon, SubpageShell, SectionPanel, SegmentedControl, ToneBadge, EmptyPanel, SoftButton,
 } from '../../components/ui/AppKit'
@@ -260,7 +260,7 @@ export default function StaffLama() {
       subtitle="9-Box Performance vs Potential"
       eyebrow="Trainer"
       showBack={false}
-      footer={<TrainerBottomNav />}
+      footer={<SmartBottomNav />}
     >
       <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">
         <SegmentedControl
