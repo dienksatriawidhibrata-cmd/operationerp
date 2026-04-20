@@ -55,14 +55,22 @@ export function StaffBottomNav() {
   const { profile } = useAuth()
   const isHeadStore = profile?.role === 'head_store'
 
+  if (isHeadStore) {
+    return (
+      <Dock>
+        <NavItem to="/staff"        icon="home"     label="Dashboard"    active={pathname === '/staff'} />
+        <NavItem to="/staff/ceklis" icon="checklist" label="Ceklis"      active={pathname.startsWith('/staff/ceklis')} />
+        <NavItem to="/staff/laporan" icon="chart"   label="Laporan"      active={pathname.startsWith('/staff/laporan')} />
+        <NavItem to="/sc/sj"        icon="finance"  label="Terima Barang" active={pathname.startsWith('/sc')} />
+        <LogoutNavItem />
+      </Dock>
+    )
+  }
+
   return (
     <Dock>
-      <NavItem to="/staff/ceklis" icon="checklist" label="Ceklis" active={pathname.startsWith('/staff/ceklis')} />
-      {isHeadStore && (
-        <NavItem to="/staff/laporan" icon="opex" label="Laporan" active={pathname.startsWith('/staff/laporan')} />
-      )}
-      <NavItem to="/sc/sj" icon="finance" label="Terima Barang" active={pathname.startsWith('/sc')} />
-      <NavItem to="/kpi" icon="chart" label="KPI" active={pathname.startsWith('/kpi')} />
+      <NavItem to="/staff/ceklis" icon="checklist" label="Ceklis"       active={pathname.startsWith('/staff/ceklis')} />
+      <NavItem to="/sc/sj"        icon="finance"   label="Terima Barang" active={pathname.startsWith('/sc')} />
       <LogoutNavItem />
     </Dock>
   )
