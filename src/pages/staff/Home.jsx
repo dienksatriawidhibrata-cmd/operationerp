@@ -82,9 +82,10 @@ export default function StaffHome() {
 
   const quickActions = [
     ...(isHeadStore || !isStoreLevel ? [{ to: '/staff/laporan', icon: 'chart', label: 'Laporan\nHarian' }] : []),
+    ...(isHeadStore ? [{ to: '/staff/opex', icon: 'opex', label: 'Input\nOpex' }] : []),
     ...(kpiEnabled ? [{ to: '/kpi', icon: 'checklist', label: 'KPI\nKerja' }] : []),
     ...(supplyChainEnabled ? [{ to: '/sc/sj', icon: 'finance', label: 'Penerimaan\nBarang' }] : []),
-    { to: '/trainer/staff-baru', icon: 'users', label: 'Training\nCard' },
+    ...(!isHeadStore ? [{ to: '/trainer/staff-baru', icon: 'users', label: 'Training\nCard' }] : []),
   ].slice(0, 4)
 
   return (
@@ -226,16 +227,16 @@ export default function StaffHome() {
             </div>
             <AppIcon name="spark" size={52} className="absolute -right-2 -bottom-2 opacity-10" />
           </div>
-          <div className="flex-1 bg-white border border-blue-100 p-4 rounded-3xl shadow-sm flex flex-col justify-between">
+          <Link to="/staff/opex" className="flex-1 bg-white border border-blue-100 p-4 rounded-3xl shadow-sm flex flex-col justify-between hover:border-blue-300 transition-colors">
             <p className="text-[9px] font-bold text-gray-400 uppercase">Opex Hari Ini</p>
             <p className="text-base font-black text-gray-900 leading-tight mt-1">
               {loading ? '-' : fmtRp(status?.totalOpex || 0)}
             </p>
             <div className="flex items-center gap-1 mt-2">
               <AppIcon name="opex" size={12} className="text-blue-400" />
-              <p className="text-[8px] text-blue-400 font-semibold">Pengeluaran operasional</p>
+              <p className="text-[8px] text-blue-400 font-semibold">Input pengeluaran</p>
             </div>
-          </div>
+          </Link>
         </div>
 
         {/* Pending laporan warning */}
