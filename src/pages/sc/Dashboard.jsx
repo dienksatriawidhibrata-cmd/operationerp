@@ -8,6 +8,7 @@ import {
   canIssueSuratJalan,
   getScopeLabel,
   isManagerRole,
+  isOpsLikeRole,
   isStoreRole,
 } from '../../lib/access'
 import { AppIcon, ToneBadge } from '../../components/ui/AppKit'
@@ -37,7 +38,7 @@ const STATUS_LABEL = {
 const STAGE_ORDER = ['draft', 'picking', 'qc', 'distribution', 'sj_ready', 'shipped', 'completed', 'cancelled']
 
 function getFooter(role) {
-  if (role === 'ops_manager') return <OpsBottomNav />
+  if (isOpsLikeRole(role)) return <OpsBottomNav />
   if (isManagerRole(role)) return <DMBottomNav />
   if (isStoreRole(role)) return <StaffBottomNav />
   return <SCBottomNav />

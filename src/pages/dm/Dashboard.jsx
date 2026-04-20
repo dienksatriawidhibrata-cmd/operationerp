@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { fmtRp, todayWIB, yesterdayWIB, visitGrade } from '../../lib/utils'
-import { canViewKPI, canViewSupplyChain } from '../../lib/access'
+import { canViewKPI, canViewSupplyChain, isOpsLikeRole } from '../../lib/access'
 import {
   getBrowserNotificationPermission,
   requestBrowserNotificationPermission,
@@ -200,7 +200,7 @@ export default function DMDashboard() {
   const [tokoOpen, setTokoOpen] = useState(false)
   const [visitOpen, setVisitOpen] = useState(false)
 
-  const isOpsManager = profile?.role === 'ops_manager'
+  const isOpsManager = isOpsLikeRole(profile?.role)
   const kpiEnabled = canViewKPI(profile?.role)
   const supplyChainEnabled = canViewSupplyChain(profile?.role)
   const accessibleBranchIdsRef = useRef(new Set())

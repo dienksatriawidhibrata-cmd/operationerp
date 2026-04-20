@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { fmtRp, todayWIB } from '../../lib/utils'
 import { CHECKLIST_ITEMS } from '../../lib/constants'
 import { DMBottomNav, OpsBottomNav } from '../../components/BottomNav'
+import { isOpsLikeRole } from '../../lib/access'
 import PhotoViewer from '../../components/PhotoViewer'
 import {
   EmptyPanel,
@@ -338,7 +339,7 @@ export default function StoreStatus() {
   const [showList, setShowList] = useState(false)    // mobile store list toggle
 
   const today = todayWIB()
-  const isOpsManager = profile?.role === 'ops_manager'
+  const isOpsManager = isOpsLikeRole(profile?.role)
 
   // ── Fetch branches ────────────────────────────────────────
 

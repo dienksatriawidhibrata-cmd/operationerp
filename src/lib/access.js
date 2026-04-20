@@ -1,14 +1,15 @@
-export const STORE_ROLES = ['staff', 'asst_head_store', 'head_store']
+export const STORE_ROLES = ['staff', 'barista', 'kitchen', 'waitress', 'asst_head_store', 'head_store']
 export const MANAGER_ROLES = ['district_manager', 'area_manager', 'ops_manager']
+export const SUPPORT_ROLES = ['support_spv', 'support_admin']
 export const FINANCE_ROLES = ['finance_supervisor']
 export const SC_ROLES = ['purchasing_admin', 'warehouse_admin', 'picking_spv', 'qc_spv', 'distribution_spv', 'warehouse_spv', 'sc_supervisor']
-export const TRAINER_ROLES = ['trainer', 'ops_manager']
+export const TRAINER_ROLES = ['trainer', 'ops_manager', ...SUPPORT_ROLES]
 
-export const KPI_ALLOWED_ROLES = [...STORE_ROLES, ...MANAGER_ROLES]
-export const SUPPLY_CHAIN_VIEW_ROLES = [...STORE_ROLES, ...MANAGER_ROLES, ...SC_ROLES]
-export const SUPPLY_CHAIN_ORDER_WRITE_ROLES = ['warehouse_admin', 'warehouse_spv', 'purchasing_admin', 'ops_manager', 'sc_supervisor']
-export const SURAT_JALAN_ISSUE_ROLES = ['warehouse_admin', 'warehouse_spv', 'ops_manager', 'sc_supervisor']
-export const SURAT_JALAN_SHIP_ROLES = ['warehouse_admin', 'warehouse_spv', 'distribution_spv', 'ops_manager', 'sc_supervisor']
+export const KPI_ALLOWED_ROLES = [...STORE_ROLES, ...MANAGER_ROLES, ...SUPPORT_ROLES]
+export const SUPPLY_CHAIN_VIEW_ROLES = [...STORE_ROLES, ...MANAGER_ROLES, ...SUPPORT_ROLES, ...SC_ROLES]
+export const SUPPLY_CHAIN_ORDER_WRITE_ROLES = ['warehouse_admin', 'warehouse_spv', 'purchasing_admin', 'ops_manager', 'sc_supervisor', ...SUPPORT_ROLES]
+export const SURAT_JALAN_ISSUE_ROLES = ['warehouse_admin', 'warehouse_spv', 'ops_manager', 'sc_supervisor', ...SUPPORT_ROLES]
+export const SURAT_JALAN_SHIP_ROLES = ['warehouse_admin', 'warehouse_spv', 'distribution_spv', 'ops_manager', 'sc_supervisor', ...SUPPORT_ROLES]
 
 export function isStoreRole(role) {
   return STORE_ROLES.includes(role)
@@ -16,6 +17,14 @@ export function isStoreRole(role) {
 
 export function isManagerRole(role) {
   return MANAGER_ROLES.includes(role)
+}
+
+export function isSupportRole(role) {
+  return SUPPORT_ROLES.includes(role)
+}
+
+export function isOpsLikeRole(role) {
+  return role === 'ops_manager' || SUPPORT_ROLES.includes(role)
 }
 
 export function isFinanceRole(role) {
@@ -75,7 +84,7 @@ export function getScopedBranches(branches = [], profile) {
     return branches.filter((branch) => areas.has(branch.area))
   }
 
-  if (profile.role === 'ops_manager' || isSupplyChainRole(profile.role)) {
+  if (isOpsLikeRole(profile.role) || isSupplyChainRole(profile.role)) {
     return branches
   }
 
@@ -97,7 +106,7 @@ export function getScopeLabel(profile, branches = []) {
     return `Area ${(profile.managed_areas || []).join(', ') || '-'}`
   }
 
-  if (profile.role === 'ops_manager') {
+  if (isOpsLikeRole(profile.role)) {
     return `${branches.length} toko aktif`
   }
 

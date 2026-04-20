@@ -20,9 +20,13 @@ export default function Login() {
 
     if (profile) {
       const role = profile.role
-      if (['staff', 'asst_head_store', 'head_store'].includes(role))
+      if (role === 'head_store')
+        navigate('/staff', { replace: true })
+      else if (['staff', 'barista', 'kitchen', 'waitress', 'asst_head_store'].includes(role))
         navigate('/staff/ceklis', { replace: true })
-      else if (['district_manager', 'area_manager', 'ops_manager'].includes(role))
+      else if (role === 'ops_manager' || ['support_spv', 'support_admin'].includes(role))
+        navigate('/ops', { replace: true })
+      else if (['district_manager', 'area_manager'].includes(role))
         navigate('/dm', { replace: true })
       else if (role === 'finance_supervisor')
         navigate('/finance', { replace: true })

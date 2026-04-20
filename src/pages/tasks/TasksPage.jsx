@@ -3,13 +3,14 @@ import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { fmtDate, todayWIB } from '../../lib/utils'
 import { DMBottomNav, OpsBottomNav } from '../../components/BottomNav'
+import { isOpsLikeRole } from '../../lib/access'
 import {
   EmptyPanel, SectionPanel, SoftButton, SubpageShell, ToneBadge,
 } from '../../components/ui/AppKit'
 
 export default function TasksPage() {
   const { profile } = useAuth()
-  const isOpsManager = profile?.role === 'ops_manager'
+  const isOpsManager = isOpsLikeRole(profile?.role)
   const today = todayWIB()
 
   const [tasks, setTasks]       = useState([])

@@ -8,6 +8,7 @@ import {
   SC_ROLES,
   STORE_ROLES,
   SUPPLY_CHAIN_VIEW_ROLES,
+  SUPPORT_ROLES,
   TRAINER_ROLES,
 } from './lib/access'
 
@@ -50,9 +51,9 @@ function RootRedirect() {
 
   const role = profile.role
   if (role === 'head_store') return <Navigate to="/staff" replace />
-  if (['staff', 'asst_head_store'].includes(role)) return <Navigate to="/staff/ceklis" replace />
+  if (['staff', 'barista', 'kitchen', 'waitress', 'asst_head_store'].includes(role)) return <Navigate to="/staff/ceklis" replace />
   if (['district_manager', 'area_manager'].includes(role)) return <Navigate to="/dm" replace />
-  if (role === 'ops_manager') return <Navigate to="/ops" replace />
+  if (role === 'ops_manager' || SUPPORT_ROLES.includes(role)) return <Navigate to="/ops" replace />
   if (role === 'trainer') return <Navigate to="/trainer" replace />
   if (role === 'finance_supervisor') return <Navigate to="/finance" replace />
   if (role === 'picking_spv') return <Navigate to="/sc/picking" replace />
@@ -124,7 +125,7 @@ function DeactivatedScreen({ onSignOut }) {
   )
 }
 
-const ALL_MANAGER = MANAGER_ROLES
+const ALL_MANAGER = [...MANAGER_ROLES, ...SUPPORT_ROLES]
 
 export default function App() {
   return (
@@ -154,17 +155,17 @@ export default function App() {
       } />
 
       <Route path="/ops" element={
-        <RequireAuth roles={['ops_manager']}>
+        <RequireAuth roles={['ops_manager', ...SUPPORT_ROLES]}>
           <OpsHub />
         </RequireAuth>
       } />
       <Route path="/ops/visits" element={
-        <RequireAuth roles={['ops_manager', 'area_manager']}>
+        <RequireAuth roles={['ops_manager', 'area_manager', ...SUPPORT_ROLES]}>
           <OpsVisitStatus />
         </RequireAuth>
       } />
       <Route path="/ops/visit-monitor" element={
-        <RequireAuth roles={['ops_manager']}>
+        <RequireAuth roles={['ops_manager', ...SUPPORT_ROLES]}>
           <OpsVisitMonitor />
         </RequireAuth>
       } />
@@ -196,13 +197,13 @@ export default function App() {
       } />
 
       <Route path="/finance" element={
-        <RequireAuth roles={[...FINANCE_ROLES, 'ops_manager']}>
+        <RequireAuth roles={[...FINANCE_ROLES, 'ops_manager', ...SUPPORT_ROLES]}>
           <AuditSetoran />
         </RequireAuth>
       } />
 
       <Route path="/opex" element={
-        <RequireAuth roles={[...FINANCE_ROLES, 'ops_manager']}>
+        <RequireAuth roles={[...FINANCE_ROLES, 'ops_manager', ...SUPPORT_ROLES]}>
           <OpexOverview />
         </RequireAuth>
       } />
@@ -214,7 +215,7 @@ export default function App() {
       } />
 
       <Route path="/tasks" element={
-        <RequireAuth roles={[...MANAGER_ROLES]}>
+        <RequireAuth roles={[...MANAGER_ROLES, ...SUPPORT_ROLES]}>
           <TasksPage />
         </RequireAuth>
       } />
@@ -243,7 +244,7 @@ export default function App() {
         </RequireAuth>
       } />
       <Route path="/sc/orders/new" element={
-        <RequireAuth roles={['warehouse_admin','purchasing_admin','ops_manager','sc_supervisor']}>
+        <RequireAuth roles={['warehouse_admin','purchasing_admin','ops_manager','sc_supervisor',...SUPPORT_ROLES]}>
           <SCNewOrder />
         </RequireAuth>
       } />
@@ -253,17 +254,17 @@ export default function App() {
         </RequireAuth>
       } />
       <Route path="/sc/picking" element={
-        <RequireAuth roles={['picking_spv','warehouse_admin','warehouse_spv','ops_manager','sc_supervisor']}>
+        <RequireAuth roles={['picking_spv','warehouse_admin','warehouse_spv','ops_manager','sc_supervisor',...SUPPORT_ROLES]}>
           <SCPicking />
         </RequireAuth>
       } />
       <Route path="/sc/qc" element={
-        <RequireAuth roles={['qc_spv','warehouse_admin','warehouse_spv','ops_manager','sc_supervisor']}>
+        <RequireAuth roles={['qc_spv','warehouse_admin','warehouse_spv','ops_manager','sc_supervisor',...SUPPORT_ROLES]}>
           <SCQC />
         </RequireAuth>
       } />
       <Route path="/sc/distribution" element={
-        <RequireAuth roles={['distribution_spv','warehouse_admin','warehouse_spv','ops_manager','sc_supervisor']}>
+        <RequireAuth roles={['distribution_spv','warehouse_admin','warehouse_spv','ops_manager','sc_supervisor',...SUPPORT_ROLES]}>
           <SCDistribution />
         </RequireAuth>
       } />

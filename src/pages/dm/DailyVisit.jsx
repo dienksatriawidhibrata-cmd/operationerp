@@ -8,6 +8,7 @@ import PhotoUpload from '../../components/PhotoUpload'
 import PhotoViewer from '../../components/PhotoViewer'
 import Alert from '../../components/Alert'
 import { DMBottomNav, OpsBottomNav } from '../../components/BottomNav'
+import { isOpsLikeRole } from '../../lib/access'
 import {
   HeroCard,
   InlineStat,
@@ -203,7 +204,7 @@ export default function DailyVisit() {
       title="Daily Visit / Audit"
       subtitle={today}
       eyebrow="Store Audit"
-      footer={profile?.role === 'ops_manager' ? <OpsBottomNav /> : <DMBottomNav />}
+      footer={isOpsLikeRole(profile?.role) ? <OpsBottomNav /> : <DMBottomNav />}
     >
       <SectionPanel
         eyebrow="Outlet Picker"

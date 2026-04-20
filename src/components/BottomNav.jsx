@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { AppIcon } from './ui/AppKit'
-import { isManagerRole, isStoreRole, isFinanceRole, isSupplyChainRole } from '../lib/access'
+import { isManagerRole, isOpsLikeRole, isStoreRole, isFinanceRole, isSupplyChainRole } from '../lib/access'
 
 function NavItem({ to, icon, label, active }) {
   return (
@@ -96,7 +96,7 @@ export function SCBottomNav() {
   const { profile }  = useAuth()
 
   const role = profile?.role
-  const isWarehouse  = ['warehouse_admin','warehouse_spv','sc_supervisor','ops_manager','purchasing_admin'].includes(role)
+  const isWarehouse  = ['warehouse_admin','warehouse_spv','sc_supervisor','ops_manager','purchasing_admin','support_spv','support_admin'].includes(role)
   const isPicking    = role === 'picking_spv'
   const isQC         = role === 'qc_spv'
   const isDist       = role === 'distribution_spv'
@@ -173,7 +173,7 @@ export function OpsBottomNav() {
 export function SmartBottomNav() {
   const { profile } = useAuth()
   const role = profile?.role
-  if (role === 'ops_manager')    return <OpsBottomNav />
+  if (isOpsLikeRole(role))       return <OpsBottomNav />
   if (isManagerRole(role))       return <DMBottomNav />
   if (isStoreRole(role))         return <StaffBottomNav />
   if (role === 'trainer')        return <TrainerBottomNav />

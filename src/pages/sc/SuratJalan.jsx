@@ -9,6 +9,7 @@ import {
   canMarkSuratJalanShipped,
   getScopeLabel,
   isManagerRole,
+  isOpsLikeRole,
   isStoreRole,
 } from '../../lib/access'
 import PhotoUpload from '../../components/PhotoUpload'
@@ -356,7 +357,7 @@ export default function SuratJalanPage() {
       : isManager
         ? `Daftar surat jalan otomatis mengikuti scope ${getScopeLabel(profile)}`
         : 'Kelola semua surat jalan pengiriman'
-  const footer = profile?.role === 'ops_manager'
+  const footer = isOpsLikeRole(profile?.role)
     ? <OpsBottomNav />
     : isManager
       ? <DMBottomNav />

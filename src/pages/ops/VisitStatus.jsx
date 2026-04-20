@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { todayWIB, visitGrade } from '../../lib/utils'
 import { AUDIT_ITEMS, AUDIT_MAX_SCORE, AUDIT_SECTIONS } from '../../lib/constants'
 import { DMBottomNav, OpsBottomNav } from '../../components/BottomNav'
+import { isOpsLikeRole } from '../../lib/access'
 import PhotoViewer from '../../components/PhotoViewer'
 import {
   EmptyPanel,
@@ -269,7 +270,7 @@ function VisitContent({ visit }) {
 
 export default function VisitStatus() {
   const { profile } = useAuth()
-  const isOpsManager = profile?.role === 'ops_manager'
+  const isOpsManager = isOpsLikeRole(profile?.role)
   const isAM = profile?.role === 'area_manager'
 
   const [managers, setManagers] = useState([])

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { fmtRp } from '../../lib/utils'
-import { getScopeLabel, isManagerRole, isStoreRole, normalizeStoreName } from '../../lib/access'
+import { getScopeLabel, isManagerRole, isOpsLikeRole, isStoreRole, normalizeStoreName } from '../../lib/access'
 import { DMBottomNav, OpsBottomNav, StaffBottomNav } from '../../components/BottomNav'
 import {
   EmptyPanel,
@@ -668,7 +668,7 @@ export default function KPIReport() {
     }
   }, [profile?.id, profile?.role])
 
-  const footer = profile?.role === 'ops_manager'
+  const footer = isOpsLikeRole(profile?.role)
     ? <OpsBottomNav />
     : isManagerRole(profile?.role)
       ? <DMBottomNav />

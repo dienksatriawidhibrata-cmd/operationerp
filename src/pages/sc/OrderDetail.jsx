@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { fmtRp } from '../../lib/utils'
-import { canIssueSuratJalan, getScopeLabel, isManagerRole, isStoreRole } from '../../lib/access'
+import { canIssueSuratJalan, getScopeLabel, isManagerRole, isOpsLikeRole, isStoreRole } from '../../lib/access'
 import Alert from '../../components/Alert'
 import { DMBottomNav, OpsBottomNav, SCBottomNav, StaffBottomNav } from '../../components/BottomNav'
 import {
@@ -43,7 +43,7 @@ const STATUS_LABEL = {
 }
 
 function getFooter(role) {
-  if (role === 'ops_manager') return <OpsBottomNav />
+  if (isOpsLikeRole(role)) return <OpsBottomNav />
   if (isManagerRole(role)) return <DMBottomNav />
   if (isStoreRole(role)) return <StaffBottomNav />
   return <SCBottomNav />

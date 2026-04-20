@@ -3,31 +3,37 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { StaffBottomNav } from '../../components/BottomNav'
-import { canViewKPI, canViewSupplyChain } from '../../lib/access'
+import { canViewKPI, canViewSupplyChain, isStoreRole } from '../../lib/access'
 import { AppIcon } from '../../components/ui/AppKit'
 import { fmtRp, todayWIB, yesterdayWIB, sisaWaktuLaporan } from '../../lib/utils'
-
-const SOP_CARDS = [
-  { icon: 'checklist', title: 'SOP Pembukaan Toko', date: '01 Apr 2026' },
-  { icon: 'store',     title: 'SOP Pelayanan Pelanggan', date: '15 Mar 2026' },
-  { icon: 'approval',  title: 'SOP Penutupan & Setoran', date: '10 Mar 2026' },
-]
 
 export default function StaffHome() {
   const { profile, signOut } = useAuth()
   const [status, setStatus] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [sopCards, setSopCards] = useState([])
+  const [announcements, setAnnouncements] = useState([])
 
   const today = todayWIB()
   const yesterday = yesterdayWIB()
 
   useEffect(() => {
+    fetchSopAndAnnouncements()
     if (!profile?.branch_id) {
       setLoading(false)
       return
     }
     fetchStatus()
   }, [profile])
+
+  const fetchSopAndAnnouncements = async () => {
+    const [sopRes, annRes] = await Promise.all([
+      supabase.from('sop_cards').select('id,title,category,file_url,sort_order').eq('is_active', true).order('sort_order'),
+      supabase.from('announcements').select('id,title,body,published_at').eq('is_active', true).order('published_at', { ascending: false }).limit(5),
+    ])
+    if (sopRes.data) setSopCards(sopRes.data)
+    if (annRes.data) setAnnouncements(annRes.data)
+  }
 
   const fetchStatus = async () => {
     const branchId = profile.branch_id
@@ -64,7 +70,7 @@ export default function StaffHome() {
     setLoading(false)
   }
 
-  const isStoreLevel = ['staff', 'asst_head_store', 'head_store'].includes(profile?.role)
+  const isStoreLevel = isStoreRole(profile?.role)
   const isHeadStore = profile?.role === 'head_store'
   const kpiEnabled = canViewKPI(profile?.role)
   const supplyChainEnabled = canViewSupplyChain(profile?.role)
@@ -267,26 +273,56 @@ export default function StaffHome() {
         </div>
 
         {/* SOP Section */}
-        <div className="mb-6">
-          <div className="flex justify-between items-center mb-3">
-            <h2 className="font-extrabold text-gray-800 text-sm">Panduan SOP</h2>
-            <span className="text-[10px] text-gray-400 font-semibold">{SOP_CARDS.length} dokumen</span>
+        {sopCards.length > 0 && (
+          <div className="mb-6">
+            <div className="flex justify-between items-center mb-3">
+              <h2 className="font-extrabold text-gray-800 text-sm">Panduan SOP</h2>
+              <span className="text-[10px] text-gray-400 font-semibold">{sopCards.length} dokumen</span>
+            </div>
+            <div className="flex gap-3 overflow-x-auto pb-1 -mx-5 px-5 scrollbar-hide">
+              {sopCards.map((sop) => (
+                <a
+                  key={sop.id}
+                  href={sop.file_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-shrink-0 w-36 bg-white border border-blue-50 rounded-[1.5rem] p-4 shadow-sm active:scale-[0.97] transition-transform"
+                >
+                  <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 mb-3">
+                    <AppIcon name="checklist" size={18} />
+                  </div>
+                  <p className="text-[10px] font-bold text-gray-800 leading-tight mb-1">{sop.title}</p>
+                  <p className="text-[9px] text-gray-400 font-semibold">{sop.category}</p>
+                </a>
+              ))}
+            </div>
           </div>
-          <div className="flex gap-3 overflow-x-auto pb-1 -mx-5 px-5 scrollbar-hide">
-            {SOP_CARDS.map((sop) => (
-              <div
-                key={sop.title}
-                className="flex-shrink-0 w-36 bg-white border border-blue-50 rounded-[1.5rem] p-4 shadow-sm"
-              >
-                <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 mb-3">
-                  <AppIcon name={sop.icon} size={18} />
+        )}
+
+        {/* Announcements */}
+        {announcements.length > 0 && (
+          <div className="mb-6">
+            <h2 className="font-extrabold text-gray-800 text-sm mb-3">Pengumuman</h2>
+            <div className="space-y-3">
+              {announcements.map((ann) => (
+                <div key={ann.id} className="bg-white border border-amber-100 rounded-2xl p-4 shadow-sm">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 bg-amber-50 rounded-xl flex items-center justify-center text-amber-500 flex-shrink-0 mt-0.5">
+                      <AppIcon name="bell" size={16} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-bold text-gray-800 leading-tight mb-1">{ann.title}</p>
+                      <p className="text-[10px] text-gray-500 leading-relaxed">{ann.body}</p>
+                      <p className="text-[9px] text-gray-300 font-semibold mt-1">
+                        {ann.published_at ? new Date(ann.published_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <p className="text-[10px] font-bold text-gray-800 leading-tight mb-1">{sop.title}</p>
-                <p className="text-[9px] text-gray-400 font-semibold">{sop.date}</p>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Notice Board */}
         <div className="bg-slate-900 p-5 rounded-[2.5rem] text-white relative overflow-hidden mb-2">
