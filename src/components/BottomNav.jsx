@@ -131,9 +131,10 @@ export function TrainerBottomNav() {
 
   return (
     <Dock>
-      <NavItem to="/trainer"            icon="home"     label="Dashboard" active={pathname === '/trainer'} />
-      <NavItem to="/trainer/staff-baru" icon="users"    label="Staff Baru" active={pathname.startsWith('/trainer/staff-baru')} />
-      <NavItem to="/trainer/staff-lama" icon="matrix"   label="Staff Lama" active={pathname.startsWith('/trainer/staff-lama')} />
+      <NavItem to="/trainer"            icon="home"      label="Dashboard" active={pathname === '/trainer'} />
+      <NavItem to="/trainer/staff-baru" icon="users"     label="Staff Baru" active={pathname.startsWith('/trainer/staff-baru')} />
+      <NavItem to="/trainer/staff-lama" icon="matrix"    label="Staff Lama" active={pathname.startsWith('/trainer/staff-lama')} />
+      <NavItem to="/trainer/oje"        icon="checklist" label="OJE"        active={pathname.startsWith('/trainer/oje')} />
       <LogoutNavItem />
     </Dock>
   )

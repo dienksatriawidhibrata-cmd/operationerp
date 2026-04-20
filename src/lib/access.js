@@ -4,6 +4,7 @@ export const SUPPORT_ROLES = ['support_spv', 'support_admin']
 export const FINANCE_ROLES = ['finance_supervisor']
 export const SC_ROLES = ['purchasing_admin', 'warehouse_admin', 'picking_spv', 'qc_spv', 'distribution_spv', 'warehouse_spv', 'sc_supervisor']
 export const TRAINER_ROLES = ['trainer', 'ops_manager', ...SUPPORT_ROLES]
+export const OJE_ROLES = ['trainer', 'ops_manager', ...SUPPORT_ROLES, 'head_store', 'district_manager', 'area_manager']
 
 export const KPI_ALLOWED_ROLES = [...STORE_ROLES, ...MANAGER_ROLES, ...SUPPORT_ROLES]
 export const SUPPLY_CHAIN_VIEW_ROLES = [...STORE_ROLES, ...MANAGER_ROLES, ...SUPPORT_ROLES, ...SC_ROLES]

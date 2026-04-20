@@ -5,6 +5,7 @@ import {
   FINANCE_ROLES,
   KPI_ALLOWED_ROLES,
   MANAGER_ROLES,
+  OJE_ROLES,
   SC_ROLES,
   STORE_ROLES,
   SUPPLY_CHAIN_VIEW_ROLES,
@@ -33,6 +34,7 @@ const TasksPage       = lazy(() => import('./pages/tasks/TasksPage'))
 const TrainerDashboard = lazy(() => import('./pages/trainer/Dashboard'))
 const TrainerStaffBaru = lazy(() => import('./pages/trainer/StaffBaru'))
 const TrainerStaffLama = lazy(() => import('./pages/trainer/StaffLama'))
+const TrainerOJE       = lazy(() => import('./pages/trainer/OJEPage'))
 const SCDashboard    = lazy(() => import('./pages/sc/Dashboard'))
 const SCNewOrder     = lazy(() => import('./pages/sc/NewOrder'))
 const SCOrderDetail  = lazy(() => import('./pages/sc/OrderDetail'))
@@ -234,6 +236,11 @@ export default function App() {
       <Route path="/trainer/staff-lama" element={
         <RequireAuth roles={TRAINER_ROLES}>
           <TrainerStaffLama />
+        </RequireAuth>
+      } />
+      <Route path="/trainer/oje" element={
+        <RequireAuth roles={OJE_ROLES}>
+          <TrainerOJE />
         </RequireAuth>
       } />
 
