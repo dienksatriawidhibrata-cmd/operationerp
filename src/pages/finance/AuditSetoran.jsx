@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { downloadCsv, fmtDateShort, fmtRp, roleLabel, todayWIB } from '../../lib/utils'
 import PhotoViewer from '../../components/PhotoViewer'
 import Alert from '../../components/Alert'
-import { FinanceBottomNav } from '../../components/BottomNav'
+import { SmartBottomNav } from '../../components/BottomNav'
 import {
   AppIcon,
   EmptyPanel,
@@ -224,7 +224,7 @@ export default function AuditSetoran() {
           <AppIcon name="logout" size={18} />
         </button>
       }
-      footer={<FinanceBottomNav />}
+      footer={<SmartBottomNav />}
     >
       <SectionPanel
         eyebrow="Audit Mode"

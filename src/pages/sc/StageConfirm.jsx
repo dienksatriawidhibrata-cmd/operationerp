@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import Alert from '../../components/Alert'
-import { SCBottomNav } from '../../components/BottomNav'
+import { SmartBottomNav } from '../../components/BottomNav'
 import {
   EmptyPanel, InlineStat, SectionPanel, SubpageShell, ToneBadge,
 } from '../../components/ui/AppKit'
@@ -195,7 +195,7 @@ export default function StageConfirm({ stage }) {
   const title = `Konfirmasi ${meta.label}`
 
   if (loading) return (
-    <SubpageShell title={title} subtitle="Memuat..." eyebrow={meta.eyebrow} footer={<SCBottomNav />}>
+    <SubpageShell title={title} subtitle="Memuat..." eyebrow={meta.eyebrow} footer={<SmartBottomNav />}>
       <div className="flex justify-center py-24">
         <div className="h-9 w-9 animate-spin rounded-full border-2 border-primary-600 border-t-transparent" />
       </div>
@@ -209,7 +209,7 @@ export default function StageConfirm({ stage }) {
         title={title}
         subtitle={`${meta.icon} Pilih order untuk dikonfirmasi`}
         eyebrow={meta.eyebrow}
-        footer={<SCBottomNav />}
+        footer={<SmartBottomNav />}
       >
         <SectionPanel
           eyebrow="Queue"
@@ -247,7 +247,7 @@ export default function StageConfirm({ stage }) {
       title={title}
       subtitle={`${selectedOrder.order_number} · ${selectedOrder.branch?.name}`}
       eyebrow={meta.eyebrow}
-      footer={<SCBottomNav />}
+      footer={<SmartBottomNav />}
     >
       <SectionPanel eyebrow="Order Info" title={selectedOrder.order_number}>
         <div className="grid gap-3 sm:grid-cols-3">

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { todayWIB } from '../../lib/utils'
-import { DMBottomNav } from '../../components/BottomNav'
+import { SmartBottomNav } from '../../components/BottomNav'
 import {
   EmptyPanel,
   SectionPanel,
@@ -175,7 +175,7 @@ export default function VisitHub() {
       title="Visit"
       subtitle="Audit dan pantau kunjungan toko"
       eyebrow="Store Visit"
-      footer={<DMBottomNav />}
+      footer={<SmartBottomNav />}
     >
       <SectionPanel eyebrow="Pilihan" title="Menu Visit">
         <div className="grid gap-3 sm:grid-cols-2">

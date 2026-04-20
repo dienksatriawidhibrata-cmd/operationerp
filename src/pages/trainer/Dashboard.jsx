@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
-import { TrainerBottomNav } from '../../components/BottomNav'
+import { SmartBottomNav } from '../../components/BottomNav'
 import { AppIcon } from '../../components/ui/AppKit'
 import { todayWIB } from '../../lib/utils'
 
@@ -189,7 +189,7 @@ export default function TrainerDashboard() {
         </div>
       </div>
 
-      <TrainerBottomNav />
+      <SmartBottomNav />
     </div>
   )
 }
