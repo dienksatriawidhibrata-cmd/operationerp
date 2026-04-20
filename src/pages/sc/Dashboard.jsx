@@ -59,10 +59,6 @@ export default function SCDashboard() {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    fetchOrders()
-  }, [])
-
   const fetchOrders = async () => {
     setLoading(true)
 
@@ -77,6 +73,43 @@ export default function SCDashboard() {
     setOrders(data || [])
     setLoading(false)
   }
+
+  useEffect(() => {
+    let active = true
+
+    const load = async () => {
+      if (!active) return
+      await fetchOrders()
+    }
+
+    load()
+
+    const orderChannel = supabase
+      .channel(`sc-dashboard-${profile?.id || 'anon'}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'supply_orders' },
+        () => {
+          load()
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'surat_jalan' },
+        () => {
+          load()
+        }
+      )
+      .subscribe()
+
+    const intervalId = window.setInterval(load, 30000)
+
+    return () => {
+      active = false
+      window.clearInterval(intervalId)
+      supabase.removeChannel(orderChannel)
+    }
+  }, [profile?.id])
 
   const byStatus = STAGE_ORDER.reduce((acc, status) => {
     acc[status] = orders.filter((order) => order.status === status).length

@@ -224,8 +224,6 @@ function SJList() {
   const [filter, setFilter]         = useState('all')
   const [pendingAction, setPending] = useState(null) // { id, status, label }
 
-  useEffect(() => { fetchList() }, [])
-
   const fetchList = async () => {
     let query = supabase
       .from('surat_jalan')
@@ -238,6 +236,48 @@ function SJList() {
     setList(data || [])
     setLoading(false)
   }
+
+  useEffect(() => {
+    let active = true
+
+    const load = async () => {
+      if (!active) return
+      setLoading(true)
+      await fetchList()
+    }
+
+    load()
+
+    const sjFilter = isStoreOnly && profile?.branch_id
+      ? `branch_id=eq.${profile.branch_id}`
+      : undefined
+
+    const sjChannel = supabase
+      .channel(`sj-list-${profile?.id || 'anon'}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'surat_jalan', filter: sjFilter },
+        () => {
+          load()
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'supply_orders' },
+        () => {
+          load()
+        }
+      )
+      .subscribe()
+
+    const intervalId = window.setInterval(load, 30000)
+
+    return () => {
+      active = false
+      window.clearInterval(intervalId)
+      supabase.removeChannel(sjChannel)
+    }
+  }, [isStoreOnly, profile?.branch_id, profile?.id])
 
   const confirmAction = async () => {
     if (!pendingAction) return
