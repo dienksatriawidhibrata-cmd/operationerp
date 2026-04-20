@@ -69,6 +69,7 @@ export function StaffBottomNav() {
 
   return (
     <Dock>
+      <NavItem to="/staff"        icon="home"      label="Dashboard"    active={pathname === '/staff'} />
       <NavItem to="/staff/ceklis" icon="checklist" label="Ceklis"       active={pathname.startsWith('/staff/ceklis')} />
       <NavItem to="/sc/sj"        icon="finance"   label="Terima Barang" active={pathname.startsWith('/sc')} />
       <LogoutNavItem />
