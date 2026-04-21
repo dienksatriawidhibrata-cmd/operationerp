@@ -70,7 +70,7 @@ function KPIScorecard({ staff, period, branchId, isOpsManager }) {
   const isVerified = !!(scores[0]?.verified_at)
   const totalWeighted = items.reduce((sum, item) => {
     const s = scoreMap[item.item_key]?.score || 0
-    return sum + s * (item.weight_pct / 100)
+    return sum + s * (item.contribution / 100)
   }, 0)
   const grade = gradeInfo(totalWeighted)
 
@@ -111,7 +111,7 @@ function KPIScorecard({ staff, period, branchId, isOpsManager }) {
                   </div>
                   <div className="flex items-center gap-1.5 ml-2 shrink-0">
                     {isAuto && <span className="rounded-full bg-blue-50 px-1.5 py-0.5 text-[8px] font-bold text-blue-600">Auto</span>}
-                    <span className="text-[10px] text-slate-400">{item.weight_pct}%</span>
+                    <span className="text-[10px] text-slate-400">{item.contribution}%</span>
                   </div>
                 </div>
                 <ScoreBar value={score} />

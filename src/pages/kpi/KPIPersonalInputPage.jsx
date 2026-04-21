@@ -107,7 +107,7 @@ function StaffKPIForm({ staff, period, branchId, items, existingScores, isVerifi
 
   const totalWeighted = items.reduce((sum, item) => {
     const s = mergedScores[item.item_key] || 0
-    return sum + s * (item.weight_pct / 100)
+    return sum + s * (item.contribution / 100)
   }, 0)
 
   const allFilled = items.every(i => (mergedScores[i.item_key] || 0) > 0)
@@ -175,11 +175,11 @@ function StaffKPIForm({ staff, period, branchId, items, existingScores, isVerifi
               <div className="mb-1 flex items-start justify-between gap-2">
                 <div>
                   <div className="text-sm font-semibold text-slate-900">{item.item_name}</div>
-                  <div className="text-xs text-slate-500 mt-0.5">{item.description}</div>
+                  <div className="text-xs text-slate-500 mt-0.5">{item.cara_penilaian}</div>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
                   {isAuto && <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[9px] font-bold text-blue-600">Otomatis</span>}
-                  <span className="text-xs font-bold text-slate-400">{item.weight_pct}%</span>
+                  <span className="text-xs font-bold text-slate-400">{item.contribution}%</span>
                 </div>
               </div>
               <div className="mt-3">
