@@ -54,8 +54,7 @@ function RootRedirect() {
   if (profile.is_active === false) return <DeactivatedScreen onSignOut={signOut} />
 
   const role = profile.role
-  if (role === 'head_store') return <Navigate to="/staff" replace />
-  if (['staff', 'barista', 'kitchen', 'waitress', 'asst_head_store'].includes(role)) return <Navigate to="/staff/ceklis" replace />
+  if (STORE_ROLES.includes(role)) return <Navigate to="/staff" replace />
   if (['district_manager', 'area_manager'].includes(role)) return <Navigate to="/dm" replace />
   if (role === 'ops_manager' || SUPPORT_ROLES.includes(role)) return <Navigate to="/ops" replace />
   if (role === 'trainer') return <Navigate to="/trainer" replace />

@@ -329,6 +329,11 @@ export default function DMDashboard() {
         .in('branch_id', branchIds)
         .eq('tanggal', today),
       supabase
+        .from('daily_preparation')
+        .select('id,branch_id,shift')
+        .in('branch_id', branchIds)
+        .eq('tanggal', today),
+      supabase
         .from('daily_reports')
         .select('id,branch_id,tanggal,net_sales,submitted_at')
         .in('branch_id', branchIds)
@@ -374,6 +379,7 @@ export default function DMDashboard() {
 
     const [
       ceklisRes,
+      prepRes,
       laporanRes,
       setoranRes,
       opexRes,
@@ -384,6 +390,7 @@ export default function DMDashboard() {
 
     if (
       ceklisRes.error ||
+      prepRes.error ||
       laporanRes.error ||
       setoranRes.error ||
       opexRes.error ||
@@ -418,9 +425,14 @@ export default function DMDashboard() {
     const myLatestVisitByBranch = {}
     const expensesByBranchDate = {}
 
+    const prepByBranch = {}
     ;(ceklisRes.data || []).forEach((item) => {
       if (!checklistsByBranch[item.branch_id]) checklistsByBranch[item.branch_id] = {}
       checklistsByBranch[item.branch_id][item.shift] = item
+    })
+    ;(prepRes.data || []).forEach((item) => {
+      if (!prepByBranch[item.branch_id]) prepByBranch[item.branch_id] = {}
+      prepByBranch[item.branch_id][item.shift] = true
     })
     ;(laporanRes.data || []).forEach((item) => {
       if (item.tanggal === yesterday) {
@@ -468,7 +480,11 @@ export default function DMDashboard() {
       return {
         ...branch,
         ceklisPagi: checklistsByBranch[branch.id]?.pagi || null,
+        ceklisMiddle: checklistsByBranch[branch.id]?.middle || null,
         ceklisMalam: checklistsByBranch[branch.id]?.malam || null,
+        prepPagi: prepByBranch[branch.id]?.pagi || false,
+        prepMiddle: prepByBranch[branch.id]?.middle || false,
+        prepMalam: prepByBranch[branch.id]?.malam || false,
         laporan: reportsByBranchDay[branch.id] || null,
         setoran: depositsByBranch[branch.id] || null,
         visitPeriod: latestVisitByBranch[branch.id] || null,
@@ -1712,15 +1728,39 @@ function StoreHealthCard({ store, isOpsManager, badge }) {
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <div className="rounded-2xl bg-slate-50 px-3.5 py-3">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">Ceklis Pagi</div>
-          {store.ceklisPagi ? (
-            <>
-              <div className="mt-2 text-sm font-semibold text-slate-900">Sudah masuk</div>
-              <ChecklistPreview checklist={store.ceklisPagi} />
-            </>
-          ) : (
-            <div className="mt-2 text-sm font-semibold text-slate-900">Belum masuk</div>
-          )}
+          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 mb-2">Ceklis Harian</div>
+          <div className="flex gap-2">
+            {[
+              { label: 'Pagi', ok: !!store.ceklisPagi, late: store.ceklisPagi?.is_late },
+              { label: 'Middle', ok: !!store.ceklisMiddle, late: store.ceklisMiddle?.is_late },
+              { label: 'Malam', ok: !!store.ceklisMalam, late: store.ceklisMalam?.is_late },
+            ].map((s) => (
+              <div key={s.label} className={`flex-1 rounded-xl px-2 py-1.5 text-center ${s.ok ? (s.late ? 'bg-amber-100' : 'bg-emerald-100') : 'bg-slate-100'}`}>
+                <div className={`text-[9px] font-bold ${s.ok ? (s.late ? 'text-amber-700' : 'text-emerald-700') : 'text-slate-400'}`}>{s.label}</div>
+                <div className={`text-[8px] font-semibold mt-0.5 ${s.ok ? (s.late ? 'text-amber-600' : 'text-emerald-600') : 'text-slate-400'}`}>
+                  {s.ok ? (s.late ? 'Terlambat' : '✓') : '–'}
+                </div>
+              </div>
+            ))}
+          </div>
+          {store.ceklisPagi && <ChecklistPreview checklist={store.ceklisPagi} />}
+        </div>
+        <div className="rounded-2xl bg-slate-50 px-3.5 py-3">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 mb-2">Preparation</div>
+          <div className="flex gap-2">
+            {[
+              { label: 'Pagi', ok: store.prepPagi },
+              { label: 'Middle', ok: store.prepMiddle },
+              { label: 'Malam', ok: store.prepMalam },
+            ].map((s) => (
+              <div key={s.label} className={`flex-1 rounded-xl px-2 py-1.5 text-center ${s.ok ? 'bg-emerald-100' : 'bg-slate-100'}`}>
+                <div className={`text-[9px] font-bold ${s.ok ? 'text-emerald-700' : 'text-slate-400'}`}>{s.label}</div>
+                <div className={`text-[8px] font-semibold mt-0.5 ${s.ok ? 'text-emerald-600' : 'text-slate-400'}`}>
+                  {s.ok ? '✓' : '–'}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
         <div className="rounded-2xl bg-slate-50 px-3.5 py-3">
           <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">Laporan H-1</div>
@@ -1741,12 +1781,11 @@ function StoreHealthCard({ store, isOpsManager, badge }) {
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
-        <ToneBadge tone={store.ceklisPagi ? 'ok' : 'danger'}>{store.ceklisPagi ? 'Ceklis aman' : 'Ceklis kosong'}</ToneBadge>
+        <ToneBadge tone={store.ceklisPagi ? 'ok' : 'danger'}>{store.ceklisPagi ? 'Ceklis Pagi ✓' : 'Ceklis Pagi –'}</ToneBadge>
+        <ToneBadge tone={store.ceklisMiddle ? 'ok' : 'slate'}>{store.ceklisMiddle ? 'Middle ✓' : 'Middle –'}</ToneBadge>
+        <ToneBadge tone={store.ceklisMalam ? 'ok' : 'slate'}>{store.ceklisMalam ? 'Malam ✓' : 'Malam –'}</ToneBadge>
         <ToneBadge tone={store.laporan ? 'ok' : 'warn'}>{store.laporan ? 'Laporan masuk' : 'Laporan tertahan'}</ToneBadge>
         <ToneBadge tone={setoranTone}>{setoranLabel}</ToneBadge>
-        <ToneBadge tone={store.opexTodayCount > 0 ? 'info' : 'slate'}>
-          {store.opexTodayCount > 0 ? `${store.opexTodayCount} OPEX hari ini` : 'Belum ada OPEX hari ini'}
-        </ToneBadge>
       </div>
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4 text-sm text-slate-500">
