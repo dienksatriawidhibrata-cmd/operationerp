@@ -213,6 +213,7 @@ export default function PhotoUpload({
         ref={inputRef}
         type="file"
         accept="image/*"
+        capture="environment"
         multiple
         className="hidden"
         onChange={(event) => handleFiles(event.target.files)}

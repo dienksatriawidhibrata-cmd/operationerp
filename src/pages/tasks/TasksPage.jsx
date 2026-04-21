@@ -43,7 +43,7 @@ export default function TasksPage() {
     const { data } = await supabase
       .from('profiles')
       .select('id, full_name, role')
-      .in('role', ['district_manager', 'area_manager', 'head_store', 'asst_head_store'])
+      .in('role', ['district_manager', 'area_manager', 'head_store', 'asst_head_store', 'trainer'])
       .eq('is_active', true)
       .order('role')
       .order('full_name')
@@ -84,7 +84,7 @@ export default function TasksPage() {
 
   const shortName = (s) => s?.full_name?.split(' ').slice(0, 2).join(' ') || '-'
   const roleBadge = (role) => {
-    const map = { district_manager: 'DM', area_manager: 'AM', head_store: 'HS', asst_head_store: 'AHS' }
+    const map = { district_manager: 'DM', area_manager: 'AM', head_store: 'HS', asst_head_store: 'AHS', trainer: 'Trainer' }
     return map[role] ?? role
   }
 
@@ -143,6 +143,13 @@ export default function TasksPage() {
                     <optgroup label="Store">
                       {managers.filter((m) => ['head_store', 'asst_head_store'].includes(m.role)).map((m) => (
                         <option key={m.id} value={m.id}>{m.full_name} ({roleBadge(m.role)})</option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {managers.some((m) => m.role === 'trainer') && (
+                    <optgroup label="Trainer">
+                      {managers.filter((m) => m.role === 'trainer').map((m) => (
+                        <option key={m.id} value={m.id}>{m.full_name} (Trainer)</option>
                       ))}
                     </optgroup>
                   )}

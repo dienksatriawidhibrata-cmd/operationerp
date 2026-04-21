@@ -82,6 +82,7 @@ export default function OpsHub() {
     { to: '/trainer', icon: 'users', label: 'Trainer Hub', sub: 'Penilaian staff', bg: 'bg-emerald-50 border-emerald-100', color: 'text-emerald-600' },
     { to: '/trainer/oje', icon: 'checklist', label: 'OJE', sub: 'On Job Evaluation', bg: 'bg-teal-50 border-teal-100', color: 'text-teal-600' },
     { to: '/ops/visit-monitor', icon: 'map', label: 'Audit Log Visit', sub: 'Skor & foto kunjungan', bg: 'bg-violet-50 border-violet-100', color: 'text-violet-600' },
+    { to: '/support/staff', icon: 'users', label: 'Manajemen Staf', sub: 'Akun & akses pengguna', bg: 'bg-slate-50 border-slate-200', color: 'text-slate-600' },
   ]
 
   return (

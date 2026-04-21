@@ -57,8 +57,13 @@ export default function BebanOperasional() {
   const filtered = query.length > 0
     ? EXPENSE_CODES.filter((item) =>
       item.code.toLowerCase().includes(query.toLowerCase()) ||
-      item.name.toLowerCase().includes(query.toLowerCase())
-    ).slice(0, 6)
+      item.name.toLowerCase().includes(query.toLowerCase()) ||
+      item.category.toLowerCase().includes(query.toLowerCase())
+    ).slice(0, 8)
+    : []
+
+  const categories = query.length === 0
+    ? [...new Set(EXPENSE_CODES.map((item) => item.category))]
     : []
 
   const total = Number(qty) * Number(harga)
@@ -158,15 +163,15 @@ export default function BebanOperasional() {
               placeholder="Ketik kode atau nama item, contoh: es batu"
             />
 
-            {showDrop && filtered.length > 0 && (
-              <div className="absolute left-0 right-0 top-full z-20 mt-2 overflow-hidden rounded-[22px] border border-primary-100 bg-white shadow-[0_24px_65px_-38px_rgba(37,99,235,0.35)]">
-                {filtered.map((item) => (
+            {showDrop && (filtered.length > 0 || categories.length > 0) && (
+              <div className="absolute left-0 right-0 top-full z-20 mt-2 max-h-72 overflow-y-auto rounded-[22px] border border-primary-100 bg-white shadow-[0_24px_65px_-38px_rgba(37,99,235,0.35)]">
+                {filtered.length > 0 && filtered.map((item) => (
                   <button
                     key={item.code}
                     type="button"
                     className="w-full border-b border-slate-50 px-4 py-3 text-left last:border-0 hover:bg-primary-50"
                     onPointerDown={(e) => {
-                      e.preventDefault() // prevent blur before selection registers
+                      e.preventDefault()
                       setSelected(item)
                       setQuery(`${item.code} - ${item.name}`)
                       setShowDrop(false)
@@ -174,9 +179,29 @@ export default function BebanOperasional() {
                   >
                     <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-500">{item.code}</div>
                     <div className="mt-1 text-sm font-semibold text-slate-900">{item.name}</div>
-                    <div className="mt-1 text-sm text-slate-500">{item.category}</div>
+                    <div className="mt-1 text-xs text-slate-400">{item.category}</div>
                   </button>
                 ))}
+                {categories.length > 0 && (
+                  <>
+                    <div className="px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 border-b border-slate-50">Pilih Kategori</div>
+                    {categories.map((cat) => (
+                      <button
+                        key={cat}
+                        type="button"
+                        className="w-full border-b border-slate-50 px-4 py-2.5 text-left last:border-0 hover:bg-primary-50"
+                        onPointerDown={(e) => {
+                          e.preventDefault()
+                          setQuery(cat)
+                          setShowDrop(true)
+                        }}
+                      >
+                        <div className="text-sm font-medium text-slate-700">{cat}</div>
+                        <div className="text-xs text-slate-400">{EXPENSE_CODES.filter((i) => i.category === cat).length} item</div>
+                      </button>
+                    ))}
+                  </>
+                )}
               </div>
             )}
           </div>

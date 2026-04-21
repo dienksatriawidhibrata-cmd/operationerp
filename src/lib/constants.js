@@ -156,33 +156,53 @@ export const EXPENSE_CODES = [
 ]
 
 /**
- * Ceklis harian — pagi dan malam
- * type: 'toggle' | 'photo' | 'text_array'
- * shift: 'pagi' | 'malam' | 'both'
+ * Ceklis harian — pagi, middle, dan malam
+ * type    : 'toggle' | 'text_array'
+ * shift   : 'pagi' | 'malam' | 'middle' | 'both' | 'pagi_middle'
+ *   both        = pagi + middle + malam
+ *   pagi_middle = pagi + middle (tidak malam)
+ * section : 'status' | 'kebersihan' | 'operasional' | 'middle' | 'oos'
  */
 export const CHECKLIST_ITEMS = [
-  // Platform status
-  { key: 'toko_buka',          label: 'Toko sudah buka',        shift: 'pagi', type: 'toggle', requiresPhoto: false },
-  { key: 'toko_close',         label: 'Toko sudah Close',       shift: 'malam', type: 'toggle', requiresPhoto: false },
-  { key: 'gofood_aktif',       label: 'GoFood aktif',           shift: 'pagi', type: 'toggle', requiresPhoto: false },
-  { key: 'gofood_close',       label: 'GoFood sudah Close',     shift: 'malam', type: 'toggle', requiresPhoto: false },
-  { key: 'grabfood_aktif',     label: 'GrabFood aktif',         shift: 'pagi', type: 'toggle', requiresPhoto: false },
-  { key: 'grabfood_close',     label: 'GrabFood sudah Close',   shift: 'malam', type: 'toggle', requiresPhoto: false },
-  { key: 'shopeefood_aktif',   label: 'ShopeeFood aktif',       shift: 'pagi', type: 'toggle', requiresPhoto: false },
-  { key: 'shopeefood_close',   label: 'ShopeeFood sudah Close', shift: 'malam', type: 'toggle', requiresPhoto: false },
-  // Area kebersihan
-  { key: 'bar_bersih',         label: 'Area Bar',               shift: 'both', type: 'toggle', requiresPhoto: true },
-  { key: 'kitchen_bersih',     label: 'Area Kitchen',           shift: 'both', type: 'toggle', requiresPhoto: true },
-  { key: 'indoor_ns_bersih',   label: 'Indoor Non-Smoking',     shift: 'both', type: 'toggle', requiresPhoto: true },
-  { key: 'indoor_sm_bersih',   label: 'Indoor Smoking',         shift: 'both', type: 'toggle', requiresPhoto: true },
-  { key: 'outdoor_bersih',     label: 'Area Outdoor',           shift: 'both', type: 'toggle', requiresPhoto: true },
-  { key: 'toilet_pria_bersih', label: 'Toilet Pria',            shift: 'both', type: 'toggle', requiresPhoto: true },
-  { key: 'toilet_wanita_bersih', label: 'Toilet Wanita',        shift: 'both', type: 'toggle', requiresPhoto: true },
-  { key: 'musholla_bersih',    label: 'Musholla',               shift: 'both', type: 'toggle', requiresPhoto: true },
-  // Pagi only
-  { key: 'staff_grooming',     label: 'Staff Grooming',         shift: 'pagi', type: 'toggle', requiresPhoto: true },
-  // OOS
-  { key: 'item_oos',           label: 'Item Out of Stock',      shift: 'both', type: 'text_array', requiresPhoto: false },
+  // ── Status Toko & Platform ──────────────────────────────────
+  { key: 'toko_buka',            label: 'Toko sudah buka',            shift: 'pagi',        type: 'toggle',     requiresPhoto: false, section: 'status' },
+  { key: 'gofood_aktif',         label: 'GoFood aktif',               shift: 'pagi',        type: 'toggle',     requiresPhoto: false, section: 'status' },
+  { key: 'grabfood_aktif',       label: 'GrabFood aktif',             shift: 'pagi',        type: 'toggle',     requiresPhoto: false, section: 'status' },
+  { key: 'shopeefood_aktif',     label: 'ShopeeFood aktif',           shift: 'pagi',        type: 'toggle',     requiresPhoto: false, section: 'status' },
+  { key: 'start_pos',            label: 'Start Shift POS',            shift: 'pagi',        type: 'toggle',     requiresPhoto: false, section: 'status' },
+  { key: 'toko_close',           label: 'Toko sudah Close',           shift: 'malam',       type: 'toggle',     requiresPhoto: false, section: 'status' },
+  { key: 'gofood_close',         label: 'GoFood sudah Close',         shift: 'malam',       type: 'toggle',     requiresPhoto: false, section: 'status' },
+  { key: 'grabfood_close',       label: 'GrabFood sudah Close',       shift: 'malam',       type: 'toggle',     requiresPhoto: false, section: 'status' },
+  { key: 'shopeefood_close',     label: 'ShopeeFood sudah Close',     shift: 'malam',       type: 'toggle',     requiresPhoto: false, section: 'status' },
+  { key: 'end_pos',              label: 'End Shift POS',              shift: 'malam',       type: 'toggle',     requiresPhoto: false, section: 'status' },
+  // ── Kebersihan Area ─────────────────────────────────────────
+  { key: 'bar_bersih',           label: 'Area Bar',                   shift: 'both',        type: 'toggle',     requiresPhoto: true,  section: 'kebersihan' },
+  { key: 'kitchen_bersih',       label: 'Area Kitchen',               shift: 'both',        type: 'toggle',     requiresPhoto: true,  section: 'kebersihan' },
+  { key: 'indoor_ns_bersih',     label: 'Indoor Non-Smoking',         shift: 'both',        type: 'toggle',     requiresPhoto: true,  section: 'kebersihan' },
+  { key: 'indoor_sm_bersih',     label: 'Indoor Smoking',             shift: 'both',        type: 'toggle',     requiresPhoto: true,  section: 'kebersihan' },
+  { key: 'outdoor_bersih',       label: 'Area Outdoor',               shift: 'both',        type: 'toggle',     requiresPhoto: true,  section: 'kebersihan' },
+  { key: 'toilet_pria_bersih',   label: 'Toilet Pria',                shift: 'both',        type: 'toggle',     requiresPhoto: true,  section: 'kebersihan' },
+  { key: 'toilet_wanita_bersih', label: 'Toilet Wanita',              shift: 'both',        type: 'toggle',     requiresPhoto: true,  section: 'kebersihan' },
+  { key: 'musholla_bersih',      label: 'Musholla',                   shift: 'both',        type: 'toggle',     requiresPhoto: true,  section: 'kebersihan' },
+  { key: 'dc_toilet',            label: 'Daily Checklist Toilet',     shift: 'both',        type: 'toggle',     requiresPhoto: true,  section: 'kebersihan' },
+  { key: 'dc_musholla',          label: 'Daily Checklist Musholla',   shift: 'both',        type: 'toggle',     requiresPhoto: true,  section: 'kebersihan' },
+  { key: 'dc_area',              label: 'Daily Checklist Area',       shift: 'both',        type: 'toggle',     requiresPhoto: true,  section: 'kebersihan' },
+  // ── Operasional & Display ───────────────────────────────────
+  { key: 'staff_grooming',       label: 'Staff Grooming',             shift: 'pagi',        type: 'toggle',     requiresPhoto: true,  section: 'operasional' },
+  { key: 'kalibrasi',            label: 'Kalibrasi Beans',            shift: 'pagi',        type: 'toggle',     requiresPhoto: true,  section: 'operasional' },
+  { key: 'menyiram_tanaman',     label: 'Menyiram Tanaman',           shift: 'pagi_middle', type: 'toggle',     requiresPhoto: true,  section: 'operasional' },
+  { key: 'materi_promo',         label: 'Display Promo',              shift: 'both',        type: 'toggle',     requiresPhoto: true,  section: 'operasional' },
+  { key: 'showcase_bar',         label: 'Showcase Bar',               shift: 'both',        type: 'toggle',     requiresPhoto: true,  section: 'operasional' },
+  { key: 'showcase_kitchen',     label: 'Showcase Kitchen',           shift: 'both',        type: 'toggle',     requiresPhoto: true,  section: 'operasional' },
+  { key: 'freezer_bar',          label: 'Freezer Bar',                shift: 'both',        type: 'toggle',     requiresPhoto: true,  section: 'operasional' },
+  { key: 'freezer_kitchen',      label: 'Freezer Kitchen',            shift: 'both',        type: 'toggle',     requiresPhoto: true,  section: 'operasional' },
+  { key: 'cermin_logo',          label: 'Cermin Logo',                shift: 'both',        type: 'toggle',     requiresPhoto: true,  section: 'operasional' },
+  { key: 'neon_box',             label: 'Neon Box Menyala',           shift: 'malam',       type: 'toggle',     requiresPhoto: true,  section: 'operasional' },
+  // ── Middle Shift ────────────────────────────────────────────
+  { key: 'stok_bahan_cukup',     label: 'Stok Bahan Baku Cukup',     shift: 'middle',      type: 'toggle',     requiresPhoto: false, section: 'middle' },
+  { key: 'peralatan_bersih',     label: 'Peralatan Bersih & Siap',   shift: 'middle',      type: 'toggle',     requiresPhoto: false, section: 'middle' },
+  // ── Inventory Signal ────────────────────────────────────────
+  { key: 'item_oos',             label: 'Item Out of Stock',          shift: 'both',        type: 'text_array', requiresPhoto: false, section: 'oos' },
 ]
 
 /**

@@ -57,12 +57,102 @@ const emptyBatchItem = () => BATCH_CRITERIA.reduce((a, k) => ({ ...a, [k]: 0 }),
 
 // ─── Sub-views ───────────────────────────────────────────────────────────────
 
-function OJEList({ evaluations, batches, loading, onExportIndividual, onExportBatch, canDownload }) {
+function OJEDetailModal({ evaluation, onClose }) {
+  if (!evaluation) return null
+  const cats = [...new Set(OJE_CRITERIA.map((c) => c.cat))]
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60" onClick={onClose}>
+      <div
+        className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-t-[2rem] sm:rounded-[2rem] bg-white p-5 space-y-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-base font-bold text-slate-800">{evaluation.candidate_name}
+              {evaluation.nickname && <span className="ml-1 text-sm text-slate-400">({evaluation.nickname})</span>}
+            </div>
+            <div className="text-xs text-slate-500 mt-0.5">
+              {evaluation.position} · {evaluation.branch?.name || '-'} · {fmtDate(evaluation.eval_date)}
+            </div>
+          </div>
+          <button onClick={onClose} className="h-8 w-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-lg">×</button>
+        </div>
+
+        <div className="flex items-center gap-3 rounded-[18px] bg-slate-50 px-4 py-3">
+          <ToneBadge tone={RATING_TONE[evaluation.rating] ?? 'slate'}>{evaluation.rating}</ToneBadge>
+          <span className="text-sm font-mono text-slate-600">{evaluation.total_score}/{MAX_SCORE} · {evaluation.percentage}%</span>
+          {evaluation.observer_name && <span className="text-xs text-slate-400 ml-auto">Observer: {evaluation.observer_name}</span>}
+        </div>
+
+        {cats.map((cat) => (
+          <div key={cat}>
+            <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">{cat}</div>
+            <div className="space-y-1.5">
+              {OJE_CRITERIA.filter((c) => c.cat === cat).map((c) => (
+                <div key={c.id} className="flex items-center justify-between rounded-[14px] bg-slate-50 px-3 py-2 gap-2">
+                  <span className="text-xs text-slate-600 flex-1">{c.label}</span>
+                  <span className="text-sm font-bold text-primary-700 shrink-0">{evaluation.scores?.[c.id] ?? 0}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+
+        {(evaluation.remarks_opening || evaluation.remarks_closing || evaluation.alasan) && (
+          <div className="space-y-2">
+            {evaluation.remarks_opening && (
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Shift Opening</div>
+                <p className="text-xs text-slate-600 leading-relaxed">{evaluation.remarks_opening}</p>
+              </div>
+            )}
+            {evaluation.remarks_closing && (
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Shift Closing</div>
+                <p className="text-xs text-slate-600 leading-relaxed">{evaluation.remarks_closing}</p>
+              </div>
+            )}
+            {evaluation.alasan && (
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Alasan</div>
+                <p className="text-xs text-slate-600 leading-relaxed">{evaluation.alasan}</p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function OJEList({ evaluations, batches, branches, loading, onExportIndividual, onExportBatch, canDownload }) {
   const [tab, setTab] = useState('individual')
+  const [search, setSearch] = useState('')
+  const [filterBranch, setFilterBranch] = useState('')
+  const [filterPosition, setFilterPosition] = useState('')
+  const [filterRating, setFilterRating] = useState('')
+  const [selectedEval, setSelectedEval] = useState(null)
+
   const tabs = [
     { key: 'individual', label: 'OJE Individual' },
     { key: 'batch',      label: 'Batch Scorecard' },
   ]
+
+  const filteredEvals = evaluations.filter((e) => {
+    if (search && !e.candidate_name.toLowerCase().includes(search.toLowerCase()) &&
+        !e.nickname?.toLowerCase().includes(search.toLowerCase())) return false
+    if (filterBranch && e.branch_id !== filterBranch) return false
+    if (filterPosition && e.position !== filterPosition) return false
+    if (filterRating && e.rating !== filterRating) return false
+    return true
+  })
+
+  const filteredBatches = batches.filter((b) => {
+    if (filterBranch && b.branch_id !== filterBranch) return false
+    if (search && !b.evaluator_name?.toLowerCase().includes(search.toLowerCase()) &&
+        !b.branch?.name?.toLowerCase().includes(search.toLowerCase())) return false
+    return true
+  })
 
   if (loading) return (
     <div className="flex justify-center py-16">
@@ -72,25 +162,58 @@ function OJEList({ evaluations, batches, loading, onExportIndividual, onExportBa
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      {selectedEval && <OJEDetailModal evaluation={selectedEval} onClose={() => setSelectedEval(null)} />}
+
+      <div className="flex items-center justify-between gap-2">
         <SegmentedControl options={tabs} value={tab} onChange={setTab} />
         {canDownload && (
           <button
             onClick={tab === 'individual' ? onExportIndividual : onExportBatch}
-            className="flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:border-slate-300"
+            className="flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:border-slate-300 shrink-0"
           >
-            <AppIcon name="opex" size={13} /> Export CSV
+            <AppIcon name="opex" size={13} /> CSV
           </button>
         )}
       </div>
 
+      {/* Filter bar */}
+      <div className="flex flex-wrap gap-2">
+        <input
+          className="input flex-1 min-w-[140px] py-2 text-sm"
+          placeholder="Cari nama..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <select className="input py-2 text-sm" value={filterBranch} onChange={(e) => setFilterBranch(e.target.value)}>
+          <option value="">Semua Toko</option>
+          {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+        </select>
+        {tab === 'individual' && (
+          <>
+            <select className="input py-2 text-sm" value={filterPosition} onChange={(e) => setFilterPosition(e.target.value)}>
+              <option value="">Semua Posisi</option>
+              {POSITIONS.map((p) => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
+            </select>
+            <select className="input py-2 text-sm" value={filterRating} onChange={(e) => setFilterRating(e.target.value)}>
+              <option value="">Semua Rating</option>
+              {['Excellent', 'Good', 'Fail'].map((r) => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </>
+        )}
+      </div>
+
       {tab === 'individual' && (
-        evaluations.length === 0
-          ? <EmptyPanel title="Belum ada data OJE Individual" description="Tambah evaluasi via tab OJE Individual." />
-          : <SectionPanel eyebrow="Riwayat" title="OJE Individual">
+        filteredEvals.length === 0
+          ? <EmptyPanel title="Tidak ada data" description={evaluations.length === 0 ? 'Tambah evaluasi via tab OJE Individual.' : 'Tidak ada data yang cocok dengan filter.'} />
+          : <SectionPanel eyebrow={`${filteredEvals.length} hasil`} title="OJE Individual">
               <div className="space-y-2">
-                {evaluations.map((e) => (
-                  <div key={e.id} className="rounded-[18px] bg-slate-50 px-4 py-3 flex items-center justify-between gap-3">
+                {filteredEvals.map((e) => (
+                  <button
+                    key={e.id}
+                    type="button"
+                    onClick={() => setSelectedEval(e)}
+                    className="w-full rounded-[18px] bg-slate-50 px-4 py-3 flex items-center justify-between gap-3 text-left hover:bg-slate-100 active:scale-[0.99] transition-all"
+                  >
                     <div className="min-w-0">
                       <div className="text-sm font-semibold text-slate-800">{e.candidate_name}
                         {e.nickname && <span className="ml-1 text-xs text-slate-400">({e.nickname})</span>}
@@ -104,18 +227,18 @@ function OJEList({ evaluations, batches, loading, onExportIndividual, onExportBa
                       <ToneBadge tone={RATING_TONE[e.rating] ?? 'slate'}>{e.rating}</ToneBadge>
                       <span className="text-[11px] font-mono text-slate-500">{e.total_score}/{MAX_SCORE} · {e.percentage}%</span>
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             </SectionPanel>
       )}
 
       {tab === 'batch' && (
-        batches.length === 0
-          ? <EmptyPanel title="Belum ada Batch Scorecard" description="Tambah via tab Batch Scorecard." />
-          : <SectionPanel eyebrow="Riwayat" title="Batch Scorecard">
+        filteredBatches.length === 0
+          ? <EmptyPanel title="Tidak ada data" description={batches.length === 0 ? 'Tambah via tab Batch Scorecard.' : 'Tidak ada data yang cocok dengan filter.'} />
+          : <SectionPanel eyebrow={`${filteredBatches.length} sesi`} title="Batch Scorecard">
               <div className="space-y-2">
-                {batches.map((b) => (
+                {filteredBatches.map((b) => (
                   <div key={b.id} className="rounded-[18px] bg-slate-50 px-4 py-3">
                     <div className="flex items-center justify-between gap-3">
                       <div>
@@ -605,6 +728,7 @@ export default function OJEPage() {
         <OJEList
           evaluations={evaluations}
           batches={batches}
+          branches={branches}
           loading={loading}
           onExportIndividual={exportIndividual}
           onExportBatch={exportBatch}

@@ -58,19 +58,39 @@ export default function SCDashboard() {
   const { profile, signOut } = useAuth()
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
+  const [leadTimes, setLeadTimes] = useState({ picking: null, qc: null, distribution: null })
 
   const fetchOrders = async () => {
     setLoading(true)
 
-    const { data } = await supabase
-      .from('supply_orders')
-      .select('*, branch:branches(id,name,store_id,district,area)')
-      .neq('status', 'completed')
-      .neq('status', 'cancelled')
-      .order('created_at', { ascending: false })
-      .limit(60)
+    const [ordersRes, ltRes] = await Promise.all([
+      supabase
+        .from('supply_orders')
+        .select('*, branch:branches(id,name,store_id,district,area)')
+        .neq('status', 'completed')
+        .neq('status', 'cancelled')
+        .order('created_at', { ascending: false })
+        .limit(60),
+      supabase
+        .from('supply_confirmations')
+        .select('stage, confirmed_at, order:supply_orders(created_at)')
+        .eq('status', 'confirmed')
+        .not('confirmed_at', 'is', null)
+        .order('confirmed_at', { ascending: false })
+        .limit(90),
+    ])
 
-    setOrders(data || [])
+    setOrders(ordersRes.data || [])
+
+    const confs = ltRes.data || []
+    const avgHours = (stage) => {
+      const rows = confs.filter((c) => c.stage === stage && c.order?.created_at)
+      if (!rows.length) return null
+      const hrs = rows.map((c) => (new Date(c.confirmed_at) - new Date(c.order.created_at)) / 3600000)
+      return (hrs.reduce((a, b) => a + b, 0) / hrs.length).toFixed(1)
+    }
+    setLeadTimes({ picking: avgHours('picking'), qc: avgHours('qc'), distribution: avgHours('distribution') })
+
     setLoading(false)
   }
 
@@ -122,12 +142,12 @@ export default function SCDashboard() {
   const canIssueSJ = canIssueSuratJalan(profile?.role)
 
   const workflowStats = [
-    { label: 'Antrean', key: 'draft', count: byStatus.draft, urgentFlag: false },
-    { label: 'On Picking', key: 'picking', count: byStatus.picking, urgentFlag: byStatus.picking > 0 },
-    { label: 'QC Check', key: 'qc', count: byStatus.qc, urgentFlag: byStatus.qc > 0 },
-    { label: 'Distribusi', key: 'distribution', count: byStatus.distribution, urgentFlag: false },
-    { label: 'Siap SJ', key: 'sj_ready', count: byStatus.sj_ready, urgentFlag: byStatus.sj_ready > 0 },
-    { label: 'Dikirim', key: 'shipped', count: byStatus.shipped, urgentFlag: false },
+    { label: 'Antrean', key: 'draft', count: byStatus.draft, urgentFlag: false, to: null },
+    { label: 'On Picking', key: 'picking', count: byStatus.picking, urgentFlag: byStatus.picking > 0, to: '/sc/picking' },
+    { label: 'QC Check', key: 'qc', count: byStatus.qc, urgentFlag: byStatus.qc > 0, to: '/sc/qc' },
+    { label: 'Distribusi', key: 'distribution', count: byStatus.distribution, urgentFlag: false, to: '/sc/distribution' },
+    { label: 'Siap SJ', key: 'sj_ready', count: byStatus.sj_ready, urgentFlag: byStatus.sj_ready > 0, to: '/sc/sj' },
+    { label: 'Dikirim', key: 'shipped', count: byStatus.shipped, urgentFlag: false, to: '/sc/sj' },
   ]
 
   const quickActions = [
@@ -172,15 +192,26 @@ export default function SCDashboard() {
           </div>
 
           <div className="grid grid-cols-3 gap-3 mb-3">
-            {workflowStats.slice(0, 3).map((stat) => (
-              <div key={stat.key} className="bg-white p-3 rounded-2xl border border-blue-50">
-                <p className="text-[8px] font-bold text-gray-400 uppercase mb-1">{stat.label}</p>
-                <p className="text-xl font-black text-blue-700">{loading ? '-' : String(stat.count ?? 0).padStart(2, '0')}</p>
-                {stat.urgentFlag && stat.count > 0 && (
-                  <span className="text-[8px] text-orange-500 font-bold">Perlu aksi</span>
-                )}
-              </div>
-            ))}
+            {workflowStats.slice(0, 3).map((stat) => {
+              const inner = (
+                <>
+                  <p className="text-[8px] font-bold text-gray-400 uppercase mb-1">{stat.label}</p>
+                  <p className="text-xl font-black text-blue-700">{loading ? '-' : String(stat.count ?? 0).padStart(2, '0')}</p>
+                  {stat.urgentFlag && stat.count > 0 && (
+                    <span className="text-[8px] text-orange-500 font-bold">Perlu aksi</span>
+                  )}
+                </>
+              )
+              return stat.to ? (
+                <Link key={stat.key} to={stat.to} className="bg-white p-3 rounded-2xl border border-blue-50 hover:border-blue-200 active:scale-95 transition-all block">
+                  {inner}
+                </Link>
+              ) : (
+                <div key={stat.key} className="bg-white p-3 rounded-2xl border border-blue-50">
+                  {inner}
+                </div>
+              )
+            })}
           </div>
 
           <div className="p-3 bg-white rounded-2xl border border-blue-50">
@@ -198,6 +229,30 @@ export default function SCDashboard() {
             </div>
           </div>
         </div>
+
+        {/* Lead Time Metrics */}
+        {(leadTimes.picking || leadTimes.qc || leadTimes.distribution) && (
+          <div className="mb-6">
+            <h2 className="font-extrabold text-gray-800 text-sm mb-3">Rata-rata Lead Time</h2>
+            <div className="bg-white rounded-[1.5rem] border border-gray-100 p-4">
+              <div className="flex items-center gap-1.5 mb-3">
+                <span className="text-[9px] font-bold text-blue-600 uppercase tracking-widest">PO → Selesai (jam)</span>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { label: 'PO→Picking', val: leadTimes.picking },
+                  { label: 'PO→QC', val: leadTimes.qc },
+                  { label: 'PO→Distribusi', val: leadTimes.distribution },
+                ].map((lt) => (
+                  <div key={lt.label} className="text-center">
+                    <div className="text-[9px] font-bold text-gray-400 uppercase mb-1">{lt.label}</div>
+                    <div className="text-lg font-black text-blue-700">{lt.val ? `${lt.val}j` : '-'}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Quick Actions */}
         <div className={`grid gap-4 mb-6 ${quickActions.length <= 4 ? 'grid-cols-4' : 'grid-cols-4'}`}>

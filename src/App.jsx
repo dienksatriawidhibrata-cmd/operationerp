@@ -42,6 +42,8 @@ const SCPicking      = lazy(() => import('./pages/sc/PickingPage'))
 const SCQC           = lazy(() => import('./pages/sc/QCPage'))
 const SCDistribution = lazy(() => import('./pages/sc/DistributionPage'))
 const SCSuratJalan   = lazy(() => import('./pages/sc/SuratJalan'))
+const StaffManagement = lazy(() => import('./pages/support/StaffManagement'))
+const Preparation     = lazy(() => import('./pages/staff/Preparation'))
 
 function RootRedirect() {
   const { user, profile, loading, profileError } = useAuth()
@@ -155,6 +157,11 @@ export default function App() {
           <BebanOperasional />
         </RequireAuth>
       } />
+      <Route path="/staff/preparation" element={
+        <RequireAuth roles={STORE_ROLES}>
+          <Preparation />
+        </RequireAuth>
+      } />
 
       <Route path="/ops" element={
         <RequireAuth roles={['ops_manager', ...SUPPORT_ROLES]}>
@@ -219,6 +226,12 @@ export default function App() {
       <Route path="/tasks" element={
         <RequireAuth roles={[...MANAGER_ROLES, ...SUPPORT_ROLES]}>
           <TasksPage />
+        </RequireAuth>
+      } />
+
+      <Route path="/support/staff" element={
+        <RequireAuth roles={['ops_manager', ...SUPPORT_ROLES]}>
+          <StaffManagement />
         </RequireAuth>
       } />
 

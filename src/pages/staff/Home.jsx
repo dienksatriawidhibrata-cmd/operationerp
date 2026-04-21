@@ -38,10 +38,15 @@ export default function StaffHome() {
   const fetchStatus = async () => {
     const branchId = profile.branch_id
 
-    const [ceklisPagi, ceklisMalam, laporan, opexToday] = await Promise.all([
+    const [ceklisPagi, ceklisMiddle, ceklisMalam, laporan, prepPagi, prepMiddle, prepMalam, opexToday] = await Promise.all([
       supabase.from('daily_checklists')
         .select('id, is_late, submitted_at')
         .eq('branch_id', branchId).eq('tanggal', today).eq('shift', 'pagi')
+        .maybeSingle(),
+
+      supabase.from('daily_checklists')
+        .select('id, is_late')
+        .eq('branch_id', branchId).eq('tanggal', today).eq('shift', 'middle')
         .maybeSingle(),
 
       supabase.from('daily_checklists')
@@ -54,6 +59,21 @@ export default function StaffHome() {
         .eq('branch_id', branchId).eq('tanggal', yesterday)
         .maybeSingle(),
 
+      supabase.from('daily_preparation')
+        .select('id')
+        .eq('branch_id', branchId).eq('tanggal', today).eq('shift', 'pagi')
+        .maybeSingle(),
+
+      supabase.from('daily_preparation')
+        .select('id')
+        .eq('branch_id', branchId).eq('tanggal', today).eq('shift', 'middle')
+        .maybeSingle(),
+
+      supabase.from('daily_preparation')
+        .select('id')
+        .eq('branch_id', branchId).eq('tanggal', today).eq('shift', 'malam')
+        .maybeSingle(),
+
       supabase.from('operational_expenses')
         .select('total')
         .eq('branch_id', branchId).eq('tanggal', today),
@@ -63,8 +83,12 @@ export default function StaffHome() {
 
     setStatus({
       ceklisPagi: ceklisPagi.data,
+      ceklisMiddle: ceklisMiddle.data,
       ceklisMalam: ceklisMalam.data,
       laporan: laporan.data,
+      prepPagi: prepPagi.data,
+      prepMiddle: prepMiddle.data,
+      prepMalam: prepMalam.data,
       totalOpex,
     })
     setLoading(false)
@@ -77,15 +101,15 @@ export default function StaffHome() {
   const shortName = profile?.full_name?.split(' ')[0] || '-'
   const branchName = profile?.branch?.name?.replace('Bagi Kopi ', '') || 'Toko'
 
-  const ceklisDone = [status?.ceklisPagi, status?.ceklisMalam].filter(Boolean).length
-  const ceklisPct = Math.round((ceklisDone / 2) * 100)
+  const ceklisDone = [status?.ceklisPagi, status?.ceklisMiddle, status?.ceklisMalam].filter(Boolean).length
+  const ceklisPct = Math.round((ceklisDone / 3) * 100)
 
   const quickActions = [
     ...(isHeadStore || !isStoreLevel ? [{ to: '/staff/laporan', icon: 'chart', label: 'Laporan\nHarian' }] : []),
     ...(isHeadStore ? [{ to: '/staff/opex', icon: 'opex', label: 'Input\nOpex' }] : []),
+    { to: '/staff/preparation', icon: 'approval', label: 'Prep\nHarian' },
     ...(kpiEnabled ? [{ to: '/kpi', icon: 'checklist', label: 'KPI\nKerja' }] : []),
     ...(supplyChainEnabled ? [{ to: '/sc/sj', icon: 'finance', label: 'Penerimaan\nBarang' }] : []),
-    ...(!isHeadStore ? [{ to: '/trainer/staff-baru', icon: 'users', label: 'Training\nCard' }] : []),
   ].slice(0, 4)
 
   return (
@@ -152,19 +176,24 @@ export default function StaffHome() {
                 </p>
               </div>
 
-              {/* Laporan H-1 */}
-              <div className="bg-orange-50 rounded-2xl p-3 text-center">
+              {/* Middle Ceklis */}
+              <div className="bg-violet-50 rounded-2xl p-3 text-center">
                 <div className="w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center"
-                  style={{ background: !loading && status?.laporan ? '#f97316' : '#fed7aa' }}>
-                  <AppIcon name="chart" size={14}
-                    className={!loading && status?.laporan ? 'text-white' : 'text-orange-400'} />
+                  style={{ background: !loading && status?.ceklisMiddle ? '#7c3aed' : '#ede9fe' }}>
+                  <AppIcon name="checklist" size={14}
+                    className={!loading && status?.ceklisMiddle ? 'text-white' : 'text-violet-400'} />
                 </div>
-                <p className="text-[9px] font-bold text-gray-500 uppercase mb-1">Laporan</p>
-                <div className="w-full bg-orange-100 h-1.5 rounded-full overflow-hidden">
-                  <div className={`h-1.5 rounded-full transition-all duration-500 ${!loading && status?.laporan ? 'bg-orange-400 w-full' : 'w-0'}`} />
+                <p className="text-[9px] font-bold text-gray-500 uppercase mb-1">Middle</p>
+                <div className="w-full bg-violet-100 h-1.5 rounded-full overflow-hidden">
+                  <div className={`h-1.5 rounded-full transition-all duration-500 ${
+                    loading ? 'w-0' :
+                    status?.ceklisMiddle
+                      ? (status.ceklisMiddle.is_late ? 'bg-amber-400 w-full' : 'bg-violet-500 w-full')
+                      : 'w-0'
+                  }`} />
                 </div>
                 <p className="text-[8px] text-gray-400 mt-1 font-semibold">
-                  {loading ? '...' : status?.laporan ? 'Submitted' : 'Pending'}
+                  {loading ? '...' : status?.ceklisMiddle ? (status.ceklisMiddle.is_late ? 'Terlambat' : 'Selesai') : 'Belum'}
                 </p>
               </div>
 
@@ -197,6 +226,76 @@ export default function StaffHome() {
           )}
         </div>
 
+        {/* Preparation Card */}
+        <div className="bg-white rounded-[2rem] border border-emerald-50 shadow-sm mb-5 overflow-hidden">
+          <div className="px-4 pt-4 pb-3">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xs font-black text-gray-800 uppercase tracking-wide">Status Preparation Harian</h2>
+              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg">{branchName}</span>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 mb-4">
+              {/* Prep Pagi */}
+              <div className="bg-emerald-50 rounded-2xl p-3 text-center">
+                <div className="w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center"
+                  style={{ background: !loading && status?.prepPagi ? '#10b981' : '#d1fae5' }}>
+                  <AppIcon name="spark" size={14}
+                    className={!loading && status?.prepPagi ? 'text-white' : 'text-emerald-400'} />
+                </div>
+                <p className="text-[9px] font-bold text-gray-500 uppercase mb-1">Pagi</p>
+                <div className="w-full bg-emerald-100 h-1.5 rounded-full overflow-hidden">
+                  <div className={`h-1.5 rounded-full transition-all duration-500 ${!loading && status?.prepPagi ? 'bg-emerald-500 w-full' : 'w-0'}`} />
+                </div>
+                <p className="text-[8px] text-gray-400 mt-1 font-semibold">
+                  {loading ? '...' : status?.prepPagi ? 'Selesai' : 'Belum'}
+                </p>
+              </div>
+
+              {/* Prep Middle */}
+              <div className="bg-teal-50 rounded-2xl p-3 text-center">
+                <div className="w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center"
+                  style={{ background: !loading && status?.prepMiddle ? '#0d9488' : '#ccfbf1' }}>
+                  <AppIcon name="checklist" size={14}
+                    className={!loading && status?.prepMiddle ? 'text-white' : 'text-teal-400'} />
+                </div>
+                <p className="text-[9px] font-bold text-gray-500 uppercase mb-1">Middle</p>
+                <div className="w-full bg-teal-100 h-1.5 rounded-full overflow-hidden">
+                  <div className={`h-1.5 rounded-full transition-all duration-500 ${!loading && status?.prepMiddle ? 'bg-teal-500 w-full' : 'w-0'}`} />
+                </div>
+                <p className="text-[8px] text-gray-400 mt-1 font-semibold">
+                  {loading ? '...' : status?.prepMiddle ? 'Selesai' : 'Belum'}
+                </p>
+              </div>
+
+              {/* Prep Malam */}
+              <div className="bg-cyan-50 rounded-2xl p-3 text-center">
+                <div className="w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center"
+                  style={{ background: !loading && status?.prepMalam ? '#0891b2' : '#cffafe' }}>
+                  <AppIcon name="approval" size={14}
+                    className={!loading && status?.prepMalam ? 'text-white' : 'text-cyan-400'} />
+                </div>
+                <p className="text-[9px] font-bold text-gray-500 uppercase mb-1">Malam</p>
+                <div className="w-full bg-cyan-100 h-1.5 rounded-full overflow-hidden">
+                  <div className={`h-1.5 rounded-full transition-all duration-500 ${!loading && status?.prepMalam ? 'bg-cyan-500 w-full' : 'w-0'}`} />
+                </div>
+                <p className="text-[8px] text-gray-400 mt-1 font-semibold">
+                  {loading ? '...' : status?.prepMalam ? 'Selesai' : 'Belum'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {isStoreLevel && (
+            <Link
+              to="/staff/preparation"
+              className="flex items-center justify-center gap-2 w-full py-3.5 bg-emerald-600 text-white font-bold text-sm text-center hover:bg-emerald-700 transition-colors active:scale-[0.98]"
+            >
+              <AppIcon name="approval" size={16} />
+              Mulai Input Preparation
+            </Link>
+          )}
+        </div>
+
         {/* Quick Actions */}
         <div className={`grid gap-4 mb-5 ${quickActions.length <= 3 ? 'grid-cols-3' : 'grid-cols-4'}`}>
           {quickActions.map((action) => (
@@ -223,7 +322,7 @@ export default function StaffHome() {
                   style={{ width: loading ? '0%' : `${ceklisPct}%` }}
                 />
               </div>
-              <p className="text-[8px] opacity-70 mt-1">{loading ? '...' : `${ceklisDone} dari 2 ceklis`}</p>
+              <p className="text-[8px] opacity-70 mt-1">{loading ? '...' : `${ceklisDone} dari 3 ceklis`}</p>
             </div>
             <AppIcon name="spark" size={52} className="absolute -right-2 -bottom-2 opacity-10" />
           </div>
@@ -333,7 +432,7 @@ export default function StaffHome() {
             <p className="text-[10px] opacity-60 leading-relaxed">
               {loading
                 ? 'Memuat status...'
-                : `Ceklis: ${status?.ceklisPagi ? 'Pagi ✓' : 'Pagi -'} ${status?.ceklisMalam ? '· Malam ✓' : '· Malam -'} · Laporan: ${status?.laporan ? '✓' : 'Pending'}`}
+                : `Ceklis: ${status?.ceklisPagi ? 'Pagi ✓' : 'Pagi -'} ${status?.ceklisMiddle ? '· Middle ✓' : '· Middle -'} ${status?.ceklisMalam ? '· Malam ✓' : '· Malam -'} · Laporan: ${status?.laporan ? '✓' : 'Pending'}`}
             </p>
           </div>
           <AppIcon name="store" size={72} className="absolute -right-3 -bottom-3 opacity-5" />

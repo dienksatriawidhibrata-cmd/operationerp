@@ -58,8 +58,8 @@ export default function TrainerDashboard() {
   const quickActions = [
     { to: '/trainer/staff-baru', icon: 'users', label: 'Staff\nBaru' },
     { to: '/trainer/staff-lama', icon: 'matrix', label: 'Staff\nLama' },
+    { to: '/trainer/oje', icon: 'star', label: 'OJE\nPenilaian' },
     { to: '/kpi', icon: 'chart', label: 'KPI\nToko' },
-    { to: '/sc/sj', icon: 'finance', label: 'Terima\nBarang' },
   ]
 
   return (
@@ -182,7 +182,7 @@ export default function TrainerDashboard() {
             </div>
             <h3 className="font-bold text-sm mb-1">Akses Penilaian Staff</h3>
             <p className="text-[10px] opacity-90 leading-relaxed">
-              Gunakan menu Staff Baru untuk input OJT dan Staff Lama untuk update 9-box assessment.
+              Gunakan Staff Baru untuk onboarding, Staff Lama untuk 9-box assessment, dan OJE untuk penilaian lapangan harian.
             </p>
           </div>
           <AppIcon name="users" size={72} className="absolute -right-4 -bottom-4 opacity-10" />

@@ -17,11 +17,35 @@ import {
   ToneBadge,
 } from '../../components/ui/AppKit'
 
+const SECTION_CONFIG = {
+  status: {
+    eyebrow: 'Status Awal',
+    title: (shift) =>
+      shift === 'pagi' ? 'Status Pembukaan' : shift === 'malam' ? 'Status Penutupan' : 'Status Pergantian Shift',
+    description: 'Pastikan semua platform dan status toko sesuai kondisi aktual.',
+  },
+  kebersihan: {
+    eyebrow: 'Area Review',
+    title: () => 'Kebersihan Area',
+    description: 'Setiap area perlu status kebersihan dan bukti foto agar kondisi toko mudah diverifikasi.',
+  },
+  operasional: {
+    eyebrow: 'Operasional',
+    title: () => 'Operasional',
+    description: 'Pastikan semua elemen operasional toko sudah siap dan terdokumentasi.',
+  },
+  middle: {
+    eyebrow: 'Shift Middle',
+    title: () => 'Stok & Peralatan',
+    description: 'Cek ketersediaan bahan baku dan kondisi peralatan di tengah hari.',
+  },
+}
+
 export default function CeklisHarian() {
   const { profile } = useAuth()
   const today = todayWIB()
   const [activeShift, setActiveShift] = useState('pagi')
-  const [existing, setExisting] = useState({ pagi: null, malam: null })
+  const [existing, setExisting] = useState({ pagi: null, middle: null, malam: null })
   const [answers, setAnswers] = useState({})
   const [photos, setPhotos] = useState({})
   const [oosInput, setOosInput] = useState('')
@@ -67,7 +91,7 @@ export default function CeklisHarian() {
       .select('*')
       .eq('branch_id', branchId)
       .eq('tanggal', today)
-      .in('shift', ['pagi', 'malam'])
+      .in('shift', ['pagi', 'middle', 'malam'])
 
     if (fetchErr) {
       setError('Gagal memuat data ceklis: ' + fetchErr.message)
@@ -75,33 +99,36 @@ export default function CeklisHarian() {
     }
 
     if (data) {
-      const map = { pagi: null, malam: null }
-      data.forEach((item) => {
-        map[item.shift] = item
-      })
+      const map = { pagi: null, middle: null, malam: null }
+      data.forEach((item) => { map[item.shift] = item })
       setExisting(map)
     }
   }
 
-  const items = CHECKLIST_ITEMS.filter((item) => item.shift === activeShift || item.shift === 'both')
+  const items = CHECKLIST_ITEMS.filter((item) =>
+    item.shift === activeShift ||
+    item.shift === 'both' ||
+    (item.shift === 'pagi_middle' && (activeShift === 'pagi' || activeShift === 'middle'))
+  )
 
-  const setAnswer = (key, value) => setAnswers((current) => ({ ...current, [key]: value }))
-  const setPhoto = (key, urls) => setPhotos((current) => ({ ...current, [key]: urls }))
+  const setAnswer = (key, value) => setAnswers((cur) => ({ ...cur, [key]: value }))
+  const setPhoto = (key, urls) => setPhotos((cur) => ({ ...cur, [key]: urls }))
 
   const addOos = () => {
     const trimmed = oosInput.trim()
     if (trimmed && !oosList.includes(trimmed)) {
-      setOosList((current) => [...current, trimmed])
+      setOosList((cur) => [...cur, trimmed])
       setOosInput('')
     }
   }
 
-  const removeOos = (item) => setOosList((current) => current.filter((entry) => entry !== item))
+  const removeOos = (item) => setOosList((cur) => cur.filter((e) => e !== item))
 
   const validateForm = () => {
     const photoItems = items.filter((item) => item.requiresPhoto)
-    const missing = photoItems.filter((item) => !photos[item.key] || photos[item.key].length === 0)
-    return missing.map((item) => item.label)
+    return photoItems
+      .filter((item) => !photos[item.key] || photos[item.key].length === 0)
+      .map((item) => item.label)
   }
 
   const handleSubmit = async () => {
@@ -140,8 +167,12 @@ export default function CeklisHarian() {
   }
 
   const isReadOnly = !!existing[activeShift] && !isEditing
-  const deadline = activeShift === 'pagi' ? '08.00 WIB' : '03.00 WIB'
-  const completionCount = items.filter((item) => answers[item.key] !== undefined).length
+  const deadline = activeShift === 'pagi' ? '08.00 WIB' : activeShift === 'middle' ? '14.00 WIB' : '03.00 WIB'
+  const toggleItems = items.filter((i) => i.type === 'toggle')
+  const completionCount = toggleItems.filter((i) => answers[i.key] !== undefined).length
+
+  // Group toggle items by section (excluding 'oos')
+  const sections = [...new Set(toggleItems.map((i) => i.section))]
 
   return (
     <SubpageShell
@@ -153,11 +184,12 @@ export default function CeklisHarian() {
       <SectionPanel
         eyebrow="Shift Control"
         title="Pilih Shift"
-        description="Checklist pagi dan malam tetap dipisah supaya progresnya jelas dan mudah dicek ulang."
+        description="Checklist pagi, middle, dan malam tetap dipisah supaya progresnya jelas dan mudah dicek ulang."
         actions={
           <SegmentedControl
             options={[
               { key: 'pagi', label: 'Pagi' },
+              { key: 'middle', label: 'Middle' },
               { key: 'malam', label: 'Malam' },
             ]}
             value={activeShift}
@@ -168,7 +200,7 @@ export default function CeklisHarian() {
         <div className="grid gap-3 sm:grid-cols-3">
           <InlineStat label="Tanggal" value={today} tone="primary" />
           <InlineStat label="Deadline" value={deadline} tone={activeShift === 'pagi' ? 'amber' : 'slate'} />
-          <InlineStat label="Progress" value={`${completionCount}/${items.length}`} tone={isReadOnly ? 'emerald' : 'primary'} />
+          <InlineStat label="Progress" value={`${completionCount}/${toggleItems.length}`} tone={isReadOnly ? 'emerald' : 'primary'} />
         </div>
       </SectionPanel>
 
@@ -188,9 +220,7 @@ export default function CeklisHarian() {
           </div>
         )}
         {isEditing && (
-          <Alert variant="warn">
-            Mode koreksi aktif. Data lama akan ditimpa saat kamu submit ulang.
-          </Alert>
+          <Alert variant="warn">Mode koreksi aktif. Data lama akan ditimpa saat kamu submit ulang.</Alert>
         )}
         {done && <Alert variant="ok">Ceklis berhasil disimpan.</Alert>}
         {error && <Alert variant="error">{error}</Alert>}
@@ -200,88 +230,73 @@ export default function CeklisHarian() {
           </Alert>
         )}
 
-        <SectionPanel
-          eyebrow="Status Awal"
-          title={activeShift === 'pagi' ? 'Status Pembukaan' : 'Status Penutupan'}
-          description="Pastikan semua platform dan status toko sesuai kondisi aktual."
-        >
-          <div className="space-y-1.5">
-            {items
-              .filter((item) => [
-                'toko_buka',
-                'toko_close',
-                'gofood_aktif',
-                'gofood_close',
-                'grabfood_aktif',
-                'grabfood_close',
-                'shopeefood_aktif',
-                'shopeefood_close',
-              ].includes(item.key))
-              .map((item) => (
-                <ToggleRow
-                  key={item.key}
-                  label={item.label}
-                  checked={!!answers[item.key]}
-                  onChange={(value) => setAnswer(item.key, value)}
-                  disabled={isReadOnly}
-                />
-              ))}
-          </div>
-        </SectionPanel>
+        {sections.map((section) => {
+          const cfg = SECTION_CONFIG[section]
+          if (!cfg) return null
+          const sectionItems = toggleItems.filter((i) => i.section === section)
+          const hasPhoto = sectionItems.some((i) => i.requiresPhoto)
 
-        <SectionPanel
-          eyebrow="Area Review"
-          title="Kebersihan Area"
-          description="Setiap area perlu status kebersihan dan bukti foto agar kondisi toko mudah diverifikasi."
-        >
-          <div className="space-y-4">
-            {items.filter((item) => item.key.endsWith('_bersih')).map((item) => (
-              <div key={item.key} className="rounded-[20px] bg-slate-50/85 px-3.5 py-3.5 sm:rounded-[22px] sm:px-4 sm:py-4">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm font-medium text-slate-700">{item.label}</span>
-                  <Toggle
-                    checked={!!answers[item.key]}
-                    onChange={(value) => setAnswer(item.key, value)}
-                    disabled={isReadOnly}
-                  />
-                </div>
-                <div className="mt-3">
-                  {isReadOnly ? (
-                    <PhotoViewer urls={photos[item.key]} emptyText="Tidak ada foto" />
-                  ) : (
-                    <PhotoUpload
-                      folder={`ceklis/${today}/${activeShift}`}
-                      value={photos[item.key] || []}
-                      onChange={(urls) => setPhoto(item.key, urls)}
-                      label="Upload Foto Area"
-                      max={3}
-                    />
+          return (
+            <SectionPanel
+              key={section}
+              eyebrow={cfg.eyebrow}
+              title={cfg.title(activeShift)}
+              description={cfg.description}
+            >
+              {hasPhoto ? (
+                <div className="space-y-4">
+                  {sectionItems.map((item) =>
+                    item.requiresPhoto ? (
+                      <div key={item.key} className="rounded-[20px] bg-slate-50/85 px-3.5 py-3.5 sm:rounded-[22px] sm:px-4 sm:py-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-sm font-medium text-slate-700">{item.label}</span>
+                          <Toggle
+                            checked={!!answers[item.key]}
+                            onChange={(v) => setAnswer(item.key, v)}
+                            disabled={isReadOnly}
+                          />
+                        </div>
+                        <div className="mt-3">
+                          {isReadOnly ? (
+                            <PhotoViewer urls={photos[item.key]} emptyText="Tidak ada foto" />
+                          ) : (
+                            <PhotoUpload
+                              folder={`ceklis/${today}/${activeShift}`}
+                              value={photos[item.key] || []}
+                              onChange={(urls) => setPhoto(item.key, urls)}
+                              label={`Upload Foto ${item.label}`}
+                              max={3}
+                            />
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <ToggleRow
+                        key={item.key}
+                        label={item.label}
+                        checked={!!answers[item.key]}
+                        onChange={(v) => setAnswer(item.key, v)}
+                        disabled={isReadOnly}
+                      />
+                    )
                   )}
                 </div>
-              </div>
-            ))}
-          </div>
-        </SectionPanel>
-
-        {activeShift === 'pagi' && (
-          <SectionPanel
-            eyebrow="Team Readiness"
-            title="Staff Grooming"
-            description="Dokumentasikan kesiapan tim di awal shift."
-          >
-            {isReadOnly ? (
-              <PhotoViewer urls={photos.staff_grooming} emptyText="Tidak ada foto" />
-            ) : (
-              <PhotoUpload
-                folder={`ceklis/${today}/grooming`}
-                value={photos.staff_grooming || []}
-                onChange={(urls) => setPhoto('staff_grooming', urls)}
-                label="Upload Foto Grooming Staff"
-                max={5}
-              />
-            )}
-          </SectionPanel>
-        )}
+              ) : (
+                <div className="space-y-1.5">
+                  {sectionItems.map((item) => (
+                    <ToggleRow
+                      key={item.key}
+                      label={item.label}
+                      checked={!!answers[item.key]}
+                      onChange={(v) => setAnswer(item.key, v)}
+                      disabled={isReadOnly}
+                    />
+                  ))}
+                </div>
+              )}
+            </SectionPanel>
+          )
+        })}
 
         <SectionPanel
           eyebrow="Inventory Signal"
@@ -294,8 +309,8 @@ export default function CeklisHarian() {
                 <ToneBadge key={item} tone="danger">
                   {item}
                   {!isReadOnly && (
-                    <button type="button" onClick={() => removeOos(item)} className="text-rose-500">
-                      x
+                    <button type="button" onClick={() => removeOos(item)} className="ml-1 text-rose-500">
+                      ×
                     </button>
                   )}
                 </ToneBadge>
@@ -307,20 +322,16 @@ export default function CeklisHarian() {
               description={isReadOnly ? 'Shift ini tidak memiliki catatan item kosong.' : 'Tambahkan item yang sedang kosong bila ada.'}
             />
           )}
-
           {!isReadOnly && (
             <div className="mt-4 flex gap-2">
               <input
                 className="input flex-1"
                 placeholder="Nama item OOS..."
                 value={oosInput}
-                onChange={(event) => setOosInput(event.target.value)}
-                onKeyDown={(event) => event.key === 'Enter' && addOos()}
+                onChange={(e) => setOosInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && addOos()}
               />
-              <button
-                onClick={addOos}
-                className="rounded-2xl bg-primary-600 px-4 py-3 text-sm font-semibold text-white"
-              >
+              <button onClick={addOos} className="rounded-2xl bg-primary-600 px-4 py-3 text-sm font-semibold text-white">
                 Tambah
               </button>
             </div>
@@ -342,7 +353,7 @@ export default function CeklisHarian() {
               rows={4}
               placeholder={`Catatan kondisi ${activeShift} (opsional)...`}
               value={notes}
-              onChange={(event) => setNotes(event.target.value)}
+              onChange={(e) => setNotes(e.target.value)}
             />
           )}
         </SectionPanel>
@@ -359,7 +370,7 @@ export default function CeklisHarian() {
               </button>
             )}
             <button onClick={handleSubmit} disabled={saving} className="btn-primary flex-1">
-              {saving ? 'Menyimpan...' : isEditing ? 'Simpan Koreksi' : `Submit Ceklis ${activeShift === 'pagi' ? 'Pagi' : 'Malam'}`}
+              {saving ? 'Menyimpan...' : isEditing ? 'Simpan Koreksi' : `Submit Ceklis ${activeShift === 'pagi' ? 'Pagi' : activeShift === 'middle' ? 'Middle' : 'Malam'}`}
             </button>
           </div>
         )}
