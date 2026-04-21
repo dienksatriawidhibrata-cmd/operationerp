@@ -106,10 +106,17 @@ export default function StaffHome() {
   const ceklisDone = [status?.ceklisPagi, status?.ceklisMiddle, status?.ceklisMalam].filter(Boolean).length
   const ceklisPct = Math.round((ceklisDone / 3) * 100)
 
-  const quickActions = [
-    ...(isHeadStore || !isStoreLevel ? [{ to: '/staff/laporan', icon: 'chart', label: 'Laporan\nHarian' }] : []),
-    ...(isHeadStore ? [{ to: '/staff/opex', icon: 'opex', label: 'Input\nOpex' }] : []),
-    { to: '/staff/preparation', icon: 'approval', label: 'Prep\nHarian' },
+  const quickActions = isHeadStore ? [
+    { to: '/staff/laporan',      icon: 'chart',     label: 'Laporan\nHarian' },
+    { to: '/kpi/personal/input', icon: 'checklist', label: 'Input\nKPI Staff' },
+    { to: '/kpi/360',            icon: 'spark',     label: 'Penilaian\n360°' },
+    { to: '/sc/sj',              icon: 'finance',   label: 'Terima\nBarang' },
+  ] : isStoreLevel ? [
+    { to: '/staff/preparation',  icon: 'approval',  label: 'Prep\nHarian' },
+    { to: '/kpi/personal',       icon: 'chart',     label: 'KPI\nPersonal' },
+    { to: '/kpi/360',            icon: 'spark',     label: 'Penilaian\n360°' },
+    { to: '/sc/sj',              icon: 'finance',   label: 'Terima\nBarang' },
+  ] : [
     ...(kpiEnabled ? [{ to: '/kpi', icon: 'checklist', label: 'KPI\nKerja' }] : []),
     ...(supplyChainEnabled ? [{ to: '/sc/sj', icon: 'finance', label: 'Penerimaan\nBarang' }] : []),
   ].slice(0, 4)

@@ -4,6 +4,9 @@ import { useAuth } from './contexts/AuthContext'
 import {
   FINANCE_ROLES,
   KPI_ALLOWED_ROLES,
+  KPI_PERSONAL_VIEW_ROLES,
+  KPI_PERSONAL_INPUT_ROLES,
+  KPI_360_ROLES,
   MANAGER_ROLES,
   OJE_ROLES,
   SC_ROLES,
@@ -42,8 +45,11 @@ const SCPicking      = lazy(() => import('./pages/sc/PickingPage'))
 const SCQC           = lazy(() => import('./pages/sc/QCPage'))
 const SCDistribution = lazy(() => import('./pages/sc/DistributionPage'))
 const SCSuratJalan   = lazy(() => import('./pages/sc/SuratJalan'))
-const StaffManagement = lazy(() => import('./pages/support/StaffManagement'))
-const Preparation     = lazy(() => import('./pages/staff/Preparation'))
+const StaffManagement    = lazy(() => import('./pages/support/StaffManagement'))
+const Preparation        = lazy(() => import('./pages/staff/Preparation'))
+const KPIPersonalPage    = lazy(() => import('./pages/kpi/KPIPersonalPage'))
+const KPIPersonalInput   = lazy(() => import('./pages/kpi/KPIPersonalInputPage'))
+const PeerReview360Page  = lazy(() => import('./pages/kpi/PeerReview360Page'))
 
 function RootRedirect() {
   const { user, profile, loading, profileError, signOut } = useAuth()
@@ -219,6 +225,21 @@ export default function App() {
       <Route path="/kpi" element={
         <RequireAuth roles={KPI_ALLOWED_ROLES}>
           <KPIReport />
+        </RequireAuth>
+      } />
+      <Route path="/kpi/personal" element={
+        <RequireAuth roles={KPI_PERSONAL_VIEW_ROLES}>
+          <KPIPersonalPage />
+        </RequireAuth>
+      } />
+      <Route path="/kpi/personal/input" element={
+        <RequireAuth roles={KPI_PERSONAL_INPUT_ROLES}>
+          <KPIPersonalInput />
+        </RequireAuth>
+      } />
+      <Route path="/kpi/360" element={
+        <RequireAuth roles={KPI_360_ROLES}>
+          <PeerReview360Page />
         </RequireAuth>
       } />
 

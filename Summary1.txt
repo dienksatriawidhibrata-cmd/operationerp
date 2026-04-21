@@ -1,0 +1,248 @@
+================================================================
+BAGI KOPI OPS — PROJECT SUMMARY & PROGRESS
+Update: 21 April 2026
+================================================================
+
+STATUS KESELURUHAN: PRODUCTION-READY (ACTIVE DEVELOPMENT)
+Database: Supabase | Frontend: React + Vite | Hosting: Cloudflare Pages
+Branch utama: main | Branch dev: codex-realtime-sc-sync
+Migration terakhir: 013_kpi_personal.sql
+
+----------------------------------------------------------------
+ROLES (21 Total)
+----------------------------------------------------------------
+Store       : staff, barista, kitchen, waitress, asst_head_store, head_store
+Manager     : district_manager, area_manager, ops_manager
+Support     : support_spv, support_admin
+Finance     : finance_supervisor
+Supply Chain: purchasing_admin, warehouse_admin, warehouse_spv,
+              sc_supervisor, picking_spv, qc_spv, distribution_spv
+Trainer     : trainer
+
+----------------------------------------------------------------
+MODUL & STATUS
+----------------------------------------------------------------
+
+[1] STAFF / STORE (semua STORE_ROLES)
+    ✅ Dashboard (/staff)
+       - Semua store roles landing di /staff
+       - STATUS CEKLIS HARIAN: Pagi / Middle / Malam
+       - STATUS PREPARATION HARIAN: Pagi / Middle / Malam
+       - Target Ceklis: menghitung 3 shift (pagi+middle+malam)
+       - SOP section: auto-load dari Google Drive, klik → modal preview
+         (read-only, tidak bisa download)
+       - Pengumuman dari Supabase
+       - Quick Actions per role:
+         • barista/kitchen/waitress: Prep Harian, KPI Personal, Penilaian 360°, Terima Barang
+         • head_store: Laporan Harian, Input KPI Staff, Penilaian 360°, Terima Barang
+    ✅ Ceklis Harian (/staff/ceklis)
+       - 3 shift: Pagi, Middle, Malam (migration 012 wajib sudah dijalankan)
+       - Section dinamis dari field 'section' di CHECKLIST_ITEMS
+       - is_late dihitung via trigger (bukan generated column)
+    ✅ Preparation Harian (/staff/preparation)
+       - Input qty per item, 2 section: Bar (6 item) dan Kitchen (16 item)
+       - 3 shift: Pagi, Middle, Malam
+    ✅ Laporan Harian (/staff/laporan) — head_store & manager only
+    ✅ Beban Operasional (/staff/opex)
+
+[2] KPI PERSONAL + 360° — BARU (Sesi ini)
+    ✅ KPI Personal View (/kpi/personal)
+       - Scorecard per staff per periode (YYYY-MM)
+       - Menampilkan skor per item + auto_value + bobot
+       - Skor tertimbang total dengan grade (Outstanding/Good/Fair/Needs Improvement)
+       - Feedback 360° di bawah scorecard (anonim kecuali ops_manager)
+       - Akses: staff sendiri, head_store, DM, AM, ops_manager, support_spv, trainer
+    ✅ Input KPI Personal (/kpi/personal/input) — head_store only
+       - Select periode + staff (barista/kitchen/waitress/asst_head_store)
+       - Auto-nilai otomatis:
+         • auto_checklist: % completion dari daily_checklists branch (hitung per bulan)
+         • auto_preparation: % completion dari daily_preparation branch
+         • auto_360: rata-rata skor dari kpi_360_submissions evaluatee
+       - Manual items: score picker 1–5 + catatan per item
+       - Skor tertimbang preview real-time
+       - Status: sudah diisi / belum, terverifikasi DM (locked)
+    ✅ Penilaian 360° (/kpi/360)
+       - Evaluator = login user, evaluatee = dipilih dari list (filter by branch/scope)
+       - Tidak bisa self-assess
+       - head_store: 2 grup — Grup Toko + Grup Manager (tab)
+       - DM/AM: hanya Grup Manager
+       - barista/kitchen/waitress/asst_head_store: hanya Grup Toko
+       - Kolega difilter otomatis by branch_id / managed_districts / managed_areas
+       - 5 item skor (1–5) + catatan opsional ≤1000 karakter (anonim)
+       - Status per kolega: Sudah dinilai / Belum
+       - Submit → upsert ke kpi_360_submissions + kpi_360_scores
+
+    Database (migration 013_kpi_personal.sql — WAJIB DIJALANKAN):
+       - kpi_personal_items: config item KPI per role (seed data lengkap)
+       - kpi_360_items: config item 360° per grup (store & manager)
+       - kpi_personal_scores: skor bulanan per staff × item
+       - kpi_360_submissions: 1 submisi per evaluator → evaluatee per bulan
+       - kpi_360_scores: 1 baris per item per submisi
+
+    Item KPI per role:
+       BARISTA (8 item, total 100%):
+         - Checklist Completion (13%, otomatis) + Prep Bar (13%, otomatis)
+         - Kualitas Minuman (18%) + Kecepatan Penyajian (13%)
+         - Kebersihan Bar (13%) + Waste & Spoil (10%)
+         - Kedisiplinan (10%) + 360° (10%)
+       KITCHEN (8 item, total 100%): sama struktur dengan Barista
+       WAITRESS (6 item, total 100%): tanpa item Preparation & Upselling
+         - Checklist (15%) + Kualitas Pelayanan (25%) + Kebersihan (20%)
+         - Complain Handling (15%) + Kedisiplinan (10%) + 360° (15%)
+       ASST_HEAD_STORE (9 item, total 100%):
+         - Checklist Monitoring (8%) + Prep Monitoring (8%) + Sales KPI (20%)
+         - Coaching (13%) + Stock FIFO (13%) + Opex Control (10%)
+         - SOP & Kebersihan (8%) + Kedisiplinan (10%) + 360° (10%)
+
+    Item 360° Grup Toko (5 item): Kerjasama Tim, Komunikasi & Sikap,
+       Inisiatif & Proaktif, Kedisiplinan, Tanggung Jawab Kerja
+    Item 360° Grup Manager (5 item): Kepemimpinan, Komunikasi & Arahan,
+       Coaching Tim, Integritas & Konsistensi, Kolaborasi Antar Divisi
+
+    Anonimitas: evaluator_id tersimpan di DB tapi tidak ditampilkan ke
+       siapapun kecuali ops_manager. Verifikasi KPI oleh DM/AM/ops_manager.
+    Periode: bulanan, deadline tanggal 5 bulan berikutnya.
+
+    Excel referensi: KPI_Personal_Rekomendasi.xlsx (di root project)
+       - 5 sheet: BARISTA, KITCHEN, WAITRESS, ASST_HEAD_STORE, 360_ITEMS
+       - Cara edit item: tambah/hapus baris di .mjs → jalankan node generate_kpi_personal.mjs
+
+[3] MANAGER / DM / AM / OPS MANAGER
+    ✅ DM Dashboard (/dm) — real-time, scope per district/area
+       - Store card: Ceklis 3 shift, Preparation 3 shift, Laporan, Visit, BOH
+    ✅ Visit Hub, Daily Visit Audit, Approval Setoran, Store Status
+
+[4] OPERATIONS MANAGER / SUPPORT
+    ✅ Ops Hub (/ops) — shortcut Staff Management
+    ✅ Staff Management (/support/staff)
+       - List semua profil staff, filter by status/role/search
+       - Toggle is_active, edit inline role + branch_id
+
+[5] KPI TOKO
+    ✅ KPI Report (/kpi)
+       - Data utama: Supabase kpi_monthly_reports
+       - Rekap KPI Bulanan (Google Sheets): tabel per outlet per bulan
+       - Framework & Target KPI (Google Sheets): bobot + target per item
+
+[6] SUPPLY CHAIN
+    ✅ SC Dashboard (/sc) — Lead Time metrics, clickable cards
+    ✅ Surat Jalan: store roles bisa input penerimaan dari status 'issued'
+
+[7] FINANCE
+    ✅ Audit Setoran (/finance) — filter multi-level, export CSV
+    ✅ Opex Overview (/opex) — per toko/kategori, export CSV
+
+[8] TRAINER
+    ✅ Trainer Dashboard (/trainer) — shortcut OJE
+    ✅ Staff Baru, Staff Lama
+    ✅ OJE (/trainer/oje)
+       - Filter & search di tab Daftar
+       - Individual OJE: 13 kriteria, 5 kategori
+       - Batch Scorecard: multi-peserta, 10 kriteria
+
+[9] TASKS
+    ✅ Tasks (/tasks) — dropdown assign: trainer + head_store + asst_head_store
+
+[10] INTEGRASI EKSTERNAL
+    ✅ Google Drive → SOP (Folder ID: 1GXkR3-A0XXkxJxkNlCv2FJXUO4NLqOSa)
+       - 26 file .docx auto-load, modal preview read-only
+    ✅ Google Sheets → KPI (Sheet ID: 13znU5AUVAuqG5jFxMtRhmFZpqYKe2pAdpYWJbsQCf_A)
+       - Tab bulanan + tab KPI framework
+
+[11] AUTH & INFRASTRUKTUR
+    ✅ Login, RLS per role, passwordless store staff
+    ✅ SmartBottomNav + BottomNav per role
+    ✅ PhotoUpload: capture="environment"
+    ✅ Google API key: hardcoded fallback di googleApis.js
+       ⚠️ TODO: restrict key di Google Cloud Console ke domain
+          operationerp.pages.dev (HTTP Referrers)
+
+----------------------------------------------------------------
+MIGRATION STATUS
+----------------------------------------------------------------
+010_oje_tables.sql          → ⚠️ Wajib dijalankan manual (OJE module)
+011_daily_preparation.sql   → ⚠️ Wajib dijalankan manual (Preparation)
+012_daily_checklists_middle → ✅ Sudah dijalankan (middle shift fix)
+013_kpi_personal.sql        → ⚠️ Wajib dijalankan manual (KPI Personal + 360°)
+
+----------------------------------------------------------------
+PERBAIKAN SESI INI (21 April 2026 — Sesi 2)
+----------------------------------------------------------------
+1.  KPI Personal View (/kpi/personal): scorecard per staff, semua role akses
+2.  Input KPI Personal (/kpi/personal/input): head_store input skor bulanan
+3.  Penilaian 360° (/kpi/360): peer review anonim, store group + manager group
+4.  Migration 013: 5 tabel baru + seed item KPI + RLS
+5.  Seed data: 31 item KPI personal (barista 8, kitchen 8, waitress 6, asst_hs 9)
+6.  Seed data: 10 item 360° (5 store + 5 manager)
+7.  utils.js: tambah period helpers (currentPeriodWIB, periodLabel, lastNPeriods, pctToScore, avg360ToScore)
+8.  access.js: tambah KPI_PERSONAL_VIEW_ROLES, KPI_PERSONAL_INPUT_ROLES, KPI_360_ROLES
+9.  App.jsx: 3 route baru (/kpi/personal, /kpi/personal/input, /kpi/360)
+10. Staff Home: quick actions diperbarui per role (barista/head_store berbeda)
+11. Excel rekomendasi KPI: KPI_Personal_Rekomendasi.xlsx + generate_kpi_personal.mjs
+
+----------------------------------------------------------------
+REKOMENDASI PERBAIKAN SESI BERIKUTNYA
+----------------------------------------------------------------
+
+PRIORITAS KRITIS (harus selesai agar fitur bisa dipakai)
+──────────────────────────────────────────────────────────
+A. Jalankan migration 010, 011, 013 di Supabase SQL Editor
+   → OJE: oje_evaluations, oje_batches
+   → Preparation: daily_preparation
+   → KPI Personal: kpi_personal_items, kpi_360_items, kpi_personal_scores,
+     kpi_360_submissions, kpi_360_scores
+
+B. Restrict Google API Key di Google Cloud Console
+   → HTTP Referrer: operationerp.pages.dev/*
+
+C. Verifikasi SOP viewer di produksi (iframe Google Docs + mobile)
+
+PRIORITAS TINGGI (UX penting)
+───────────────────────────────
+D. DM: verifikasi KPI Personal staff
+   → DM bisa buka /kpi/personal, pilih staff branch-nya, klik "Verifikasi"
+   → Set verified_by + verified_at di kpi_personal_scores
+
+E. Notifikasi badge Tasks untuk assignee (head_store, asst_head_store, trainer)
+
+F. SJ: badge di BottomNav saat ada kiriman baru (status issued)
+
+G. Trainer Dashboard: statistik OJE (total bulan ini, distribusi grade)
+
+PRIORITAS MENENGAH
+───────────────────
+H. OJE: export PDF per evaluasi individual (window.print() + CSS print)
+
+I. DM Dashboard: widget OJE summary per toko
+
+J. KPI Personal: tombol verifikasi DM di halaman /kpi/personal
+   → DM pilih staff → lihat scorecard → klik "Verifikasi" → kpi_personal_scores.verified_at terisi
+
+K. Panduan per role (in-app guide dari Google Drive)
+
+PRIORITAS RENDAH / BUTUH SPEC
+───────────────────────────────
+L. Badge Training system — butuh spec kriteria + tampilan
+M. OJT (On Job Training) full module — /trainer/ojt belum dibuat
+N. Kanban antar divisi — butuh spec kolom + data source
+O. Auto Scan Nota — butuh keputusan Google Vision API vs OpenAI Vision
+P. Actionable Notifications — butuh spec aksi dari notifikasi
+Q. Role Support redefinition — butuh spec tugas baru
+R. PIC Audit Setoran — belum jelas alur assign
+
+----------------------------------------------------------------
+CATATAN TEKNIS
+----------------------------------------------------------------
+- Supabase RLS: semua tabel pakai policy per role
+- Real-time: channel subscriptions di DM Dashboard & SC
+- Foto: Supabase Storage / Google Drive via iframe embed
+- Google API: read-only key, fallback hardcoded di googleApis.js
+- Checklist shift filter: 'pagi' | 'malam' | 'middle' | 'both' | 'pagi_middle'
+- is_late daily_checklists: TRIGGER (AT TIME ZONE tidak immutable)
+- Deadlines WIB: Pagi 08:00=01:00 UTC | Middle 14:00=07:00 UTC | Malam 03:00+1=20:00 UTC
+- KPI period format: 'YYYY-MM' (string)
+- 360° anonimitas: evaluator_id di DB, ditampilkan hanya ke ops_manager (frontend guard)
+- Auto-score conversion: checklist/prep pct→1-5 (threshold 60/70/80/90%), 360 avg→1-5 (2.0/2.5/3.0/4.0)
+- Export: CSV tersedia di Finance, KPI, Trainer, OJE
+
+================================================================
