@@ -189,6 +189,7 @@ export default function PeerReview360Page() {
   const [submissions, setSubmissions] = useState([])
   const [loading, setLoading] = useState(true)
   const [evalTarget, setEvalTarget] = useState(null)
+  const [error, setError] = useState('')
 
   const isHeadStore = profile?.role === 'head_store'
   const isManagerOnly = ['district_manager', 'area_manager'].includes(profile?.role)
@@ -197,12 +198,21 @@ export default function PeerReview360Page() {
   const loadData = useCallback(async () => {
     if (!profile) return
     setLoading(true)
+    setError('')
     const [itemsRes, colleaguesData, subsRes] = await Promise.all([
       supabase.from('kpi_360_items').select('*').eq('group_type', groupType).eq('is_active', true).order('sort_order'),
       groupType === 'store' ? fetchStoreColleagues(profile) : fetchManagerColleagues(profile),
       supabase.from('kpi_360_submissions').select('id, evaluatee_id, catatan')
         .eq('evaluator_id', profile.id).eq('period_month', period).eq('group_type', groupType),
     ])
+    if (itemsRes.error || subsRes.error) {
+      setItems([])
+      setColleagues([])
+      setSubmissions([])
+      setError(itemsRes.error?.message || subsRes.error?.message || 'Gagal memuat data penilaian 360.')
+      setLoading(false)
+      return
+    }
     setItems(itemsRes.data || [])
     setColleagues(colleaguesData)
     setSubmissions(subsRes.data || [])
@@ -234,15 +244,17 @@ export default function PeerReview360Page() {
 
           {isHeadStore && (
             <SegmentedControl
-              options={[{ value: 'store', label: 'Grup Toko' }, { value: 'manager', label: 'Grup Manager' }]}
+              options={[{ key: 'store', label: 'Grup Toko' }, { key: 'manager', label: 'Grup Manager' }]}
               value={group} onChange={setGroup}
             />
           )}
 
           {loading ? (
             <div className="flex justify-center py-10"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary-600 border-t-transparent" /></div>
+          ) : error ? (
+            <EmptyPanel title="Penilaian 360 tidak bisa dimuat" description={error} />
           ) : colleagues.length === 0 ? (
-            <EmptyPanel message="Tidak ada rekan yang bisa dinilai untuk periode ini." />
+            <EmptyPanel title="Belum ada rekan untuk dinilai" description="Tidak ada rekan yang bisa dinilai untuk periode ini." />
           ) : (
             <SectionPanel title={`${colleagues.length} rekan kerja`}>
               <div className="divide-y divide-slate-100">

@@ -3,10 +3,14 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { AppCanvas } from '../components/ui/AppKit'
 
+const STAFF_PASS = import.meta.env.VITE_STAFF_PASS
+const STAFF_EMAIL_ONLY_ROLES = ['staff', 'barista', 'kitchen', 'waitress', 'asst_head_store']
+
 export default function Login() {
   const { signIn, user, profile, loading, profileError } = useAuth()
   const navigate = useNavigate()
 
+  const [mode, setMode] = useState('staff')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -17,8 +21,7 @@ export default function Login() {
 
     if (profile) {
       const role = profile.role
-      if (role === 'head_store') navigate('/staff', { replace: true })
-      else if (['staff', 'barista', 'kitchen', 'waitress', 'asst_head_store'].includes(role)) navigate('/staff/ceklis', { replace: true })
+      if (['head_store', ...STAFF_EMAIL_ONLY_ROLES].includes(role)) navigate('/staff', { replace: true })
       else if (role === 'ops_manager' || ['support_spv', 'support_admin'].includes(role)) navigate('/ops', { replace: true })
       else if (['district_manager', 'area_manager'].includes(role)) navigate('/dm', { replace: true })
       else if (role === 'finance_supervisor') navigate('/finance', { replace: true })
@@ -38,11 +41,29 @@ export default function Login() {
     setError('')
     setSubmitting(true)
 
-    const { error: err } = await signIn(email.trim(), password)
+    if (mode === 'staff' && !STAFF_PASS) {
+      setError('VITE_STAFF_PASS belum diatur di environment.')
+      setSubmitting(false)
+      return
+    }
+
+    const pass = mode === 'staff' ? STAFF_PASS : password
+    const { error: err } = await signIn(email.trim(), pass)
     if (err) {
-      setError('Email atau password salah.')
+      setError(
+        mode === 'staff'
+          ? 'Email tidak ditemukan atau akun staff belum memakai password bersama.'
+          : 'Email atau password salah.'
+      )
       setSubmitting(false)
     }
+  }
+
+  const handleModeChange = (nextMode) => {
+    setMode(nextMode)
+    setEmail('')
+    setPassword('')
+    setError('')
   }
 
   return (
@@ -63,6 +84,31 @@ export default function Login() {
             <p className="mt-1 text-sm text-slate-500">Sistem Operasional Toko</p>
           </div>
 
+          <div className="mb-6 grid grid-cols-2 overflow-hidden rounded-[24px] border border-slate-200 bg-white p-1 shadow-sm">
+            <button
+              type="button"
+              onClick={() => handleModeChange('staff')}
+              className={`rounded-[20px] px-4 py-2.5 text-sm font-semibold transition-colors ${
+                mode === 'staff'
+                  ? 'bg-primary-600 text-white'
+                  : 'text-slate-500 hover:bg-slate-50'
+              }`}
+            >
+              Staff
+            </button>
+            <button
+              type="button"
+              onClick={() => handleModeChange('manager')}
+              className={`rounded-[20px] px-4 py-2.5 text-sm font-semibold transition-colors ${
+                mode === 'manager'
+                  ? 'bg-primary-600 text-white'
+                  : 'text-slate-500 hover:bg-slate-50'
+              }`}
+            >
+              Head Store & Manager
+            </button>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="label">Email</label>
@@ -77,18 +123,26 @@ export default function Login() {
               />
             </div>
 
-            <div>
-              <label className="label">Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="........"
-                required
-                autoComplete="current-password"
-                className="input"
-              />
-            </div>
+            {mode === 'manager' && (
+              <div>
+                <label className="label">Password</label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="........"
+                  required
+                  autoComplete="current-password"
+                  className="input"
+                />
+              </div>
+            )}
+
+            {mode === 'staff' && (
+              <p className="rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-xs text-sky-700">
+                Untuk staff toko dan asisten head store. Cukup isi email yang sudah didaftarkan admin.
+              </p>
+            )}
 
             {error && (
               <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
@@ -111,7 +165,9 @@ export default function Login() {
           </form>
 
           <p className="mt-6 text-center text-xs text-slate-400">
-            Gunakan email dan password akun masing-masing. Jika lupa password, hubungi admin.
+            {mode === 'staff'
+              ? 'Login staff memakai email yang sudah terdaftar. Jika gagal masuk, hubungi admin.'
+              : 'Gunakan email dan password akun masing-masing. Jika lupa password, hubungi admin.'}
           </p>
         </div>
       </div>
