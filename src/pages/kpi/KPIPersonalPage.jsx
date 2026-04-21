@@ -13,7 +13,7 @@ import {
 } from '../../lib/access'
 import { getDefaultPersonalItems } from '../../lib/kpiDefaults'
 
-const BASE_VIEW_ROLES = ['barista', 'kitchen', 'waitress', 'asst_head_store']
+const BASE_VIEW_ROLES = ['staff', 'barista', 'kitchen', 'waitress', 'asst_head_store']
 
 function gradeInfo(score) {
   if (score >= 4.5) return { label: 'Outstanding', color: 'text-green-700 bg-green-50' }

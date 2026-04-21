@@ -15,7 +15,7 @@ export const SUPPLY_CHAIN_VIEW_ROLES = [...STORE_ROLES, ...MANAGER_ROLES, ...SUP
 export const SUPPLY_CHAIN_ORDER_WRITE_ROLES = ['warehouse_admin', 'warehouse_spv', 'purchasing_admin', 'ops_manager', 'sc_supervisor', ...SUPPORT_ROLES]
 export const SURAT_JALAN_ISSUE_ROLES = ['warehouse_admin', 'warehouse_spv', 'ops_manager', 'sc_supervisor', ...SUPPORT_ROLES]
 export const SURAT_JALAN_SHIP_ROLES = ['warehouse_admin', 'warehouse_spv', 'distribution_spv', 'ops_manager', 'sc_supervisor', ...SUPPORT_ROLES]
-export const KPI_PERSONAL_STORE_TARGET_ROLES = ['barista', 'kitchen', 'waitress', 'asst_head_store']
+export const KPI_PERSONAL_STORE_TARGET_ROLES = ['staff', 'barista', 'kitchen', 'waitress', 'asst_head_store']
 export const KPI_PERSONAL_MANAGER_TARGET_ROLES = ['head_store', 'district_manager']
 export const KPI_PERSONAL_TARGET_ROLES = [...KPI_PERSONAL_STORE_TARGET_ROLES, ...KPI_PERSONAL_MANAGER_TARGET_ROLES]
 

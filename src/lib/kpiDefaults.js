@@ -116,6 +116,15 @@ export const DEFAULT_KPI_360_ITEMS = {
 }
 
 export const DEFAULT_KPI_PERSONAL_ITEMS = {
+  staff: [
+    { item_key: 'checklist_completion', item_name: 'Checklist Harian - Completion Rate', target: '>=90%', contribution: 20, cara_penilaian: 'Auto dari daily_checklists (shift yang ditugaskan)', source_type: 'auto_checklist', score_1: '<60%', score_2: '<70%', score_3: '<80%', score_4: '<90%', score_5: '>=90%', sort_order: 1 },
+    { item_key: 'preparation_completion', item_name: 'Preparation Harian - Completion Rate', target: '>=90%', contribution: 15, cara_penilaian: 'Auto dari daily_preparation sesuai shift', source_type: 'auto_preparation', score_1: '<60%', score_2: '<70%', score_3: '<80%', score_4: '<90%', score_5: '>=90%', sort_order: 2 },
+    { item_key: 'kualitas_kerja', item_name: 'Kualitas Kerja', target: 'Sesuai SOP', contribution: 20, cara_penilaian: 'Penilaian Head Store sesuai SOP area kerja', source_type: 'manual', score_1: 'Sangat kurang', score_2: 'Kurang', score_3: 'Cukup', score_4: 'Baik', score_5: 'Sangat baik', sort_order: 3 },
+    { item_key: 'kecepatan_kerja', item_name: 'Kecepatan & Respons Kerja', target: 'Cepat & tepat', contribution: 15, cara_penilaian: 'Observasi Head Store saat operasional', source_type: 'manual', score_1: 'Sangat lambat', score_2: 'Lambat', score_3: 'Cukup', score_4: 'Cepat', score_5: 'Sangat cepat & sigap', sort_order: 4 },
+    { item_key: 'kebersihan_area', item_name: 'Kebersihan Area Kerja', target: 'Bersih', contribution: 10, cara_penilaian: 'Penilaian Head Store / Audit DM', source_type: 'manual', score_1: 'Sangat kotor', score_2: 'Kotor', score_3: 'Cukup bersih', score_4: 'Bersih', score_5: 'Sangat bersih', sort_order: 5 },
+    { item_key: 'kedisiplinan', item_name: 'Kedisiplinan & Kehadiran', target: '>=95%', contribution: 10, cara_penilaian: 'Data absensi / catatan Head Store', source_type: 'manual', score_1: '<80%', score_2: '<85%', score_3: '<90%', score_4: '<95%', score_5: '>=95%', sort_order: 6 },
+    { item_key: 'peer_review_360', item_name: 'Penilaian 360° Rekan Kerja', target: '>=4.0', contribution: 10, cara_penilaian: 'Rata-rata skor dari rekan kerja satu toko (anonim)', source_type: 'auto_360', score_1: '<2.0', score_2: '<2.5', score_3: '<3.0', score_4: '<4.0', score_5: '>=4.0', sort_order: 7 },
+  ],
   barista: [
     { item_key: 'checklist_completion', item_name: 'Checklist Harian - Completion Rate', target: '>=90%', contribution: 13, cara_penilaian: 'Auto dari daily_checklists (shift yang ditugaskan)', source_type: 'auto_checklist', score_1: '<60%', score_2: '<70%', score_3: '<80%', score_4: '<90%', score_5: '>=90%', sort_order: 1 },
     { item_key: 'prep_bar_completion', item_name: 'Preparation Bar - Completion Rate', target: '>=90%', contribution: 13, cara_penilaian: 'Auto dari daily_preparation section Bar', source_type: 'auto_preparation', score_1: '<60%', score_2: '<70%', score_3: '<80%', score_4: '<90%', score_5: '>=90%', sort_order: 2 },
