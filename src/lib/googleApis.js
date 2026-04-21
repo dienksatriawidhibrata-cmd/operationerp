@@ -1,6 +1,6 @@
-const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY
-const SOP_FOLDER_ID = import.meta.env.VITE_GOOGLE_SOP_FOLDER_ID
-const KPI_SHEET_ID = import.meta.env.VITE_GOOGLE_KPI_SHEET_ID
+const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY || 'AIzaSyB-WikjVPBGnHjgKLmTdg1YORmpoFwDMR4'
+const SOP_FOLDER_ID = import.meta.env.VITE_GOOGLE_SOP_FOLDER_ID || '1GXkR3-A0XXkxJxkNlCv2FJXUO4NLqOSa'
+const KPI_SHEET_ID = import.meta.env.VITE_GOOGLE_KPI_SHEET_ID || '13znU5AUVAuqG5jFxMtRhmFZpqYKe2pAdpYWJbsQCf_A'
 
 const DRIVE_BASE = 'https://www.googleapis.com/drive/v3'
 const SHEETS_BASE = 'https://sheets.googleapis.com/v4/spreadsheets'
