@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
+import { fetchKpiFramework, fetchKpiMonthly, fetchKpiAvailableMonths } from '../../lib/googleApis'
 import { fmtRp } from '../../lib/utils'
 import { getScopeLabel, isManagerRole, isOpsLikeRole, isStoreRole, normalizeStoreName } from '../../lib/access'
 import { DMBottomNav, OpsBottomNav, StaffBottomNav } from '../../components/BottomNav'
@@ -617,6 +618,11 @@ export default function KPIReport() {
   const [dmFilter, setDmFilter] = useState('all')
   const [highlightOpen, setHighlightOpen] = useState(false)
   const [itemOpen, setItemOpen] = useState(false)
+  const [kpiFramework, setKpiFramework] = useState(null)
+  const [kpiMonthly, setKpiMonthly] = useState([])
+  const [availableMonths, setAvailableMonths] = useState([])
+  const [activeMonth, setActiveMonth] = useState('')
+  const [loadingSheets, setLoadingSheets] = useState(false)
 
   useEffect(() => {
     if (!profile?.role) return
@@ -667,6 +673,34 @@ export default function KPIReport() {
       mounted = false
     }
   }, [profile?.id, profile?.role])
+
+  useEffect(() => {
+    let mounted = true
+    const loadSheets = async () => {
+      try {
+        const [framework, months] = await Promise.all([
+          fetchKpiFramework(),
+          fetchKpiAvailableMonths(),
+        ])
+        if (!mounted) return
+        setKpiFramework(framework)
+        setAvailableMonths(months)
+        if (months.length) setActiveMonth(months[months.length - 1])
+      } catch { /* silent — sheets is supplementary */ }
+    }
+    loadSheets()
+    return () => { mounted = false }
+  }, [])
+
+  useEffect(() => {
+    if (!activeMonth) return
+    let mounted = true
+    setLoadingSheets(true)
+    fetchKpiMonthly(activeMonth)
+      .then((rows) => { if (mounted) { setKpiMonthly(rows); setLoadingSheets(false) } })
+      .catch(() => { if (mounted) setLoadingSheets(false) })
+    return () => { mounted = false }
+  }, [activeMonth])
 
   const footer = isOpsLikeRole(profile?.role)
     ? <OpsBottomNav />
@@ -1091,6 +1125,110 @@ export default function KPIReport() {
         </SectionPanel>
         </DashSection>
         </>
+        )}
+
+        {/* ── KPI Rekap Bulanan (Google Sheets) ───────────────────── */}
+        {availableMonths.length > 0 && (
+          <SectionPanel
+            eyebrow="Sumber: Google Spreadsheet"
+            title="Rekap KPI Bulanan"
+            description="Data langsung dari Google Sheets — update otomatis saat admin edit spreadsheet."
+          >
+            <div className="flex gap-2 mb-4 flex-wrap">
+              {availableMonths.map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setActiveMonth(m)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors ${
+                    activeMonth === m
+                      ? 'bg-primary-600 text-white border-primary-600'
+                      : 'bg-white text-slate-600 border-slate-200 hover:border-primary-300'
+                  }`}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
+            {loadingSheets ? (
+              <div className="flex justify-center py-8">
+                <div className="h-7 w-7 animate-spin rounded-full border-2 border-primary-600 border-t-transparent" />
+              </div>
+            ) : kpiMonthly.length > 0 ? (
+              <div className="overflow-x-auto -mx-1">
+                <table className="w-full text-xs min-w-[480px]">
+                  <thead>
+                    <tr className="border-b border-slate-100">
+                      <th className="text-left py-2 px-2 text-slate-500 font-semibold">Outlet</th>
+                      <th className="text-left py-2 px-2 text-slate-500 font-semibold">Store</th>
+                      <th className="text-center py-2 px-2 text-slate-500 font-semibold">Sales</th>
+                      <th className="text-center py-2 px-2 text-slate-500 font-semibold">Audit</th>
+                      <th className="text-center py-2 px-2 text-slate-500 font-semibold">Complain</th>
+                      <th className="text-center py-2 px-2 text-slate-500 font-semibold">Total</th>
+                      <th className="text-center py-2 px-2 text-slate-500 font-semibold">Score</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {kpiMonthly.filter((r) => r['Nama Outlet']).map((row, i) => {
+                      const score = parseFloat(row['Score']) || 0
+                      const scorePct = score > 1 ? score : score * 100
+                      return (
+                        <tr key={i} className="border-b border-slate-50 hover:bg-slate-50">
+                          <td className="py-2 px-2 font-medium text-slate-800 max-w-[120px] truncate">
+                            {(row['Nama Outlet'] || '').replace('Bagi Kopi ', '')}
+                          </td>
+                          <td className="py-2 px-2 text-slate-500">{row['Store'] || row[''] || ''}</td>
+                          <td className="py-2 px-2 text-center text-slate-700">{row['Net Sales'] || '-'}</td>
+                          <td className="py-2 px-2 text-center text-slate-700">{row['Audit'] || '-'}</td>
+                          <td className="py-2 px-2 text-center text-slate-700">{row['Complain'] || '-'}</td>
+                          <td className="py-2 px-2 text-center text-slate-700">{row['Total'] || '-'}</td>
+                          <td className="py-2 px-2 text-center">
+                            <span className={`font-bold ${scorePct >= 80 ? 'text-emerald-600' : scorePct >= 60 ? 'text-amber-600' : 'text-rose-600'}`}>
+                              {scorePct.toFixed(1)}%
+                            </span>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-sm text-slate-400 italic">Belum ada data untuk bulan ini.</p>
+            )}
+          </SectionPanel>
+        )}
+
+        {/* ── KPI Framework (Google Sheets) ───────────────────────── */}
+        {kpiFramework && (
+          <SectionPanel
+            eyebrow="Referensi"
+            title="Framework & Target KPI"
+            description="Target dan bobot kontribusi tiap item KPI — dikelola dari Google Sheets."
+          >
+            {[
+              { label: 'Store', rows: kpiFramework.store },
+              { label: 'Store Manager', rows: kpiFramework.manager },
+            ].map(({ label, rows }) => rows.length > 0 && (
+              <div key={label} className="mb-4">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">{label}</p>
+                <div className="space-y-1.5">
+                  {rows.map((item, i) => (
+                    <div key={i} className="flex items-start justify-between gap-3 rounded-[16px] bg-slate-50 px-3.5 py-2.5">
+                      <div className="min-w-0">
+                        <p className="text-[10px] text-slate-400 font-semibold">{item.category}</p>
+                        <p className="text-sm font-medium text-slate-800 truncate">{item.item}</p>
+                        {item.cara && <p className="text-[10px] text-slate-400 mt-0.5 leading-snug">{item.cara}</p>}
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <p className="text-sm font-bold text-primary-700">{item.contribution}</p>
+                        <p className="text-[10px] text-slate-400">Target: {item.target}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </SectionPanel>
         )}
       </div>
     </SubpageShell>

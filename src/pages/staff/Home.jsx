@@ -6,6 +6,7 @@ import { StaffBottomNav } from '../../components/BottomNav'
 import { canViewKPI, canViewSupplyChain, isStoreRole } from '../../lib/access'
 import { AppIcon } from '../../components/ui/AppKit'
 import { fmtRp, todayWIB, yesterdayWIB, sisaWaktuLaporan } from '../../lib/utils'
+import { fetchSopFiles } from '../../lib/googleApis'
 
 export default function StaffHome() {
   const { profile, signOut } = useAuth()
@@ -13,6 +14,7 @@ export default function StaffHome() {
   const [loading, setLoading] = useState(true)
   const [sopCards, setSopCards] = useState([])
   const [announcements, setAnnouncements] = useState([])
+  const [viewingSop, setViewingSop] = useState(null)
 
   const today = todayWIB()
   const yesterday = yesterdayWIB()
@@ -27,11 +29,11 @@ export default function StaffHome() {
   }, [profile])
 
   const fetchSopAndAnnouncements = async () => {
-    const [sopRes, annRes] = await Promise.all([
-      supabase.from('sop_cards').select('id,title,category,file_url,sort_order').eq('is_active', true).order('sort_order'),
+    const [sopFiles, annRes] = await Promise.all([
+      fetchSopFiles().catch(() => []),
       supabase.from('announcements').select('id,title,body,published_at').eq('is_active', true).order('published_at', { ascending: false }).limit(5),
     ])
-    if (sopRes.data) setSopCards(sopRes.data)
+    setSopCards(sopFiles)
     if (annRes.data) setAnnouncements(annRes.data)
   }
 
@@ -381,20 +383,43 @@ export default function StaffHome() {
             </div>
             <div className="flex gap-3 overflow-x-auto pb-1 -mx-5 px-5 scrollbar-hide">
               {sopCards.map((sop) => (
-                <a
+                <button
                   key={sop.id}
-                  href={sop.file_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-shrink-0 w-36 bg-white border border-blue-50 rounded-[1.5rem] p-4 shadow-sm active:scale-[0.97] transition-transform"
+                  onClick={() => setViewingSop(sop)}
+                  className="flex-shrink-0 w-36 bg-white border border-blue-50 rounded-[1.5rem] p-4 shadow-sm active:scale-[0.97] transition-transform text-left"
                 >
                   <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 mb-3">
                     <AppIcon name="checklist" size={18} />
                   </div>
-                  <p className="text-[10px] font-bold text-gray-800 leading-tight mb-1">{sop.title}</p>
-                  <p className="text-[9px] text-gray-400 font-semibold">{sop.category}</p>
-                </a>
+                  <p className="text-[10px] font-bold text-gray-800 leading-tight">{sop.name}</p>
+                </button>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* SOP Viewer Modal */}
+        {viewingSop && (
+          <div className="fixed inset-0 z-50 flex flex-col bg-black/60" onClick={() => setViewingSop(null)}>
+            <div
+              className="relative flex flex-col bg-white rounded-t-[2rem] mt-auto h-[92dvh]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+                <p className="font-bold text-sm text-gray-900 truncate pr-4">{viewingSop.name}</p>
+                <button
+                  onClick={() => setViewingSop(null)}
+                  className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 flex-shrink-0 text-lg font-bold"
+                >
+                  ×
+                </button>
+              </div>
+              <iframe
+                src={viewingSop.previewUrl}
+                title={viewingSop.name}
+                className="flex-1 w-full border-0"
+                sandbox="allow-scripts allow-same-origin"
+              />
             </div>
           </div>
         )}
