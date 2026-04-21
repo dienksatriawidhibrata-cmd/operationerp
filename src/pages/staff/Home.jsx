@@ -114,6 +114,8 @@ export default function StaffHome() {
     ...(supplyChainEnabled ? [{ to: '/sc/sj', icon: 'finance', label: 'Penerimaan\nBarang' }] : []),
   ].slice(0, 4)
 
+  const hasPendingReportReminder = !loading && !status?.laporan && profile?.branch_id && (isHeadStore || !isStoreLevel)
+
   return (
     <div className="min-h-screen bg-[#f0f6ff] pb-28">
       {/* Header */}
@@ -128,13 +130,13 @@ export default function StaffHome() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={signOut} className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 hover:bg-blue-100 transition-colors relative">
+          <button type="button" className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 hover:bg-blue-100 transition-colors relative">
             <AppIcon name="bell" size={18} />
-            {!loading && !status?.laporan && profile?.branch_id && (isHeadStore || !isStoreLevel) && (
+            {hasPendingReportReminder && (
               <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border border-white" />
             )}
           </button>
-          <button onClick={signOut} className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 hover:bg-blue-100 transition-colors">
+          <button type="button" onClick={signOut} className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 hover:bg-blue-100 transition-colors">
             <AppIcon name="logout" size={18} />
           </button>
         </div>
@@ -341,7 +343,7 @@ export default function StaffHome() {
         </div>
 
         {/* Pending laporan warning */}
-        {!loading && status && !status.laporan && profile?.branch_id && (isHeadStore || !isStoreLevel) && (
+        {hasPendingReportReminder && (
           <div className="mb-5 bg-gradient-to-r from-amber-500 to-amber-600 p-5 rounded-[2rem] text-white relative overflow-hidden shadow-lg">
             <div className="relative z-10">
               <div className="flex items-center gap-2 mb-1.5">

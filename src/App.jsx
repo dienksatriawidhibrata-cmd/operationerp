@@ -46,7 +46,7 @@ const StaffManagement = lazy(() => import('./pages/support/StaffManagement'))
 const Preparation     = lazy(() => import('./pages/staff/Preparation'))
 
 function RootRedirect() {
-  const { user, profile, loading, profileError } = useAuth()
+  const { user, profile, loading, profileError, signOut } = useAuth()
 
   if (loading && !user) return <AuthScreen message="Menyiapkan sesi login..." />
   if (!user) return <Navigate to="/login" replace />
