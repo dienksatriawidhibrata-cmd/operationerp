@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { fetchKpiFramework, fetchKpiMonthly, fetchKpiAvailableMonths } from '../../lib/googleApis'
+import { KPI_2026 } from '../../data/kpi2026'
 import { fmtRp } from '../../lib/utils'
 import { getScopeLabel, isManagerRole, isOpsLikeRole, isStoreRole, normalizeStoreName } from '../../lib/access'
 import { DMBottomNav, OpsBottomNav, StaffBottomNav } from '../../components/BottomNav'
@@ -9,6 +10,7 @@ import {
   EmptyPanel,
   HeroCard,
   InlineStat,
+  MetricCard,
   SectionPanel,
   SegmentedControl,
   SubpageShell,
@@ -88,6 +90,123 @@ function resolveFrameworkSections(frameworkSections, role) {
 
   const allowedKeys = ROLE_FRAMEWORK_SECTION_MAP[role] || (isManagerRole(role) ? ['district_manager'] : ['store'])
   return frameworkSections.filter((section) => allowedKeys.includes(section.key))
+}
+
+function compareScores(current, previous) {
+  const currentValue = Number(current)
+  const previousValue = Number(previous)
+  if (!Number.isFinite(currentValue) || !Number.isFinite(previousValue)) return null
+
+  const delta = +(currentValue - previousValue).toFixed(2)
+  return {
+    delta,
+    direction: delta > 0 ? 'naik' : delta < 0 ? 'turun' : 'stabil',
+  }
+}
+
+function scoreToPct(score) {
+  const numeric = Number(score)
+  if (!Number.isFinite(numeric)) return null
+  return numeric * 100
+}
+
+function formatDeltaPct(delta) {
+  if (delta == null) return '-'
+  const sign = delta > 0 ? '+' : ''
+  return `${sign}${delta.toFixed(1)} pts`
+}
+
+function recommendationForItem(key) {
+  const map = {
+    'Net Sales': 'Pecah target jadi target harian per shift dan review jam ramai yang paling menghasilkan.',
+    AVG: 'Latih kasir menawarkan pairing minuman plus snack di setiap transaksi utama.',
+    Large: 'Wajibkan script upsell size large pada 3 menu terlaris selama jam sibuk.',
+    Oatside: 'Tambahkan prompt oatmilk pada menu susu dan pantau attach rate per shift.',
+    'Snack Platter': 'Pasang bundling snack di area kasir dan jadikan snack sebagai default offer.',
+    'Add On Telur': 'Dorong add-on telur pada menu makanan pagi dan middle shift dengan script singkat.',
+    'B. Asik': 'Buat bundling favorit mingguan dan briefing tim agar offer disampaikan konsisten.',
+    Audit: 'Ulang briefing SOP opening-closing lalu cek temuan audit tertinggi tiap minggu.',
+    'M. Shopper': 'Latih greeting, product knowledge, dan closing agar pengalaman servis lebih rapi.',
+    Complain: 'Review akar komplain harian, tutup kasus maksimal 1 hari, dan pastikan follow up tercatat.',
+  }
+
+  return map[key] || 'Jadikan item ini fokus briefing mingguan dan pantau progresnya per shift.'
+}
+
+function buildStoreRecommendations(report, previousReport, itemKeys) {
+  return itemKeys
+    .map((key) => {
+      const current = Number(report?.item_scores?.[key])
+      if (!Number.isFinite(current)) return null
+      const previous = previousReport?.item_scores?.[key]
+      const comparison = compareScores(current, previous)
+
+      if (current >= 4 && comparison?.direction !== 'turun') return null
+
+      return {
+        key,
+        score: current,
+        tone: current >= 4 ? 'warn' : current >= 3 ? 'warn' : 'danger',
+        trend: comparison?.direction || 'netral',
+        delta: comparison?.delta ?? null,
+        message: recommendationForItem(key),
+      }
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.score - b.score)
+    .slice(0, 4)
+}
+
+function buildManagerRecommendations(itemSummary) {
+  return itemSummary
+    .filter((item) => item.average != null)
+    .sort((a, b) => a.average - b.average)
+    .slice(0, 4)
+    .map((item) => ({
+      key: item.key,
+      score: item.average,
+      tone: item.average >= 4 ? 'warn' : item.average >= 3 ? 'warn' : 'danger',
+      message: recommendationForItem(item.key),
+    }))
+}
+
+function buildStoreSnapshot(report, previousReport, itemKeys) {
+  const scoreComparison = compareScores(report?.total_score, previousReport?.total_score)
+  const rankedItems = itemKeys
+    .map((key) => ({
+      key,
+      score: Number(report?.item_scores?.[key]),
+    }))
+    .filter((item) => Number.isFinite(item.score))
+    .sort((a, b) => b.score - a.score)
+
+  return {
+    strongest: rankedItems[0] || null,
+    weakest: rankedItems[rankedItems.length - 1] || null,
+    scoreComparison,
+  }
+}
+
+function buildLocalMonthlyRows(month) {
+  const monthData = KPI_2026?.monthly?.[month]
+  if (!monthData?.stores?.length) return []
+
+  return monthData.stores.map((entry) => {
+    const sales = KPI_2026?.sales?.[entry.store]?.[month]?.actual ?? ''
+    const audit = KPI_2026?.audit?.[entry.store]?.[month] ?? ''
+    const complain = KPI_2026?.complain?.[entry.store]?.[month]?.count ?? ''
+
+    return {
+      outlet: `Bagi Kopi ${entry.store}`,
+      store: entry.store,
+      sales,
+      audit,
+      complain,
+      total: entry.total,
+      score: entry.total,
+      dm: entry.dm,
+    }
+  })
 }
 
 function averageNumbers(values) {
@@ -431,6 +550,9 @@ function StoreDetailView({
   const oatside = m.oatside
   const bundling = m.bundling
   const complain = m.complain
+  const snapshot = buildStoreSnapshot(report, previousReport, itemKeys)
+  const recommendations = buildStoreRecommendations(report, previousReport, itemKeys)
+  const scoreDeltaPct = snapshot.scoreComparison ? snapshot.scoreComparison.delta * 100 : null
 
   return (
     <div className="space-y-6">
@@ -476,6 +598,44 @@ function StoreDetailView({
         </div>
       </SectionPanel>
 
+      <SectionPanel
+        eyebrow="Momentum"
+        title="Ringkasan Periode"
+        description="Bagian ini membantu staff dan head store membaca arah performa lebih cepat sebelum masuk ke detail item."
+      >
+        <div className="grid gap-3 sm:grid-cols-3">
+          <MetricCard
+            title="Arah Score"
+            value={snapshot.scoreComparison ? formatDeltaPct(scoreDeltaPct) : 'Belum ada pembanding'}
+            note={
+              snapshot.scoreComparison
+                ? snapshot.scoreComparison.direction === 'naik'
+                  ? 'Performa lebih baik dari periode sebelumnya.'
+                  : snapshot.scoreComparison.direction === 'turun'
+                    ? 'Ada penurunan yang perlu dibenahi segera.'
+                    : 'Skor masih stabil dibanding periode sebelumnya.'
+                : 'Periode sebelumnya belum tersedia untuk toko ini.'
+            }
+            icon="chart"
+            tone={snapshot.scoreComparison?.direction === 'turun' ? 'rose' : snapshot.scoreComparison?.direction === 'naik' ? 'emerald' : 'slate'}
+          />
+          <MetricCard
+            title="Paling Kuat"
+            value={snapshot.strongest?.key || '-'}
+            note={snapshot.strongest ? `Skor ${formatScoreValue(snapshot.strongest.score)}/5` : 'Belum ada item yang bisa dibandingkan.'}
+            icon="spark"
+            tone="emerald"
+          />
+          <MetricCard
+            title="Fokus Bulan Depan"
+            value={snapshot.weakest?.key || '-'}
+            note={snapshot.weakest ? `Skor ${formatScoreValue(snapshot.weakest.score)}/5` : 'Belum ada item yang perlu difokuskan.'}
+            icon="warning"
+            tone={snapshot.weakest?.score >= 3 ? 'orange' : 'rose'}
+          />
+        </div>
+      </SectionPanel>
+
       <SectionPanel eyebrow="Metrics" title="Pencapaian Detail">
         <div className="space-y-2">
           <MetricRow label="Net Sales" value={sales?.actual} target={sales?.target} format="rp" />
@@ -512,6 +672,35 @@ function StoreDetailView({
         </div>
       </SectionPanel>
 
+      {recommendations.length > 0 && (
+        <SectionPanel
+          eyebrow="Action Plan"
+          title="Rekomendasi Otomatis"
+          description="Saran ini diambil dari item yang skornya paling lemah atau sedang turun dibanding periode sebelumnya."
+        >
+          <div className="space-y-3">
+            {recommendations.map((item) => (
+              <div key={item.key} className="rounded-[20px] border border-slate-100 bg-slate-50/85 px-4 py-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold text-slate-900">{item.key}</div>
+                    <div className="mt-1 text-xs text-slate-500">{item.message}</div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    {item.delta != null && (
+                      <ToneBadge tone={item.trend === 'turun' ? 'danger' : item.trend === 'naik' ? 'ok' : 'slate'}>
+                        {formatDeltaPct(item.delta)}
+                      </ToneBadge>
+                    )}
+                    <ToneBadge tone={item.tone}>{formatScoreValue(item.score)}/5</ToneBadge>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </SectionPanel>
+      )}
+
       <SectionPanel eyebrow="Skor KPI" title="Penilaian per Item">
         <div className="space-y-2">
           {itemKeys.map((key) => {
@@ -545,6 +734,8 @@ function StoreCard({ rank, report, itemKeys, previousReport, expanded, onToggle 
   const avgMetric = report.metrics?.avg || null
   const auditMetric = report.metrics?.audit ?? null
   const complainMetric = report.metrics?.complain || null
+  const scoreComparison = compareScores(report?.total_score, previousReport?.total_score)
+  const recommendations = buildStoreRecommendations(report, previousReport, itemKeys)
 
   return (
     <article className={`rounded-[22px] border px-4 py-4 shadow-[0_16px_42px_-34px_rgba(15,23,42,0.28)] transition-colors ${
@@ -562,7 +753,14 @@ function StoreCard({ rank, report, itemKeys, previousReport, expanded, onToggle 
             {report.branch?.store_id || '-'} / {report.branch?.district || '-'} / {report.dm_name}
           </div>
         </div>
-        <ToneBadge tone={totalTone(report.total_score || 0)}>{((report.total_score || 0) * 100).toFixed(1)}%</ToneBadge>
+        <div className="flex shrink-0 items-center gap-2">
+          {scoreComparison && (
+            <ToneBadge tone={scoreComparison.direction === 'turun' ? 'danger' : scoreComparison.direction === 'naik' ? 'ok' : 'slate'}>
+              {formatDeltaPct(scoreComparison.delta * 100)}
+            </ToneBadge>
+          )}
+          <ToneBadge tone={totalTone(report.total_score || 0)}>{((report.total_score || 0) * 100).toFixed(1)}%</ToneBadge>
+        </div>
       </button>
 
       {expanded && (
@@ -610,6 +808,23 @@ function StoreCard({ rank, report, itemKeys, previousReport, expanded, onToggle 
               })}
             </div>
           </div>
+
+          {recommendations.length > 0 && (
+            <div className="rounded-[20px] bg-white/90 px-4 py-4">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Prioritas perbaikan</div>
+              <div className="mt-3 space-y-3">
+                {recommendations.slice(0, 2).map((item) => (
+                  <div key={`${report.branch_id}-${item.key}`} className="rounded-[16px] border border-slate-100 bg-slate-50 px-3.5 py-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-sm font-semibold text-slate-900">{item.key}</div>
+                      <ToneBadge tone={item.tone}>{formatScoreValue(item.score)}/5</ToneBadge>
+                    </div>
+                    <div className="mt-1.5 text-xs leading-5 text-slate-500">{item.message}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </article>
@@ -654,6 +869,7 @@ export default function KPIReport() {
   const [availableMonths, setAvailableMonths] = useState([])
   const [activeMonth, setActiveMonth] = useState('')
   const [loadingSheets, setLoadingSheets] = useState(false)
+  const [usingMonthlyFallback, setUsingMonthlyFallback] = useState(false)
 
   useEffect(() => {
     if (!profile?.role) return
@@ -715,8 +931,9 @@ export default function KPIReport() {
         ])
         if (!mounted) return
         setKpiFramework(framework)
-        setAvailableMonths(months)
-        if (months.length) setActiveMonth(months[months.length - 1])
+        const nextMonths = months.length ? months : (KPI_2026?.availableMonths || [])
+        setAvailableMonths(nextMonths)
+        if (nextMonths.length) setActiveMonth(nextMonths[nextMonths.length - 1])
       } catch { /* silent — sheets is supplementary */ }
     }
     loadSheets()
@@ -727,9 +944,25 @@ export default function KPIReport() {
     if (!activeMonth) return
     let mounted = true
     setLoadingSheets(true)
+    setUsingMonthlyFallback(false)
     fetchKpiMonthly(activeMonth)
-      .then((rows) => { if (mounted) { setKpiMonthly(rows); setLoadingSheets(false) } })
-      .catch(() => { if (mounted) setLoadingSheets(false) })
+      .then((rows) => {
+        if (!mounted) return
+        if (rows.length > 0) {
+          setKpiMonthly(rows)
+          setUsingMonthlyFallback(false)
+        } else {
+          setKpiMonthly(buildLocalMonthlyRows(activeMonth))
+          setUsingMonthlyFallback(true)
+        }
+        setLoadingSheets(false)
+      })
+      .catch(() => {
+        if (!mounted) return
+        setKpiMonthly(buildLocalMonthlyRows(activeMonth))
+        setUsingMonthlyFallback(true)
+        setLoadingSheets(false)
+      })
     return () => { mounted = false }
   }, [activeMonth])
 
@@ -742,6 +975,12 @@ export default function KPIReport() {
   const roleFrameworkSections = useMemo(() => {
     return resolveFrameworkSections(kpiFramework, profile?.role)
   }, [kpiFramework, profile?.role])
+
+  const personalPreviewSection = useMemo(() => {
+    if (!isStoreRole(profile?.role)) return null
+    const key = profile?.role === 'head_store' || profile?.role === 'asst_head_store' ? 'store_manager' : 'store'
+    return roleFrameworkSections.find((section) => section.key === key) || null
+  }, [profile?.role, roleFrameworkSections])
 
   const personalKpiMissing = useMemo(() => {
     if (!Array.isArray(kpiFramework) || !kpiFramework.length) return false
@@ -857,6 +1096,9 @@ export default function KPIReport() {
         .map((report) => [report.branch_id, report])
     )
   }, [reportsByPeriodKey, previousPeriodKey])
+  const previousActivePeriodReports = useMemo(() => {
+    return reportsByPeriodKey[previousPeriodKey] || []
+  }, [reportsByPeriodKey, previousPeriodKey])
 
   const lastUpdated = useMemo(() => {
     const values = reports.map((report) => report.source_updated_at).filter(Boolean).sort()
@@ -921,6 +1163,20 @@ export default function KPIReport() {
     activePeriodOption && periodMode !== 'month'
       ? `${activePeriodLabel} / ${activePeriodOption.coverageLabel}`
       : activePeriodLabel
+  const managerRecommendations = buildManagerRecommendations(itemSummary)
+  const previousAvgTotal = previousActivePeriodReports.length
+    ? previousActivePeriodReports.reduce((sum, report) => sum + (Number(report.total_score) || 0), 0) / previousActivePeriodReports.length
+    : null
+  const avgComparison = compareScores(avgTotal, previousAvgTotal)
+  const storeMovement = sortedStores.reduce((acc, report) => {
+    const comparison = compareScores(report.total_score, previousReportsByBranch[report.branch_id]?.total_score)
+    if (comparison?.direction === 'naik') acc.up += 1
+    if (comparison?.direction === 'turun') acc.down += 1
+    return acc
+  }, { up: 0, down: 0 })
+  const heroDescription = isStoreRole(profile?.role)
+    ? 'Skor dan detail KPI toko kamu mengikuti periode aktif. Fokus utamanya adalah melihat momentum, item terlemah, dan langkah perbaikan bulan berikutnya.'
+    : 'Halaman ini merangkum performa toko dalam scope kamu, lengkap dengan tren periode, toko yang bergerak naik atau turun, dan rekomendasi intervensi paling penting.'
 
   return (
     <SubpageShell
@@ -932,11 +1188,7 @@ export default function KPIReport() {
       <HeroCard
         eyebrow={getScopeLabel(profile, uniqueBranches)}
         title={`KPI ${((myReport || sortedStores[0] || { total_score: avgTotal }).total_score * 100).toFixed(1)}%`}
-        description={
-          isStoreRole(profile?.role)
-            ? 'Skor dan detail KPI toko kamu mengikuti periode aktif. Klik kartu periode di bawah untuk melihat progress bulanan, quarter, semester, atau tahunan.'
-            : 'Semua ranking, DM scorecard, dan analisis item di halaman ini mengikuti scope toko, district, atau area akun yang sedang login lewat policy Supabase dan periode yang sedang dipilih.'
-        }
+        description={heroDescription}
         meta={
           <>
             <ToneBadge tone={totalTone(myReport?.total_score || avgTotal)}>
@@ -980,6 +1232,51 @@ export default function KPIReport() {
         {!isStoreRole(profile?.role) && (
         <>
         <SectionPanel
+          eyebrow="Momentum"
+          title="Ringkasan Scope"
+          description="Ringkasan cepat untuk melihat apakah area kamu membaik, stagnan, atau menurun dibanding periode sebelumnya."
+        >
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <MetricCard
+              title="Arah Rata-rata"
+              value={avgComparison ? formatDeltaPct(avgComparison.delta * 100) : 'Belum ada pembanding'}
+              note={
+                avgComparison
+                  ? avgComparison.direction === 'naik'
+                    ? 'Rata-rata scope naik dibanding periode sebelumnya.'
+                    : avgComparison.direction === 'turun'
+                      ? 'Rata-rata scope turun dan perlu intervensi.'
+                      : 'Rata-rata scope masih stabil.'
+                  : 'Periode sebelumnya belum tersedia.'
+              }
+              icon="chart"
+              tone={avgComparison?.direction === 'turun' ? 'rose' : avgComparison?.direction === 'naik' ? 'emerald' : 'slate'}
+            />
+            <MetricCard
+              title="Toko Naik"
+              value={storeMovement.up}
+              note="Jumlah toko dengan score lebih baik dari periode sebelumnya."
+              icon="spark"
+              tone="emerald"
+            />
+            <MetricCard
+              title="Toko Turun"
+              value={storeMovement.down}
+              note="Jumlah toko yang skornya turun dan perlu coaching lebih dekat."
+              icon="warning"
+              tone={storeMovement.down > 0 ? 'rose' : 'slate'}
+            />
+            <MetricCard
+              title="Prioritas Area"
+              value={managerRecommendations[0]?.key || '-'}
+              note={managerRecommendations[0]?.message || 'Belum ada item prioritas yang bisa disimpulkan.'}
+              icon="approval"
+              tone={managerRecommendations[0]?.score >= 3 ? 'orange' : 'rose'}
+            />
+          </div>
+        </SectionPanel>
+
+        <SectionPanel
           eyebrow="Period"
           title="Pilih Periode"
           description={`KPI tampil per ${PERIOD_MODE_LABELS[periodMode] || 'periode'} dan tetap terfilter mengikuti scope akses user. Untuk quarter, semester, dan tahunan, skor dihitung dari rata-rata skor bulanan yang tersedia.`}
@@ -1020,6 +1317,28 @@ export default function KPIReport() {
             })}
           </div>
         </SectionPanel>
+
+        {managerRecommendations.length > 0 && (
+          <SectionPanel
+            eyebrow="Action Plan"
+            title="Rekomendasi Scope"
+            description="Saran otomatis ini dirangkum dari item KPI dengan rata-rata terendah dalam scope yang sedang kamu lihat."
+          >
+            <div className="grid gap-3 lg:grid-cols-2">
+              {managerRecommendations.map((item) => (
+                <div key={item.key} className="rounded-[20px] border border-slate-100 bg-slate-50/90 px-4 py-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-slate-900">{item.key}</div>
+                      <div className="mt-1 text-xs leading-5 text-slate-500">{item.message}</div>
+                    </div>
+                    <ToneBadge tone={item.tone}>{item.score.toFixed(2)}/5</ToneBadge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </SectionPanel>
+        )}
 
         <DashSection
           icon="🏆"
@@ -1188,7 +1507,12 @@ export default function KPIReport() {
                   {m}
                 </button>
               ))}
-            </div>
+              </div>
+            {usingMonthlyFallback && (
+              <div className="mb-4 rounded-[16px] border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+                Rekap bulan ini sedang memakai data fallback dari file KPI lokal agar tetap bisa ditinjau selama pengujian.
+              </div>
+            )}
             {loadingSheets ? (
               <div className="flex justify-center py-8">
                 <div className="h-7 w-7 animate-spin rounded-full border-2 border-primary-600 border-t-transparent" />
@@ -1276,6 +1600,33 @@ export default function KPIReport() {
                 KPI personal belum ada di sheet referensi saat ini, jadi halaman ini baru menampilkan KPI per role operasional.
               </div>
             )}
+          </SectionPanel>
+        )}
+
+        {personalKpiMissing && personalPreviewSection && (
+          <SectionPanel
+            eyebrow="Preview"
+            title="KPI Personal"
+            description="Section ini ditampilkan sepanjang hari untuk kebutuhan testing sampai sumber KPI personal yang final tersedia."
+          >
+            <div className="mb-4 rounded-[16px] border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+              Mode preview aktif: KPI personal belum punya sumber data final, jadi item yang ditampilkan sementara mengikuti framework role kamu.
+            </div>
+            <div className="space-y-1.5">
+              {personalPreviewSection.rows.map((item, index) => (
+                <div key={`${personalPreviewSection.key}-${index}`} className="flex items-start justify-between gap-3 rounded-[16px] bg-slate-50 px-3.5 py-2.5">
+                  <div className="min-w-0">
+                    <p className="text-[10px] text-slate-400 font-semibold">{item.category}</p>
+                    <p className="text-sm font-medium text-slate-800">{item.item}</p>
+                    {item.cara && <p className="text-[10px] text-slate-400 mt-0.5 leading-snug">{item.cara}</p>}
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-sm font-bold text-emerald-700">{item.contribution}</p>
+                    <p className="text-[10px] text-slate-400">Target: {item.target}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </SectionPanel>
         )}
       </div>
