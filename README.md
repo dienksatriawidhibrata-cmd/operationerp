@@ -27,7 +27,8 @@ VITE_GOOGLE_KPI_SHEET_ID=your_google_kpi_sheet_id_here
 Catatan keamanan:
 - Jangan commit `.env`.
 - Jangan simpan `SUPABASE_SERVICE_ROLE_KEY` di frontend.
-- Semua user harus login dengan password akun masing-masing.
+- Staff/store team bisa login dengan email saja memakai password bersama dari `VITE_STAFF_PASS`.
+- Head Store dan role manager tetap login dengan email + password akun masing-masing.
 
 ## Setup Singkat
 
@@ -38,7 +39,8 @@ Catatan keamanan:
 
 ## Auth
 
-- Login memakai email + password Supabase untuk semua role.
+- Login staff toko menggunakan email + password bersama dari `VITE_STAFF_PASS`.
+- Login Head Store, manager, finance, trainer, dan support memakai email + password Supabase masing-masing.
 - Profil user harus tersedia di tabel `profiles`.
 - Role dan scope akses dikontrol dari database dan helper access di frontend.
 
@@ -47,6 +49,14 @@ Catatan keamanan:
 1. Push repo ke GitHub.
 2. Deploy ke hosting statis pilihan.
 3. Isi environment variables yang sama di dashboard hosting.
+
+## Dokumentasi Operasional
+
+Dokumen internal yang perlu dijaga tetap sinkron dengan aplikasi:
+
+- `docs/ROLE_GUIDE.md` untuk panduan penggunaan per role
+- `docs/CHANGE_NOTIFICATION_TEMPLATES.md` untuk draft pengumuman perubahan
+- `docs/MANUAL_INPUT_SOP.md` untuk SOP pengisian data manual
 
 ## Security Checklist
 
