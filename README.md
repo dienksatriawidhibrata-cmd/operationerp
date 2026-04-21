@@ -57,6 +57,25 @@ Dokumen internal yang perlu dijaga tetap sinkron dengan aplikasi:
 - `docs/ROLE_GUIDE.md` untuk panduan penggunaan per role
 - `docs/CHANGE_NOTIFICATION_TEMPLATES.md` untuk draft pengumuman perubahan
 - `docs/MANUAL_INPUT_SOP.md` untuk SOP pengisian data manual
+- `docs/PROJECT_MAP.md` untuk peta struktur repo dan titik masuk file penting
+
+## Struktur Folder
+
+Folder yang paling sering dipakai:
+
+- `src/` frontend app utama
+- `supabase/migrations/` schema dan perubahan database yang harus berurutan
+- `scripts/` script manual untuk import, export, dan konversi data
+- `docs/` panduan operasional, handover, dan dokumentasi kerja
+- `reference/` file referensi non-runtime seperti Excel master, PDF contoh, dan CSV acuan
+- `google-apps-script/` script Apps Script terpisah
+
+File referensi yang dulu tercecer di root sekarang dipindahkan ke:
+
+- `reference/kpi/2026-kpi-retail.xlsx`
+- `reference/warehouse/ContohAdminWH.pdf`
+- `reference/imports/expense_codes_import.csv`
+- `docs/handover/SYSTEM_SUMMARY_2026-04-21.txt`
 
 ## Security Checklist
 

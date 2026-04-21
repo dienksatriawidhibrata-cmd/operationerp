@@ -11,6 +11,7 @@ import {
   canEvaluateKpiTarget,
   getKpiVerificationRole,
 } from '../../lib/access'
+import { getDefaultPersonalItems } from '../../lib/kpiDefaults'
 
 const AUTO_SOURCE_TYPES = ['auto_checklist', 'auto_preparation', 'auto_360']
 
@@ -245,7 +246,7 @@ async function loadKpiItems(roles = []) {
         .eq('is_active', true)
         .order('sort_order')
       if (error) throw new Error(error.message || `Gagal memuat item KPI ${role}.`)
-      return [role, data || []]
+      return [role, (data || []).length ? (data || []) : getDefaultPersonalItems(role)]
     })
   )
   return Object.fromEntries(itemEntries)

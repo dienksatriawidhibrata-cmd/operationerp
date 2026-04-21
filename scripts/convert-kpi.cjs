@@ -1,6 +1,6 @@
 /**
  * convert-kpi.cjs
- * Converts "2026 - KPI Retail.xlsx" → src/data/kpi2026.js
+ * Converts reference/kpi/2026-kpi-retail.xlsx → src/data/kpi2026.js
  * Run: node scripts/convert-kpi.cjs
  */
 
@@ -9,7 +9,7 @@ const fs   = require('fs')
 const path = require('path')
 
 const ROOT   = path.join(__dirname, '..')
-const XLSX_FILE = path.join(ROOT, '2026 - KPI Retail.xlsx')
+const XLSX_FILE = path.join(ROOT, 'reference', 'kpi', '2026-kpi-retail.xlsx')
 const OUT_FILE  = path.join(ROOT, 'src', 'data', 'kpi2026.js')
 
 const wb = XLSX.readFile(XLSX_FILE)

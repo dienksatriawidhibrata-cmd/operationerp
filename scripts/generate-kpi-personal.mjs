@@ -1,4 +1,4 @@
-// node generate_kpi_personal.mjs  →  creates KPI_Personal_Rekomendasi.xlsx
+// node scripts/generate-kpi-personal.mjs  →  creates KPI_Personal_Rekomendasi.xlsx
 import xlsx from 'xlsx'
 
 const ROLES = ['BARISTA', 'KITCHEN', 'WAITRESS', 'ASST_HEAD_STORE']

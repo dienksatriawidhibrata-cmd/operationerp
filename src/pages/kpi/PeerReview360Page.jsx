@@ -2,12 +2,14 @@ import { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { SmartBottomNav } from '../../components/BottomNav'
+import { STORE_ROLES } from '../../lib/access'
+import { getDefault360Items } from '../../lib/kpiDefaults'
 import {
   SubpageShell, SectionPanel, SegmentedControl, ToneBadge, EmptyPanel, AppIcon,
 } from '../../components/ui/AppKit'
 import { currentPeriodWIB, lastNPeriods, periodLabel, roleLabel } from '../../lib/utils'
 
-const STORE_360_ROLES = ['barista', 'kitchen', 'waitress', 'asst_head_store', 'head_store']
+const STORE_360_ROLES = STORE_ROLES
 
 function ScorePicker({ value, onChange }) {
   const labels = ['', 'Sangat\nKurang', 'Kurang', 'Cukup', 'Baik', 'Sangat\nBaik']
@@ -213,7 +215,8 @@ export default function PeerReview360Page() {
       setLoading(false)
       return
     }
-    setItems(itemsRes.data || [])
+    const nextItems = (itemsRes.data || []).length ? (itemsRes.data || []) : getDefault360Items(groupType)
+    setItems(nextItems)
     setColleagues(colleaguesData)
     setSubmissions(subsRes.data || [])
     setLoading(false)

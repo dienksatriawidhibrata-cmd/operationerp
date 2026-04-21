@@ -11,6 +11,7 @@ import {
   canVerifyKpiTarget,
   getKpiVerificationRole,
 } from '../../lib/access'
+import { getDefaultPersonalItems } from '../../lib/kpiDefaults'
 
 const BASE_VIEW_ROLES = ['barista', 'kitchen', 'waitress', 'asst_head_store']
 
@@ -232,7 +233,7 @@ function KPIScorecard({ staff, period, viewerRole, canVerify, onVerified }) {
         nextEvaluatorMap = Object.fromEntries((scorers || []).map((scorer) => [scorer.id, scorer]))
       }
 
-      setItems(itemsRes.data || [])
+      setItems((itemsRes.data || []).length ? (itemsRes.data || []) : getDefaultPersonalItems(staff.role))
       setScores(nextScores)
       setEvaluatorMap(nextEvaluatorMap)
       setLoading(false)
