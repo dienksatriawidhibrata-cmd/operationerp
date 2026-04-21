@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { fmtDate, todayWIB } from '../../lib/utils'
-import { DMBottomNav, OpsBottomNav } from '../../components/BottomNav'
+import { DMBottomNav, OpsBottomNav, StaffBottomNav, TrainerBottomNav } from '../../components/BottomNav'
 import { isOpsLikeRole } from '../../lib/access'
 import {
   EmptyPanel, SectionPanel, SoftButton, SubpageShell, ToneBadge,
@@ -88,7 +88,13 @@ export default function TasksPage() {
     return map[role] ?? role
   }
 
-  const BottomNav = isOpsManager ? OpsBottomNav : DMBottomNav
+  const BottomNav = isOpsManager
+    ? OpsBottomNav
+    : profile?.role === 'trainer'
+      ? TrainerBottomNav
+      : ['head_store', 'asst_head_store'].includes(profile?.role)
+        ? StaffBottomNav
+        : DMBottomNav
 
   return (
     <SubpageShell

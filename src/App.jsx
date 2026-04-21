@@ -13,6 +13,7 @@ import {
   STORE_ROLES,
   SUPPLY_CHAIN_VIEW_ROLES,
   SUPPORT_ROLES,
+  TASK_ASSIGNEE_ROLES,
   TRAINER_ROLES,
 } from './lib/access'
 
@@ -244,7 +245,7 @@ export default function App() {
       } />
 
       <Route path="/tasks" element={
-        <RequireAuth roles={[...MANAGER_ROLES, ...SUPPORT_ROLES]}>
+        <RequireAuth roles={[...MANAGER_ROLES, ...SUPPORT_ROLES, ...TASK_ASSIGNEE_ROLES]}>
           <TasksPage />
         </RequireAuth>
       } />

@@ -1,9 +1,11 @@
+import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { supabase } from '../lib/supabase'
 import { AppIcon } from './ui/AppKit'
-import { isManagerRole, isOpsLikeRole, isStoreRole, isFinanceRole, isSupplyChainRole } from '../lib/access'
+import { isManagerRole, isOpsLikeRole, isStoreRole, isFinanceRole, canAccessTasks } from '../lib/access'
 
-function NavItem({ to, icon, label, active }) {
+function NavItem({ to, icon, label, active, badgeCount = 0 }) {
   return (
     <Link
       to={to}
@@ -14,11 +16,16 @@ function NavItem({ to, icon, label, active }) {
       }`}
     >
       <div
-        className={`flex h-8 w-8 items-center justify-center rounded-2xl transition-colors sm:h-9 sm:w-9 ${
+        className={`relative flex h-8 w-8 items-center justify-center rounded-2xl transition-colors sm:h-9 sm:w-9 ${
           active ? 'bg-primary-50 text-primary-700' : 'bg-transparent'
         }`}
       >
         <AppIcon name={icon} size={17} />
+        {badgeCount > 0 && (
+          <span className="absolute -right-1 -top-1 flex min-w-[18px] items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white shadow-sm">
+            {badgeCount > 9 ? '9+' : badgeCount}
+          </span>
+        )}
       </div>
       <span className="truncate text-[10px] font-semibold tracking-[0.04em] sm:text-[11px] sm:tracking-[0.06em]">{label}</span>
     </Link>
@@ -50,10 +57,107 @@ function LogoutNavItem() {
   )
 }
 
+function useIssuedSuratJalanCount() {
+  const { profile } = useAuth()
+  const [count, setCount] = useState(0)
+
+  useEffect(() => {
+    if (!profile?.branch_id || !isStoreRole(profile.role)) {
+      setCount(0)
+      return
+    }
+
+    let active = true
+
+    const fetchCount = async () => {
+      const { count: nextCount, error } = await supabase
+        .from('surat_jalan')
+        .select('id', { count: 'exact', head: true })
+        .eq('branch_id', profile.branch_id)
+        .eq('status', 'issued')
+
+      if (!active || error) return
+      setCount(nextCount || 0)
+    }
+
+    fetchCount()
+
+    const channel = supabase
+      .channel(`nav-sj-issued-${profile.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'surat_jalan', filter: `branch_id=eq.${profile.branch_id}` },
+        fetchCount
+      )
+      .subscribe()
+
+    return () => {
+      active = false
+      supabase.removeChannel(channel)
+    }
+  }, [profile?.branch_id, profile?.id, profile?.role])
+
+  return count
+}
+
+function usePendingTaskCount() {
+  const { profile } = useAuth()
+  const [count, setCount] = useState(0)
+
+  useEffect(() => {
+    if (!profile?.id || !canAccessTasks(profile.role)) {
+      setCount(0)
+      return
+    }
+
+    let active = true
+
+    const fetchCount = async () => {
+      let query = supabase
+        .from('dm_tasks')
+        .select('id', { count: 'exact', head: true })
+        .eq('is_done', false)
+
+      if (!isOpsLikeRole(profile.role)) {
+        query = query.eq('assigned_to', profile.id)
+      }
+
+      const { count: nextCount, error } = await query
+      if (!active || error) return
+      setCount(nextCount || 0)
+    }
+
+    fetchCount()
+
+    const taskFilter = isOpsLikeRole(profile.role)
+      ? undefined
+      : `assigned_to=eq.${profile.id}`
+
+    const channel = supabase
+      .channel(`nav-tasks-${profile.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'dm_tasks', filter: taskFilter },
+        fetchCount
+      )
+      .subscribe()
+
+    return () => {
+      active = false
+      supabase.removeChannel(channel)
+    }
+  }, [profile?.id, profile?.role])
+
+  return count
+}
+
 export function StaffBottomNav() {
   const { pathname } = useLocation()
   const { profile } = useAuth()
   const isHeadStore = profile?.role === 'head_store'
+  const isTaskAssignee = ['head_store', 'asst_head_store'].includes(profile?.role)
+  const issuedSjCount = useIssuedSuratJalanCount()
+  const taskCount = usePendingTaskCount()
 
   if (isHeadStore) {
     return (
@@ -61,7 +165,8 @@ export function StaffBottomNav() {
         <NavItem to="/staff"        icon="home"     label="Dashboard"    active={pathname === '/staff'} />
         <NavItem to="/staff/ceklis" icon="checklist" label="Ceklis"      active={pathname.startsWith('/staff/ceklis')} />
         <NavItem to="/staff/laporan" icon="chart"   label="Laporan"      active={pathname.startsWith('/staff/laporan')} />
-        <NavItem to="/sc/sj"        icon="finance"  label="Terima Barang" active={pathname.startsWith('/sc')} />
+        <NavItem to="/tasks"        icon="checklist" label="Tugas"       active={pathname.startsWith('/tasks')} badgeCount={taskCount} />
+        <NavItem to="/sc/sj"        icon="finance"  label="Terima Barang" active={pathname.startsWith('/sc')} badgeCount={issuedSjCount} />
         <LogoutNavItem />
       </Dock>
     )
@@ -71,8 +176,12 @@ export function StaffBottomNav() {
     <Dock>
       <NavItem to="/staff"        icon="home"      label="Dashboard"     active={pathname === '/staff'} />
       <NavItem to="/staff/ceklis" icon="checklist" label="Ceklis"        active={pathname.startsWith('/staff/ceklis')} />
-      <NavItem to="/kpi"          icon="chart"     label="KPI"           active={pathname.startsWith('/kpi')} />
-      <NavItem to="/sc/sj"        icon="finance"   label="Terima Barang" active={pathname.startsWith('/sc')} />
+      {isTaskAssignee ? (
+        <NavItem to="/tasks" icon="checklist" label="Tugas" active={pathname.startsWith('/tasks')} badgeCount={taskCount} />
+      ) : (
+        <NavItem to="/kpi" icon="chart" label="KPI" active={pathname.startsWith('/kpi')} />
+      )}
+      <NavItem to="/sc/sj"        icon="finance"   label="Terima Barang" active={pathname.startsWith('/sc')} badgeCount={issuedSjCount} />
       <LogoutNavItem />
     </Dock>
   )
@@ -128,6 +237,7 @@ export function SCBottomNav() {
 
 export function TrainerBottomNav() {
   const { pathname } = useLocation()
+  const taskCount = usePendingTaskCount()
 
   return (
     <Dock>
@@ -135,6 +245,7 @@ export function TrainerBottomNav() {
       <NavItem to="/trainer/staff-baru" icon="users"     label="Staff Baru" active={pathname.startsWith('/trainer/staff-baru')} />
       <NavItem to="/trainer/staff-lama" icon="matrix"    label="Staff Lama" active={pathname.startsWith('/trainer/staff-lama')} />
       <NavItem to="/trainer/oje"        icon="checklist" label="OJE"        active={pathname.startsWith('/trainer/oje')} />
+      <NavItem to="/tasks"              icon="approval"  label="Tugas"      active={pathname.startsWith('/tasks')} badgeCount={taskCount} />
       <LogoutNavItem />
     </Dock>
   )
@@ -154,6 +265,7 @@ export function FinanceBottomNav() {
 
 export function OpsBottomNav() {
   const { pathname } = useLocation()
+  const taskCount = usePendingTaskCount()
 
   const dashActive = pathname === '/ops'
   const retailActive = pathname.startsWith('/dm') || pathname.startsWith('/kpi') ||
@@ -168,7 +280,7 @@ export function OpsBottomNav() {
       <NavItem to="/dm"      icon="store"     label="Retail"        active={retailActive} />
       <NavItem to="/sc"      icon="finance"   label="Supply Chain"  active={scActive} />
       <NavItem to="/trainer" icon="users"     label="Trainer"       active={trainerActive} />
-      <NavItem to="/tasks"   icon="checklist" label="Support"       active={supportActive} />
+      <NavItem to="/tasks"   icon="checklist" label="Support"       active={supportActive} badgeCount={taskCount} />
     </Dock>
   )
 }

@@ -10,6 +10,7 @@ export const KPI_ALLOWED_ROLES = [...STORE_ROLES, ...MANAGER_ROLES, ...SUPPORT_R
 export const KPI_PERSONAL_VIEW_ROLES = [...STORE_ROLES, ...MANAGER_ROLES, ...SUPPORT_ROLES, 'trainer']
 export const KPI_PERSONAL_INPUT_ROLES = ['head_store']
 export const KPI_360_ROLES = [...STORE_ROLES, 'district_manager', 'area_manager']
+export const TASK_ASSIGNEE_ROLES = ['trainer', 'head_store', 'asst_head_store']
 export const SUPPLY_CHAIN_VIEW_ROLES = [...STORE_ROLES, ...MANAGER_ROLES, ...SUPPORT_ROLES, ...SC_ROLES]
 export const SUPPLY_CHAIN_ORDER_WRITE_ROLES = ['warehouse_admin', 'warehouse_spv', 'purchasing_admin', 'ops_manager', 'sc_supervisor', ...SUPPORT_ROLES]
 export const SURAT_JALAN_ISSUE_ROLES = ['warehouse_admin', 'warehouse_spv', 'ops_manager', 'sc_supervisor', ...SUPPORT_ROLES]
@@ -61,6 +62,10 @@ export function canMarkSuratJalanShipped(role) {
 
 export function canMarkSuratJalanDelivered(role) {
   return isStoreRole(role) || canMarkSuratJalanShipped(role)
+}
+
+export function canAccessTasks(role) {
+  return MANAGER_ROLES.includes(role) || SUPPORT_ROLES.includes(role) || TASK_ASSIGNEE_ROLES.includes(role)
 }
 
 export function normalizeStoreName(name = '') {

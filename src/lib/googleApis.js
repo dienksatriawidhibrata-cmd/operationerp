@@ -1,9 +1,17 @@
-const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY || 'AIzaSyB-WikjVPBGnHjgKLmTdg1YORmpoFwDMR4'
-const SOP_FOLDER_ID = import.meta.env.VITE_GOOGLE_SOP_FOLDER_ID || '1GXkR3-A0XXkxJxkNlCv2FJXUO4NLqOSa'
-const KPI_SHEET_ID = import.meta.env.VITE_GOOGLE_KPI_SHEET_ID || '13znU5AUVAuqG5jFxMtRhmFZpqYKe2pAdpYWJbsQCf_A'
+const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY
+const SOP_FOLDER_ID = import.meta.env.VITE_GOOGLE_SOP_FOLDER_ID
+const KPI_SHEET_ID = import.meta.env.VITE_GOOGLE_KPI_SHEET_ID
 
 const DRIVE_BASE = 'https://www.googleapis.com/drive/v3'
 const SHEETS_BASE = 'https://sheets.googleapis.com/v4/spreadsheets'
+
+function requireEnv(name, value) {
+  if (!value) {
+    throw new Error(`Konfigurasi ${name} belum diisi.`)
+  }
+
+  return value
+}
 
 function normalizeLabel(value) {
   return String(value || '')
@@ -53,9 +61,11 @@ function canonicalMonthlyKey(header, index) {
 // ── SOP ───────────────────────────────────────────────────────────────────────
 
 export async function fetchSopFiles() {
+  const apiKey = requireEnv('VITE_GOOGLE_API_KEY', API_KEY)
+  const folderId = requireEnv('VITE_GOOGLE_SOP_FOLDER_ID', SOP_FOLDER_ID)
   const params = new URLSearchParams({
-    q: `'${SOP_FOLDER_ID}' in parents and trashed = false`,
-    key: API_KEY,
+    q: `'${folderId}' in parents and trashed = false`,
+    key: apiKey,
     fields: 'files(id,name,mimeType,modifiedTime)',
     orderBy: 'name',
     pageSize: '100',
@@ -76,8 +86,10 @@ export async function fetchSopFiles() {
 
 // KPI framework (targets & weights) from "KPI" tab
 export async function fetchKpiFramework() {
-  const params = new URLSearchParams({ key: API_KEY })
-  const res = await fetch(`${SHEETS_BASE}/${KPI_SHEET_ID}/values/KPI!A:E?${params}`)
+  const apiKey = requireEnv('VITE_GOOGLE_API_KEY', API_KEY)
+  const sheetId = requireEnv('VITE_GOOGLE_KPI_SHEET_ID', KPI_SHEET_ID)
+  const params = new URLSearchParams({ key: apiKey })
+  const res = await fetch(`${SHEETS_BASE}/${sheetId}/values/KPI!A:E?${params}`)
   if (!res.ok) throw new Error('Gagal memuat KPI framework dari Spreadsheet')
   const { values = [] } = await res.json()
 
@@ -118,8 +130,10 @@ export async function fetchKpiFramework() {
 
 // Monthly scores from a specific tab e.g. 'Jan', 'Feb'
 export async function fetchKpiMonthly(monthTab) {
-  const params = new URLSearchParams({ key: API_KEY })
-  const res = await fetch(`${SHEETS_BASE}/${KPI_SHEET_ID}/values/${monthTab}!A:P?${params}`)
+  const apiKey = requireEnv('VITE_GOOGLE_API_KEY', API_KEY)
+  const sheetId = requireEnv('VITE_GOOGLE_KPI_SHEET_ID', KPI_SHEET_ID)
+  const params = new URLSearchParams({ key: apiKey })
+  const res = await fetch(`${SHEETS_BASE}/${sheetId}/values/${monthTab}!A:P?${params}`)
   if (!res.ok) throw new Error(`Gagal memuat data KPI bulan ${monthTab}`)
   const { values = [] } = await res.json()
   if (values.length < 2) return []
@@ -140,8 +154,10 @@ export async function fetchKpiMonthly(monthTab) {
 
 // Get available monthly sheet tabs from the spreadsheet
 export async function fetchKpiAvailableMonths() {
-  const params = new URLSearchParams({ key: API_KEY, fields: 'sheets.properties' })
-  const res = await fetch(`${SHEETS_BASE}/${KPI_SHEET_ID}?${params}`)
+  const apiKey = requireEnv('VITE_GOOGLE_API_KEY', API_KEY)
+  const sheetId = requireEnv('VITE_GOOGLE_KPI_SHEET_ID', KPI_SHEET_ID)
+  const params = new URLSearchParams({ key: apiKey, fields: 'sheets.properties' })
+  const res = await fetch(`${SHEETS_BASE}/${sheetId}?${params}`)
   if (!res.ok) throw new Error('Gagal memuat daftar bulan dari Spreadsheet')
   const { sheets = [] } = await res.json()
   const MONTH_NAMES = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des']
