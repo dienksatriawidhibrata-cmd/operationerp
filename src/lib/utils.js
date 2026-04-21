@@ -85,15 +85,64 @@ export function visitGrade(score, maxScore = 110) {
 export function roleLabel(role) {
   const map = {
     staff: 'Staff',
-    asst_head_store: 'Assistant Head Store',
+    barista: 'Barista',
+    kitchen: 'Kitchen',
+    waitress: 'Waitress',
+    asst_head_store: 'Asst. Head Store',
     head_store: 'Head Store',
     district_manager: 'District Manager',
     area_manager: 'Area Manager',
     ops_manager: 'Operational Manager',
     finance_supervisor: 'Finance Supervisor',
     sc_supervisor: 'Supply Chain Supervisor',
+    support_spv: 'Support Supervisor',
+    support_admin: 'Support Admin',
+    trainer: 'Trainer',
   }
   return map[role] || role
+}
+
+/** Returns 'YYYY-MM' for current month in WIB */
+export function currentPeriodWIB() {
+  const now = new Date(new Date().getTime() + 7 * 3600 * 1000)
+  return now.toISOString().slice(0, 7)
+}
+
+/** 'YYYY-MM' → 'Apr 2026' */
+export function periodLabel(yyyymm) {
+  if (!yyyymm) return ''
+  const [y, m] = yyyymm.split('-')
+  return new Date(Number(y), Number(m) - 1, 1)
+    .toLocaleDateString('id-ID', { month: 'short', year: 'numeric' })
+}
+
+/** Returns last n periods as ['2026-04','2026-03',...] */
+export function lastNPeriods(n = 6) {
+  const result = []
+  const now = new Date(new Date().getTime() + 7 * 3600 * 1000)
+  for (let i = 0; i < n; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    result.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
+  }
+  return result
+}
+
+/** Checklist/prep completion % → 1-5 score */
+export function pctToScore(pct) {
+  if (pct >= 90) return 5
+  if (pct >= 80) return 4
+  if (pct >= 70) return 3
+  if (pct >= 60) return 2
+  return 1
+}
+
+/** 360° average → 1-5 score */
+export function avg360ToScore(avg) {
+  if (avg >= 4.0) return 5
+  if (avg >= 3.0) return 4
+  if (avg >= 2.5) return 3
+  if (avg >= 2.0) return 2
+  return 1
 }
 
 /**
