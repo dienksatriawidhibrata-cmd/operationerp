@@ -5,6 +5,13 @@ const KPI_SHEET_ID = import.meta.env.VITE_GOOGLE_KPI_SHEET_ID || '13znU5AUVAuqG5
 const DRIVE_BASE = 'https://www.googleapis.com/drive/v3'
 const SHEETS_BASE = 'https://sheets.googleapis.com/v4/spreadsheets'
 
+function normalizeLabel(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+}
+
 function buildDrivePreviewUrl(file) {
   if (file.mimeType === 'application/pdf') {
     return `https://drive.google.com/file/d/${file.id}/preview`
@@ -19,6 +26,28 @@ function buildDrivePreviewUrl(file) {
   }
 
   return `https://docs.google.com/document/d/${file.id}/preview`
+}
+
+function findKpiHeaderRow(values) {
+  return values.findIndex((row = []) => {
+    const normalized = row.map(normalizeLabel)
+    return normalized.includes('store') && normalized.includes('score')
+  })
+}
+
+function canonicalMonthlyKey(header, index) {
+  const normalized = normalizeLabel(header)
+
+  if (normalized === 'nama outlet' || normalized === 'nama store' || normalized === 'outlet') return 'outlet'
+  if (normalized === 'store') return 'store'
+  if (normalized === 'net sales') return 'sales'
+  if (normalized === 'audit') return 'audit'
+  if (normalized === 'complain') return 'complain'
+  if (normalized === 'total') return 'total'
+  if (normalized === 'score') return 'score'
+  if (!normalized && index === 1) return 'dm'
+
+  return null
 }
 
 // ── SOP ───────────────────────────────────────────────────────────────────────
@@ -52,29 +81,39 @@ export async function fetchKpiFramework() {
   if (!res.ok) throw new Error('Gagal memuat KPI framework dari Spreadsheet')
   const { values = [] } = await res.json()
 
-  const storeRows = []
-  const managerRows = []
-  let section = null
+  const sections = []
+  let activeSection = null
 
   for (const row of values) {
     const first = (row[0] || '').trim()
-    if (first === 'Category' || first === 'CATEGORY') {
-      section = storeRows.length === 0 ? 'store' : 'manager'
+    const second = (row[1] || '').trim()
+
+    if (!first && !second) continue
+
+    if (!second && first && first !== 'Category' && first !== 'CATEGORY') {
+      activeSection = {
+        key: normalizeLabel(first).replace(/\s+/g, '_'),
+        label: first,
+        rows: [],
+      }
+      sections.push(activeSection)
       continue
     }
-    if (!first || !row[1]) continue
+
+    if (first === 'Category' || first === 'CATEGORY') continue
+    if (!first || !second || !activeSection) continue
+
     const entry = {
       category: first,
-      item: row[1],
+      item: second,
       target: row[2] || '',
       contribution: row[3] || '',
       cara: row[4] || '',
     }
-    if (section === 'store') storeRows.push(entry)
-    else if (section === 'manager') managerRows.push(entry)
+    activeSection.rows.push(entry)
   }
 
-  return { store: storeRows, manager: managerRows }
+  return sections
 }
 
 // Monthly scores from a specific tab e.g. 'Jan', 'Feb'
@@ -85,12 +124,18 @@ export async function fetchKpiMonthly(monthTab) {
   const { values = [] } = await res.json()
   if (values.length < 2) return []
 
-  const headers = values[0]
-  return values.slice(1).map((row) => {
+  const headerRowIndex = findKpiHeaderRow(values)
+  if (headerRowIndex === -1) return []
+
+  const headers = values[headerRowIndex]
+  return values.slice(headerRowIndex + 1).map((row) => {
     const obj = {}
-    headers.forEach((h, i) => { obj[h] = row[i] || '' })
+    headers.forEach((header, index) => {
+      const key = canonicalMonthlyKey(header, index)
+      if (key) obj[key] = row[index] || ''
+    })
     return obj
-  })
+  }).filter((row) => row.outlet || row.store)
 }
 
 // Get available monthly sheet tabs from the spreadsheet

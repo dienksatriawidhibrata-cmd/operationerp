@@ -48,6 +48,17 @@ const PERIOD_MODE_LABELS = {
   year: 'tahunan',
 }
 
+const ROLE_FRAMEWORK_SECTION_MAP = {
+  staff: ['store'],
+  barista: ['store'],
+  kitchen: ['store'],
+  waitress: ['store'],
+  asst_head_store: ['store_manager'],
+  head_store: ['store_manager'],
+  district_manager: ['district_manager'],
+  area_manager: ['district_manager'],
+}
+
 function parseMonthValue(value) {
   if (!value) return null
   return new Date(`${value}T00:00:00Z`)
@@ -57,6 +68,26 @@ function formatMonthLabel(value) {
   if (!value) return '-'
   const date = parseMonthValue(value)
   return monthFormatter.format(date)
+}
+
+function formatMonthlySheetValue(value, { percent = false } = {}) {
+  if (value == null || value === '') return '-'
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) return String(value)
+  if (percent) {
+    const normalized = numeric > 1 ? numeric / 100 : numeric
+    return `${(normalized * 100).toFixed(1)}%`
+  }
+  return Number.isInteger(numeric) ? String(numeric) : numeric.toFixed(1)
+}
+
+function resolveFrameworkSections(frameworkSections, role) {
+  if (!Array.isArray(frameworkSections) || !frameworkSections.length) return []
+
+  if (isOpsLikeRole(role)) return frameworkSections
+
+  const allowedKeys = ROLE_FRAMEWORK_SECTION_MAP[role] || (isManagerRole(role) ? ['district_manager'] : ['store'])
+  return frameworkSections.filter((section) => allowedKeys.includes(section.key))
 }
 
 function averageNumbers(values) {
@@ -618,7 +649,7 @@ export default function KPIReport() {
   const [dmFilter, setDmFilter] = useState('all')
   const [highlightOpen, setHighlightOpen] = useState(false)
   const [itemOpen, setItemOpen] = useState(false)
-  const [kpiFramework, setKpiFramework] = useState(null)
+  const [kpiFramework, setKpiFramework] = useState([])
   const [kpiMonthly, setKpiMonthly] = useState([])
   const [availableMonths, setAvailableMonths] = useState([])
   const [activeMonth, setActiveMonth] = useState('')
@@ -707,6 +738,15 @@ export default function KPIReport() {
     : isManagerRole(profile?.role)
       ? <DMBottomNav />
       : <StaffBottomNav />
+
+  const roleFrameworkSections = useMemo(() => {
+    return resolveFrameworkSections(kpiFramework, profile?.role)
+  }, [kpiFramework, profile?.role])
+
+  const personalKpiMissing = useMemo(() => {
+    if (!Array.isArray(kpiFramework) || !kpiFramework.length) return false
+    return !kpiFramework.some((section) => section.key === 'personal')
+  }, [kpiFramework])
 
   const uniqueBranches = useMemo(() => {
     const seen = new Map()
@@ -1168,22 +1208,27 @@ export default function KPIReport() {
                     </tr>
                   </thead>
                   <tbody>
-                    {kpiMonthly.filter((r) => r['Nama Outlet']).map((row, i) => {
-                      const score = parseFloat(row['Score']) || 0
-                      const scorePct = score > 1 ? score : score * 100
+                    {kpiMonthly.map((row, i) => {
+                      const outletLabel = (row.outlet || row.store || '').replace('Bagi Kopi ', '')
                       return (
                         <tr key={i} className="border-b border-slate-50 hover:bg-slate-50">
                           <td className="py-2 px-2 font-medium text-slate-800 max-w-[120px] truncate">
-                            {(row['Nama Outlet'] || '').replace('Bagi Kopi ', '')}
+                            {outletLabel || '-'}
                           </td>
-                          <td className="py-2 px-2 text-slate-500">{row['Store'] || row[''] || ''}</td>
-                          <td className="py-2 px-2 text-center text-slate-700">{row['Net Sales'] || '-'}</td>
-                          <td className="py-2 px-2 text-center text-slate-700">{row['Audit'] || '-'}</td>
-                          <td className="py-2 px-2 text-center text-slate-700">{row['Complain'] || '-'}</td>
-                          <td className="py-2 px-2 text-center text-slate-700">{row['Total'] || '-'}</td>
+                          <td className="py-2 px-2 text-slate-500">{row.store || '-'}</td>
+                          <td className="py-2 px-2 text-center text-slate-700">{formatMonthlySheetValue(row.sales)}</td>
+                          <td className="py-2 px-2 text-center text-slate-700">{formatMonthlySheetValue(row.audit)}</td>
+                          <td className="py-2 px-2 text-center text-slate-700">{formatMonthlySheetValue(row.complain)}</td>
+                          <td className="py-2 px-2 text-center text-slate-700">{formatMonthlySheetValue(row.total, { percent: true })}</td>
                           <td className="py-2 px-2 text-center">
-                            <span className={`font-bold ${scorePct >= 80 ? 'text-emerald-600' : scorePct >= 60 ? 'text-amber-600' : 'text-rose-600'}`}>
-                              {scorePct.toFixed(1)}%
+                            <span className={`font-bold ${
+                              Number(row.score || 0) * 100 >= 80
+                                ? 'text-emerald-600'
+                                : Number(row.score || 0) * 100 >= 60
+                                  ? 'text-amber-600'
+                                  : 'text-rose-600'
+                            }`}>
+                              {formatMonthlySheetValue(row.score, { percent: true })}
                             </span>
                           </td>
                         </tr>
@@ -1199,20 +1244,17 @@ export default function KPIReport() {
         )}
 
         {/* ── KPI Framework (Google Sheets) ───────────────────────── */}
-        {kpiFramework && (
+        {roleFrameworkSections.length > 0 && (
           <SectionPanel
             eyebrow="Referensi"
             title="Framework & Target KPI"
-            description="Target dan bobot kontribusi tiap item KPI — dikelola dari Google Sheets."
+            description="Framework KPI ditampilkan sesuai role yang sedang login dan dikelola dari Google Sheets."
           >
-            {[
-              { label: 'Store', rows: kpiFramework.store },
-              { label: 'Store Manager', rows: kpiFramework.manager },
-            ].map(({ label, rows }) => rows.length > 0 && (
-              <div key={label} className="mb-4">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">{label}</p>
+            {roleFrameworkSections.map((section) => section.rows.length > 0 && (
+              <div key={section.key} className="mb-4">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">{section.label}</p>
                 <div className="space-y-1.5">
-                  {rows.map((item, i) => (
+                  {section.rows.map((item, i) => (
                     <div key={i} className="flex items-start justify-between gap-3 rounded-[16px] bg-slate-50 px-3.5 py-2.5">
                       <div className="min-w-0">
                         <p className="text-[10px] text-slate-400 font-semibold">{item.category}</p>
@@ -1228,6 +1270,12 @@ export default function KPIReport() {
                 </div>
               </div>
             ))}
+
+            {personalKpiMissing && (
+              <div className="rounded-[16px] border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+                KPI personal belum ada di sheet referensi saat ini, jadi halaman ini baru menampilkan KPI per role operasional.
+              </div>
+            )}
           </SectionPanel>
         )}
       </div>
