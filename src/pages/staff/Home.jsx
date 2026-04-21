@@ -108,7 +108,7 @@ export default function StaffHome() {
 
   const quickActions = isHeadStore ? [
     { to: '/staff/laporan',      icon: 'chart',     label: 'Laporan\nHarian' },
-    { to: '/kpi/personal/input', icon: 'checklist', label: 'Input\nKPI Staff' },
+    { to: '/kpi/personal/input', icon: 'checklist', label: 'Input\nKPI Team' },
     { to: '/kpi/360',            icon: 'spark',     label: 'Penilaian\n360°' },
     { to: '/sc/sj',              icon: 'finance',   label: 'Terima\nBarang' },
   ] : isStoreLevel ? [

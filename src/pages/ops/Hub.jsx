@@ -72,12 +72,13 @@ export default function OpsHub() {
   const quickActions = [
     { to: '/dm/approval', icon: 'approval', label: 'Approval\nSetoran', bg: 'bg-amber-50 border-amber-100 text-amber-600' },
     { to: '/dm', icon: 'home', label: 'DM\nDashboard', bg: 'bg-blue-50 border-blue-100 text-blue-600' },
-    { to: '/ops/visits', icon: 'map', label: 'Visit\nMonitor', bg: 'bg-violet-50 border-violet-100 text-violet-600' },
+    { to: '/kpi/personal/input', icon: 'checklist', label: 'Input\nKPI', bg: 'bg-sky-50 border-sky-100 text-sky-600' },
     { to: '/tasks', icon: 'checklist', label: 'Manajemen\nTugas', bg: 'bg-emerald-50 border-emerald-100 text-emerald-600' },
   ]
 
   const reportLinks = [
     { to: '/dm', icon: 'home', label: 'DM Dashboard', sub: 'Ringkasan semua toko', bg: 'bg-blue-50 border-blue-100', color: 'text-blue-600' },
+    { to: '/kpi/personal/input', icon: 'checklist', label: 'Input KPI Personal', sub: 'Penilaian manager & store lead', bg: 'bg-sky-50 border-sky-100', color: 'text-sky-600' },
     { to: '/finance', icon: 'finance', label: 'Audit Finance', sub: 'Rekap setoran & audit', bg: 'bg-slate-100', color: 'text-slate-600' },
     { to: '/trainer', icon: 'users', label: 'Trainer Hub', sub: 'Penilaian staff', bg: 'bg-emerald-50 border-emerald-100', color: 'text-emerald-600' },
     { to: '/trainer/oje', icon: 'checklist', label: 'OJE', sub: 'On Job Evaluation', bg: 'bg-teal-50 border-teal-100', color: 'text-teal-600' },

@@ -8,13 +8,16 @@ export const OJE_ROLES = ['trainer', 'ops_manager', ...SUPPORT_ROLES, 'head_stor
 
 export const KPI_ALLOWED_ROLES = [...STORE_ROLES, ...MANAGER_ROLES, ...SUPPORT_ROLES]
 export const KPI_PERSONAL_VIEW_ROLES = [...STORE_ROLES, ...MANAGER_ROLES, ...SUPPORT_ROLES, 'trainer']
-export const KPI_PERSONAL_INPUT_ROLES = ['head_store']
+export const KPI_PERSONAL_INPUT_ROLES = ['head_store', 'district_manager', 'area_manager', 'ops_manager', 'support_spv']
 export const KPI_360_ROLES = [...STORE_ROLES, 'district_manager', 'area_manager']
 export const TASK_ASSIGNEE_ROLES = ['trainer', 'head_store', 'asst_head_store']
 export const SUPPLY_CHAIN_VIEW_ROLES = [...STORE_ROLES, ...MANAGER_ROLES, ...SUPPORT_ROLES, ...SC_ROLES]
 export const SUPPLY_CHAIN_ORDER_WRITE_ROLES = ['warehouse_admin', 'warehouse_spv', 'purchasing_admin', 'ops_manager', 'sc_supervisor', ...SUPPORT_ROLES]
 export const SURAT_JALAN_ISSUE_ROLES = ['warehouse_admin', 'warehouse_spv', 'ops_manager', 'sc_supervisor', ...SUPPORT_ROLES]
 export const SURAT_JALAN_SHIP_ROLES = ['warehouse_admin', 'warehouse_spv', 'distribution_spv', 'ops_manager', 'sc_supervisor', ...SUPPORT_ROLES]
+export const KPI_PERSONAL_STORE_TARGET_ROLES = ['barista', 'kitchen', 'waitress', 'asst_head_store']
+export const KPI_PERSONAL_MANAGER_TARGET_ROLES = ['head_store', 'district_manager']
+export const KPI_PERSONAL_TARGET_ROLES = [...KPI_PERSONAL_STORE_TARGET_ROLES, ...KPI_PERSONAL_MANAGER_TARGET_ROLES]
 
 export function isStoreRole(role) {
   return STORE_ROLES.includes(role)
@@ -42,6 +45,38 @@ export function isSupplyChainRole(role) {
 
 export function canViewKPI(role) {
   return KPI_ALLOWED_ROLES.includes(role)
+}
+
+export function getKpiVerificationRole(targetRole) {
+  if (KPI_PERSONAL_STORE_TARGET_ROLES.includes(targetRole)) return 'district_manager'
+  if (targetRole === 'head_store') return 'area_manager'
+  if (targetRole === 'district_manager') return 'ops_manager'
+  return null
+}
+
+export function canEvaluateKpiTarget(evaluatorRole, targetRole, options = {}) {
+  const hasAreaManager = options.hasAreaManager !== false
+
+  if (KPI_PERSONAL_STORE_TARGET_ROLES.includes(targetRole)) {
+    return evaluatorRole === 'head_store'
+  }
+
+  if (targetRole === 'head_store') {
+    return evaluatorRole === 'district_manager' || evaluatorRole === 'support_spv'
+  }
+
+  if (targetRole === 'district_manager') {
+    if (evaluatorRole === 'support_spv') return true
+    if (hasAreaManager) return evaluatorRole === 'area_manager'
+    return evaluatorRole === 'ops_manager'
+  }
+
+  return false
+}
+
+export function canVerifyKpiTarget(verifierRole, targetRole) {
+  const expectedRole = getKpiVerificationRole(targetRole)
+  return verifierRole === expectedRole
 }
 
 export function canViewSupplyChain(role) {

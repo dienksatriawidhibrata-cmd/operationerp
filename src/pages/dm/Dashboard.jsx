@@ -746,7 +746,7 @@ export default function DMDashboard() {
         <div className="grid grid-cols-4 gap-4 mb-5">
           {[
             { to: '/staff/laporan', icon: 'chart', label: 'Laporan\nHarian' },
-            { to: '/kpi', icon: 'checklist', label: 'Monitoring\nKPI' },
+            { to: '/kpi/personal/input', icon: 'checklist', label: 'Input\nKPI' },
             { to: '/dm/approval', icon: 'approval', label: 'Approval\nSetoran', badge: summary.pendingSetoran > 0 },
             { to: '/dm/visits', icon: 'map', label: 'Daily\nVisit' },
           ].map((action) => (
@@ -830,6 +830,7 @@ export default function DMDashboard() {
               {[
                 { to: '/dm/visits', icon: 'map', label: 'SOP Visit', sub: 'Daily audit toko', bg: 'bg-blue-50 border-blue-100 text-blue-600' },
                 { to: '/dm/approval', icon: 'approval', label: 'Approval', sub: 'Setoran harian', bg: 'bg-emerald-50 border-emerald-100 text-emerald-600' },
+                { to: '/kpi/personal/input', icon: 'checklist', label: 'Input KPI', sub: 'Penilaian bulanan tim', bg: 'bg-sky-50 border-sky-100 text-sky-600' },
                 ...(kpiEnabled ? [{ to: '/kpi', icon: 'chart', label: 'KPI Report', sub: 'Performa wilayah', bg: 'bg-primary-50 border-primary-100 text-primary-600' }] : []),
                 ...(supplyChainEnabled ? [{ to: '/sc', icon: 'finance', label: 'Supply Chain', sub: 'Order & pengiriman', bg: 'bg-violet-50 border-violet-100 text-violet-600' }] : []),
                 ...(isOpsManager ? [{ to: '/finance', icon: 'finance', label: 'Finance Audit', sub: 'Rekap setoran', bg: 'bg-amber-50 border-amber-100 text-amber-600' }] : []),
