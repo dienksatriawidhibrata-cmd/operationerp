@@ -29,8 +29,9 @@ const VisitHub   = lazy(() => import('./pages/dm/VisitHub'))
 const ApprovalSetoran = lazy(() => import('./pages/dm/ApprovalSetoran'))
 const StoreStatus = lazy(() => import('./pages/dm/StoreStatus'))
 const AuditSetoran   = lazy(() => import('./pages/finance/AuditSetoran'))
-const OpexOverview  = lazy(() => import('./pages/OpexOverview'))
-const KPIReport       = lazy(() => import('./pages/kpi/KPIReport'))
+const FinanceHub     = lazy(() => import('./pages/finance/FinanceHub'))
+const KPIHub         = lazy(() => import('./pages/kpi/KPIHub'))
+const KPIReport      = lazy(() => import('./pages/kpi/KPIReport'))
 const OpsHub          = lazy(() => import('./pages/ops/Hub'))
 const OpsVisitStatus  = lazy(() => import('./pages/ops/VisitStatus'))
 const OpsVisitMonitor = lazy(() => import('./pages/ops/VisitMonitor'))
@@ -51,6 +52,7 @@ const Preparation        = lazy(() => import('./pages/staff/Preparation'))
 const KPIPersonalPage    = lazy(() => import('./pages/kpi/KPIPersonalPage'))
 const KPIPersonalInput   = lazy(() => import('./pages/kpi/KPIPersonalInputPage'))
 const PeerReview360Page  = lazy(() => import('./pages/kpi/PeerReview360Page'))
+const KPI360ResultsPage  = lazy(() => import('./pages/kpi/KPI360ResultsPage'))
 
 function RootRedirect() {
   const { user, profile, loading, profileError, signOut } = useAuth()
@@ -213,17 +215,37 @@ export default function App() {
 
       <Route path="/finance" element={
         <RequireAuth roles={[...FINANCE_ROLES, 'ops_manager', ...SUPPORT_ROLES]}>
+          <FinanceHub />
+        </RequireAuth>
+      } />
+      <Route path="/dm/laporan" element={
+        <RequireAuth roles={ALL_MANAGER}>
+          <FinanceHub pageTitle="Laporan Harian" pageEyebrow="Retail Monitoring" showAuditAction={false} />
+        </RequireAuth>
+      } />
+      <Route path="/ops/laporan" element={
+        <RequireAuth roles={['ops_manager', ...SUPPORT_ROLES]}>
+          <FinanceHub pageTitle="Laporan Harian" pageEyebrow="Ops Monitoring" showAuditAction={false} />
+        </RequireAuth>
+      } />
+      <Route path="/finance/audit" element={
+        <RequireAuth roles={[...FINANCE_ROLES, 'ops_manager', ...SUPPORT_ROLES]}>
           <AuditSetoran />
         </RequireAuth>
       } />
 
       <Route path="/opex" element={
         <RequireAuth roles={[...FINANCE_ROLES, 'ops_manager', ...SUPPORT_ROLES]}>
-          <OpexOverview />
+          <Navigate to="/finance" replace />
         </RequireAuth>
       } />
 
       <Route path="/kpi" element={
+        <RequireAuth roles={KPI_ALLOWED_ROLES}>
+          <KPIHub />
+        </RequireAuth>
+      } />
+      <Route path="/kpi/store" element={
         <RequireAuth roles={KPI_ALLOWED_ROLES}>
           <KPIReport />
         </RequireAuth>
@@ -241,6 +263,11 @@ export default function App() {
       <Route path="/kpi/360" element={
         <RequireAuth roles={KPI_360_ROLES}>
           <PeerReview360Page />
+        </RequireAuth>
+      } />
+      <Route path="/kpi/360/results" element={
+        <RequireAuth roles={KPI_ALLOWED_ROLES}>
+          <KPI360ResultsPage />
         </RequireAuth>
       } />
 

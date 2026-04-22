@@ -155,18 +155,15 @@ export function StaffBottomNav() {
   const { pathname } = useLocation()
   const { profile } = useAuth()
   const isHeadStore = profile?.role === 'head_store'
-  const isTaskAssignee = ['head_store', 'asst_head_store'].includes(profile?.role)
   const issuedSjCount = useIssuedSuratJalanCount()
-  const taskCount = usePendingTaskCount()
 
   if (isHeadStore) {
     return (
       <Dock>
         <NavItem to="/staff"        icon="home"     label="Dashboard"    active={pathname === '/staff'} />
-        <NavItem to="/staff/ceklis" icon="checklist" label="Ceklis"      active={pathname.startsWith('/staff/ceklis')} />
         <NavItem to="/staff/laporan" icon="chart"   label="Laporan"      active={pathname.startsWith('/staff/laporan')} />
-        <NavItem to="/tasks"        icon="checklist" label="Tugas"       active={pathname.startsWith('/tasks')} badgeCount={taskCount} />
         <NavItem to="/sc/sj"        icon="finance"  label="Terima Barang" active={pathname.startsWith('/sc')} badgeCount={issuedSjCount} />
+        <NavItem to="/kpi"          icon="chart"    label="KPI"          active={pathname.startsWith('/kpi')} />
         <LogoutNavItem />
       </Dock>
     )
@@ -175,12 +172,7 @@ export function StaffBottomNav() {
   return (
     <Dock>
       <NavItem to="/staff"        icon="home"      label="Dashboard"     active={pathname === '/staff'} />
-      <NavItem to="/staff/ceklis" icon="checklist" label="Ceklis"        active={pathname.startsWith('/staff/ceklis')} />
-      {isTaskAssignee ? (
-        <NavItem to="/tasks" icon="checklist" label="Tugas" active={pathname.startsWith('/tasks')} badgeCount={taskCount} />
-      ) : (
-        <NavItem to="/kpi" icon="chart" label="KPI" active={pathname.startsWith('/kpi')} />
-      )}
+      <NavItem to="/kpi"          icon="chart"     label="KPI"           active={pathname.startsWith('/kpi')} />
       <NavItem to="/sc/sj"        icon="finance"   label="Terima Barang" active={pathname.startsWith('/sc')} badgeCount={issuedSjCount} />
       <LogoutNavItem />
     </Dock>
@@ -194,8 +186,7 @@ export function DMBottomNav() {
     <Dock>
       <NavItem to="/dm" icon="home" label="Dashboard" active={pathname === '/dm'} />
       <NavItem to="/dm/stores" icon="checklist" label="Toko" active={pathname.startsWith('/dm/stores')} />
-      <NavItem to="/dm/visits" icon="map" label="Visit" active={pathname.startsWith('/dm/visit') || pathname.startsWith('/ops/visits')} />
-      <NavItem to="/dm/approval" icon="approval" label="Approval" active={pathname.startsWith('/dm/approval')} />
+      <NavItem to="/dm/laporan" icon="finance" label="Laporan Harian" active={pathname.startsWith('/dm/laporan') || pathname.startsWith('/ops/laporan') || pathname.startsWith('/finance')} />
       <NavItem to="/kpi" icon="chart" label="KPI" active={pathname.startsWith('/kpi')} />
       <LogoutNavItem />
     </Dock>
@@ -256,8 +247,8 @@ export function FinanceBottomNav() {
 
   return (
     <Dock>
-      <NavItem to="/finance" icon="finance" label="Audit" active={pathname === '/finance'} />
-      <NavItem to="/opex" icon="opex" label="Opex" active={pathname.startsWith('/opex')} />
+      <NavItem to="/finance" icon="finance" label="Finance" active={pathname === '/finance' || pathname.startsWith('/opex')} />
+      <NavItem to="/finance/audit" icon="approval" label="Audit" active={pathname.startsWith('/finance/audit')} />
       <LogoutNavItem />
     </Dock>
   )
@@ -269,7 +260,7 @@ export function OpsBottomNav() {
 
   const dashActive = pathname === '/ops'
   const retailActive = pathname.startsWith('/dm') || pathname.startsWith('/kpi') ||
-    pathname.startsWith('/opex') || pathname.startsWith('/ops/visits') || pathname.startsWith('/finance')
+    pathname.startsWith('/opex') || pathname.startsWith('/ops/visits') || pathname.startsWith('/finance') || pathname.startsWith('/ops/laporan')
   const scActive = pathname.startsWith('/sc')
   const trainerActive = pathname.startsWith('/trainer')
   const supportActive = pathname.startsWith('/tasks')

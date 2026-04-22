@@ -1,10 +1,10 @@
 ================================================================
-BAGI KOPI OPS — ARSITEKTUR & STATUS LENGKAP
-Update: 21 April 2026
-UNTUK: Handover ke Codex / AI agent baru
+BAGI KOPI OPS - SYSTEM SUMMARY / HANDOVER
+Update: 22 April 2026
+UNTUK: Sesi Codex / Claude Code / developer berikutnya
 ================================================================
 
-STATUS: PRODUCTION-READY (ACTIVE DEVELOPMENT)
+STATUS: ACTIVE DEVELOPMENT, PRODUCTION LIVE
 Database   : Supabase (PostgreSQL + RLS)
 Frontend   : React 18 + Vite + TailwindCSS
 Hosting    : Cloudflare Pages
@@ -12,646 +12,350 @@ Repo       : github.com/dienksatriawidhibrata-cmd/operationerp
 Branch dev : codex-realtime-sc-sync
 Branch prod: main
 Domain     : operationerp.pages.dev
-Last commit: feat: add KPI Personal + 360° peer review module (3baef7e)
-Last migration: 013_kpi_personal.sql
+Main HEAD  : 531651a - Fix KPI profile visibility and seed generic staff items
+Last migration in repo : 017_profiles_kpi_visibility.sql
 
 ================================================================
-ARSITEKTUR TEKNIS
+RINGKASAN PROGRES TERBARU
 ================================================================
 
-── STACK ──────────────────────────────────────────────────────
-- React 18 dengan lazy loading per halaman (src/App.jsx)
-- Routing: react-router-dom v6 (Routes, Route, Navigate)
-- Auth: Supabase Auth + custom AuthContext (src/contexts/AuthContext.jsx)
-- DB queries: @supabase/supabase-js (src/lib/supabase.js)
-- CSS: TailwindCSS dengan custom color 'primary' (biru)
-- Icons: custom AppIcon component (src/components/ui/AppKit.jsx)
-- UI primitives: SubpageShell, SectionPanel, ToneBadge, EmptyPanel
-  semua dari src/components/ui/AppKit.jsx
-- Bottom navigation: SmartBottomNav / StaffBottomNav
-  dari src/components/BottomNav.jsx
-- External: Google Drive API (SOP viewer), Google Sheets (KPI toko)
-  via src/lib/googleApis.js (key hardcoded sebagai fallback)
+Per 22 April 2026, modul KPI personal dan 360 sudah mengalami beberapa
+perubahan penting dibanding handover lama:
 
-── AUTH FLOW ───────────────────────────────────────────────────
-- Login: /login → Supabase email/password
-- Setelah login: RootRedirect() di App.jsx baca profile.role
-  dan redirect ke halaman yang sesuai
-- Profile disimpan di tabel 'profiles' (Supabase Auth + custom)
-- AuthContext expose: { user, profile, loading, profileError, signOut }
-- RequireAuth wrapper: cek user + profile + role sebelum render page
+1. Workflow KPI manager-level sudah ditambahkan.
+   - Head Store dinilai oleh District Manager + Support Supervisor,
+     diverifikasi Area Manager.
+   - District Manager dinilai oleh Area Manager + Support Supervisor,
+     diverifikasi Ops Manager.
+   - Jika District Manager tidak punya Area Manager (mis. area tertentu),
+     penilaian dilakukan Ops Manager + Support Supervisor,
+     diverifikasi Ops Manager.
 
-── ROLE ROUTING ────────────────────────────────────────────────
-STORE_ROLES      → /staff
-district_manager → /dm
-area_manager     → /dm
-ops_manager      → /ops
-support_spv      → /ops
-support_admin    → /ops
-trainer          → /trainer
-finance_supervisor→ /finance
-picking_spv      → /sc/picking
-qc_spv           → /sc/qc
-distribution_spv → /sc/distribution
-SC_ROLES lainnya → /sc
+2. Login store team sudah kembali memakai model hybrid.
+   - Staff/store team dapat login dengan email + password bersama
+     dari VITE_STAFF_PASS.
+   - Head Store dan manager tetap login memakai email + password akun.
 
-── ROLE ARRAYS (src/lib/access.js) ─────────────────────────────
-STORE_ROLES        = ['staff','barista','kitchen','waitress','asst_head_store','head_store']
-MANAGER_ROLES      = ['district_manager','area_manager','ops_manager']
-SUPPORT_ROLES      = ['support_spv','support_admin']
-FINANCE_ROLES      = ['finance_supervisor']
-SC_ROLES           = ['purchasing_admin','warehouse_admin','picking_spv','qc_spv',
-                       'distribution_spv','warehouse_spv','sc_supervisor']
-TRAINER_ROLES      = ['trainer','ops_manager',...SUPPORT_ROLES]
-OJE_ROLES          = ['trainer','ops_manager',...SUPPORT_ROLES,'head_store',
-                       'district_manager','area_manager']
-KPI_ALLOWED_ROLES  = [...STORE_ROLES,...MANAGER_ROLES,...SUPPORT_ROLES]
-KPI_PERSONAL_VIEW_ROLES = [...STORE_ROLES,...MANAGER_ROLES,...SUPPORT_ROLES,'trainer']
-KPI_PERSONAL_INPUT_ROLES = ['head_store']
-KPI_360_ROLES      = [...STORE_ROLES,'district_manager','area_manager']
-SUPPLY_CHAIN_VIEW_ROLES  = (semua role)
+3. KPI personal dan 360 sekarang punya fallback frontend.
+   - Jika seed item di database belum lengkap, frontend tetap bisa
+     menampilkan item default melalui src/lib/kpiDefaults.js.
 
-── HELPER FUNCTIONS (src/lib/utils.js) ─────────────────────────
-fmtRp(n)                 → 'Rp 1.500.000'
-fmtDate(date)            → 'Senin, 15 Apr 2026'
-fmtDateShort(date)       → '15 Apr'
-todayWIB()               → 'YYYY-MM-DD' hari ini WIB
-yesterdayWIB()           → 'YYYY-MM-DD' kemarin WIB
-nowTimeWIB()             → 'HH:MM' WIB
-sisaWaktuLaporan(tanggal)→ sisa waktu laporan harian
-visitGrade(score, max)   → { label, color, bg }
-roleLabel(role)          → 'Barista', 'Head Store', dll
-currentPeriodWIB()       → 'YYYY-MM' bulan ini WIB
-periodLabel('2026-04')   → 'Apr 2026'
-lastNPeriods(n)          → ['2026-04','2026-03',...]
-pctToScore(pct)          → 1-5 (threshold 60/70/80/90%)
-avg360ToScore(avg)       → 1-5 (threshold 2.0/2.5/3.0/4.0)
-downloadCsv(filename, headers, rows) → download CSV file
+4. Root cause kosongnya KPI/360 di production sudah ditemukan.
+   - BUKAN karena tanggal 5.
+   - BUKAN karena item 360 kosong.
+   - Penyebab utama: RLS policy profiles terlalu sempit, sehingga
+     store roles tidak bisa membaca daftar profile rekan/tim untuk KPI.
+   - Fix database sudah disiapkan di migration 017.
+
+5. Struktur repo sudah dirapikan.
+   - File referensi dipindah ke reference/
+   - File handover dipindah ke docs/handover/
+   - Script generator dipindah ke scripts/
+   - Peta struktur repo ditulis di docs/PROJECT_MAP.md
 
 ================================================================
-DATABASE SCHEMA (Supabase PostgreSQL)
+STRUKTUR REPO SAAT INI
 ================================================================
 
-Semua tabel menggunakan Row Level Security (RLS).
-Semua tabel ada kolom id UUID DEFAULT gen_random_uuid().
-Helper functions di DB: my_role() dan my_branch() tersedia di RLS.
+Folder utama yang penting:
 
-── TABEL UTAMA ─────────────────────────────────────────────────
+- src/
+  Frontend utama.
+- supabase/
+  SQL audit + migrations resmi.
+- scripts/
+  Script utilitas manual.
+- docs/
+  Dokumentasi operasional, handover, dan project map.
+- reference/
+  File referensi non-runtime.
+- google-apps-script/
+  Script Apps Script terpisah.
 
-profiles
-  id UUID (FK ke auth.users)
-  full_name TEXT
-  role TEXT (salah satu dari 21 role di atas)
-  branch_id UUID → branches
-  is_active BOOLEAN
-  managed_districts TEXT[] (khusus district_manager)
-  managed_areas TEXT[]     (khusus area_manager)
-  branch JSONB (di-join saat query, berisi nama branch)
+Dokumen orientasi utama:
 
-branches
-  id UUID
-  name TEXT ('Bagi Kopi Cipete', dll)
-  district TEXT
-  area TEXT
-  is_active BOOLEAN
-
-announcements
-  id, title, body, published_at, is_active
-
-── OPERASIONAL TOKO ────────────────────────────────────────────
-
-daily_checklists
-  id, branch_id, tanggal DATE, shift TEXT ('pagi'|'middle'|'malam')
-  submitted_by UUID, submitted_at TIMESTAMPTZ
-  is_late BOOLEAN (via TRIGGER, bukan generated column)
-  Deadline: pagi=08:00WIB, middle=14:00WIB, malam=03:00WIB+1
-  UNIQUE (branch_id, tanggal, shift)
-
-checklist_items
-  id, item_name, section TEXT, shift TEXT
-  ('pagi'|'malam'|'both'|'middle'|'pagi_middle')
-  is_active BOOLEAN, sort_order INT
-
-daily_checklist_responses
-  id, checklist_id UUID → daily_checklists
-  item_id UUID → checklist_items
-  is_done BOOLEAN
-
-daily_preparation
-  id, branch_id, tanggal DATE, shift TEXT ('pagi'|'middle'|'malam')
-  submitted_by UUID, notes TEXT
-  UNIQUE (branch_id, tanggal, shift)
-
-daily_preparation_items
-  id, preparation_id UUID → daily_preparation
-  item_key TEXT, section TEXT ('bar'|'kitchen'), qty NUMERIC
-
-preparation_config
-  item_key TEXT, item_name TEXT, section TEXT, unit TEXT, sort_order INT
-
-daily_reports
-  id, branch_id, tanggal DATE, submitted_by UUID
-  submitted_at TIMESTAMPTZ, is_late BOOLEAN
-  total_pax INT, omzet NUMERIC, catatan TEXT
-
-operational_expenses
-  id, branch_id, tanggal DATE, kategori TEXT
-  deskripsi TEXT, total NUMERIC, submitted_by UUID
-
-── KPI TOKO ────────────────────────────────────────────────────
-
-kpi_monthly_reports
-  id, branch_id, period_month TEXT ('YYYY-MM')
-  [banyak kolom metrik toko]
-
-── KPI PERSONAL + 360° (migration 013) ─────────────────────────
-
-kpi_personal_items                        ← CONFIG TABLE
-  id, role TEXT, item_key TEXT, item_name TEXT
-  target TEXT, contribution INT (bobot %, total per role = 100)
-  cara_penilaian TEXT, source_type TEXT
-    CHECK IN ('auto_checklist','auto_preparation','auto_360','manual')
-  score_1..score_5 TEXT (deskripsi per skor)
-  is_active BOOLEAN, sort_order INT
-  UNIQUE (role, item_key)
-
-  !! PENTING: kolom bobot bernama 'contribution', BUKAN 'weight_pct' !!
-  !! cara_penilaian adalah deskripsi/description item, BUKAN 'description' !!
-
-kpi_360_items                             ← CONFIG TABLE
-  id, group_type TEXT CHECK IN ('store','manager')
-  item_key TEXT, item_name TEXT, description TEXT
-  score_1..score_5 TEXT
-  is_active BOOLEAN, sort_order INT
-  UNIQUE (group_type, item_key)
-
-kpi_personal_scores                       ← DATA TABLE
-  id, staff_id UUID → profiles
-  branch_id UUID → branches
-  period_month TEXT ('YYYY-MM')
-  item_key TEXT, auto_value NUMERIC(6,2)
-  score INT CHECK 1-5
-  notes TEXT, scored_by UUID → profiles
-  verified_by UUID → profiles, verified_at TIMESTAMPTZ
-  UNIQUE (staff_id, period_month, item_key)
-
-  RLS:
-  SELECT: staff sendiri | head_store/asst (branch_id sama) | DM/AM/ops/support_spv/trainer
-  INSERT: head_store saja (branch_id = my_branch())
-  UPDATE: head_store (jika belum verified_at) | DM/AM/ops
-
-kpi_360_submissions                       ← DATA TABLE
-  id, evaluator_id UUID → profiles
-  evaluatee_id UUID → profiles
-  branch_id UUID → branches
-  group_type TEXT CHECK IN ('store','manager')
-  period_month TEXT, catatan TEXT (max 1000 char)
-  CONSTRAINT no_self_eval CHECK (evaluator_id != evaluatee_id)
-  UNIQUE (evaluator_id, evaluatee_id, period_month)
-
-kpi_360_scores                            ← DATA TABLE
-  id, submission_id UUID → kpi_360_submissions ON DELETE CASCADE
-  item_key TEXT, score INT CHECK 1-5
-  UNIQUE (submission_id, item_key)
-
-── SUPPLY CHAIN ────────────────────────────────────────────────
-
-supply_chain_orders
-  id, order_number TEXT, branch_id, status TEXT
-  ('draft'|'ordered'|'dispatched'|'delivered'|'cancelled')
-  ordered_by, dispatched_at, delivered_at
-
-supply_chain_items
-  id, order_id → supply_chain_orders
-  item_name, quantity, unit, received_qty
-
-surat_jalan
-  id, order_id, issued_by, issued_at, shipped_at, delivered_at
-  status TEXT ('issued'|'shipped'|'delivered')
-  notes TEXT
-
-── VISIT & FINANCE ─────────────────────────────────────────────
-
-daily_visits
-  id, branch_id, visited_by UUID, tanggal DATE
-  [banyak kolom checklist visit]
-  total_score INT
-
-── TRAINER / OJE ───────────────────────────────────────────────
-
-oje_evaluations
-  id, staff_id UUID, evaluator_id UUID, branch_id UUID
-  evaluation_date DATE, [13 kolom kriteria INT 1-5]
-  total_score INT, grade TEXT, notes TEXT
-
-oje_batches
-  id, batch_name, evaluator_id, branch_id, evaluation_date
-  participants JSONB, criteria JSONB [10 kriteria]
-  notes TEXT
-
-── TASKS ───────────────────────────────────────────────────────
-
-tasks
-  id, title, description, status TEXT ('open'|'in_progress'|'done')
-  assigned_to UUID, created_by UUID, due_date DATE
+- README.md
+- docs/PROJECT_MAP.md
+- docs/ROLE_GUIDE.md
+- docs/MANUAL_INPUT_SOP.md
+- docs/CHANGE_NOTIFICATION_TEMPLATES.md
 
 ================================================================
-MIGRASI DATABASE
+ROUTING DAN ROLE
 ================================================================
 
-001_schema.sql            → ✅ Tabel utama (profiles, branches, dll)
-002_daily_visits_unique.sql → ✅ Unique constraint daily_visits
-002_supply_chain.sql      → ✅ SC tables
-003_supply_chain_scope_read.sql → ✅ RLS SC
-004_kpi_reports.sql       → ✅ kpi_monthly_reports
-005_support_roles.sql     → ✅ Support role policies
-006_staff_roles.sql       → ✅ Staff role policies
-007_store_roles_access.sql → ✅ Store role RLS
-008_sc_race_condition_and_tables.sql → ✅ SC fixes
-009_receive_qty_on_surat_jalan.sql → ✅ received_qty
-010_oje_tables.sql        → ⚠️ WAJIB DIJALANKAN (OJE)
-011_daily_preparation.sql → ⚠️ WAJIB DIJALANKAN (Preparation)
-012_daily_checklists_middle_shift.sql → ✅ Middle shift fix
-013_kpi_personal.sql      → ⚠️ WAJIB DIJALANKAN (KPI Personal + 360°)
+Role arrays utama ada di:
+- src/lib/access.js
+
+Role penting saat ini:
+
+- STORE_ROLES
+  ['staff','barista','kitchen','waitress','asst_head_store','head_store']
+- MANAGER_ROLES
+  ['district_manager','area_manager','ops_manager']
+- SUPPORT_ROLES
+  ['support_spv','support_admin']
+
+Routing ringkas:
+
+- store roles -> /staff
+- district_manager -> /dm
+- area_manager -> /dm
+- ops_manager -> /ops
+- support_spv/support_admin -> /ops
+- trainer -> /trainer
+- finance_supervisor -> /finance
+- SC roles -> /sc
 
 ================================================================
-HALAMAN & ROUTE LENGKAP
+AUTH FLOW
 ================================================================
 
-── STORE / STAFF ───────────────────────────────────────────────
-/staff          → StaffHome (semua STORE_ROLES + manager bisa akses)
-  Quick actions per role:
-  head_store      : Laporan Harian, Input KPI Staff, Penilaian 360°, Terima Barang
-  barista/kitchen/waitress/asst_head_store:
-                    Prep Harian, KPI Personal, Penilaian 360°, Terima Barang
-  role lain       : KPI Kerja, Penerimaan Barang (dari manager yang buka /staff)
-  Cards: Status Ceklis (3 shift), Status Preparation (3 shift)
-  Sections: Pengumuman, SOP viewer (Google Drive), Status Operasional
+File utama:
+- src/pages/Login.jsx
+- src/contexts/AuthContext.jsx
+- src/App.jsx
 
-/staff/ceklis   → CeklisHarian (STORE_ROLES)
-  3 shift: Pagi | Middle | Malam
-  Sections dinamis dari field 'section' di checklist_items
+Status auth saat ini:
 
-/staff/preparation → Preparation (STORE_ROLES)
-  2 section: Bar (6 item) | Kitchen (16 item)
-  3 shift: Pagi | Middle | Malam
-
-/staff/laporan  → LaporanHarian (head_store + MANAGER_ROLES)
-  Input daily report: pax, omzet, catatan
-
-/staff/opex     → BebanOperasional (STORE_ROLES + MANAGER_ROLES)
-  Input & lihat pengeluaran operasional
-
-── KPI ─────────────────────────────────────────────────────────
-/kpi            → KPIReport (KPI_ALLOWED_ROLES)
-  KPI Toko bulanan + Google Sheets integration
-
-/kpi/personal   → KPIPersonalPage (KPI_PERSONAL_VIEW_ROLES)
-  View scorecard KPI Personal per staff per periode
-  - Barista/Kitchen/Waitress/AsstHS: lihat scorecard sendiri
-  - Head Store: dropdown pilih staff 1 branch
-  - DM: dropdown staff di semua branch managed_districts-nya
-  - AM: dropdown staff di semua branch managed_areas-nya
-  - Ops/Support/Trainer: semua staff aktif
-  - Tampil: skor tertimbang, grade, rincian per item, feedback 360° anonim
-  - Ops Manager: bisa lihat nama evaluator 360° (tidak anonim)
-  Grade: ≥4.5=Outstanding, ≥3.5=Good, ≥2.5=Fair, <2.5=Needs Improvement
-
-/kpi/personal/input → KPIPersonalInputPage (head_store saja)
-  Input KPI bulanan untuk barista/kitchen/waitress/asst_head_store
-  - Pilih periode + klik staff → form slide-in
-  - Auto items (read-only): checklist completion, prep completion, 360°
-    Auto calc: ceklisPct = (jumlah ceklis submitted bulan itu / daysInMonth×3) × 100
-    Auto calc: prepPct = (jumlah prep submitted bulan itu / daysInMonth×3) × 100
-    Auto calc: avg360 = rata-rata semua kpi_360_scores untuk evaluatee bulan itu
-    Konversi: pctToScore(), avg360ToScore()
-  - Manual items: ScorePicker 1-5 + input catatan per item
-  - Preview skor tertimbang real-time
-  - Upsert ke kpi_personal_scores onConflict: staff_id,period_month,item_key
-  - KPI yang sudah verified_at tidak bisa diubah (locked)
-  Status badge: Terverifikasi | Sudah diisi | Belum
-
-/kpi/360        → PeerReview360Page (KPI_360_ROLES)
-  Peer review anonim antar rekan kerja
-  - head_store: 2 tab — Grup Toko + Grup Manager
-  - DM/AM: hanya Grup Manager
-  - barista/kitchen/waitress/asst_head_store: hanya Grup Toko
-  Kolega filtering:
-  - Grup Toko: profiles WHERE branch_id=sama AND role IN store_360_roles AND id != self
-  - Grup Manager (head_store): DM by managed_districts.contains(branch.district)
-                                + AM by managed_areas.contains(branch.area)
-  - Grup Manager (DM): head_store di managed branches + semua AM
-  - Grup Manager (AM): head_store di managed branches + semua DM
-  Form: 5 item ScorePicker 1-5 + catatan opsional ≤1000 char
-  Submit → upsert kpi_360_submissions → upsert kpi_360_scores
-  Anonimitas: evaluator_id disimpan di DB tapi hanya ditampilkan ke ops_manager
-
-── MANAGER ─────────────────────────────────────────────────────
-/dm             → DMDashboard (MANAGER_ROLES + SUPPORT_ROLES)
-  Real-time store cards: Ceklis 3 shift, Prep 3 shift, Laporan, Visit, BOH
-  Scope: DM=managed_districts, AM=managed_areas, ops=semua
-
-/dm/visits      → VisitHub
-/dm/visit       → DailyVisit (form audit kunjungan toko)
-/dm/approval    → ApprovalSetoran
-/dm/stores      → StoreStatus
-
-── OPS / SUPPORT ───────────────────────────────────────────────
-/ops            → OpsHub (ops_manager + SUPPORT_ROLES)
-/ops/visits     → OpsVisitStatus
-/ops/visit-monitor → OpsVisitMonitor
-/support/staff  → StaffManagement (CRUD profil staff, toggle aktif, ubah role/branch)
-
-── TRAINER ─────────────────────────────────────────────────────
-/trainer        → TrainerDashboard (TRAINER_ROLES)
-/trainer/staff-baru → StaffBaru
-/trainer/staff-lama → StaffLama
-/trainer/oje    → OJEPage (OJE_ROLES)
-  Tab Daftar: list evaluasi + filter
-  Individual OJE: 13 kriteria, 5 kategori
-  Batch Scorecard: multi-peserta, 10 kriteria
-
-── SUPPLY CHAIN ────────────────────────────────────────────────
-/sc             → SCDashboard (lead time metrics, clickable cards)
-/sc/orders/new  → SCNewOrder
-/sc/orders/:id  → SCOrderDetail
-/sc/picking     → SCPicking
-/sc/qc          → SCQC
-/sc/distribution → SCDistribution
-/sc/sj          → SCSuratJalan (store roles bisa terima dari status 'issued')
-
-── FINANCE ─────────────────────────────────────────────────────
-/finance        → AuditSetoran (FINANCE_ROLES + ops + support)
-/opex           → OpexOverview (FINANCE_ROLES + ops + support)
-
-/tasks          → TasksPage (MANAGER_ROLES + SUPPORT_ROLES)
-  Assign ke: trainer | head_store | asst_head_store
+- Login page menggunakan dua mode:
+  - Staff
+  - Head Store & Manager
+- Staff mode memakai VITE_STAFF_PASS
+- Setelah login, redirect mengikuti profile.role
+- Profile dibaca dari tabel profiles
 
 ================================================================
-FILE PENTING & STRUKTUR
+KPI PERSONAL
 ================================================================
 
-src/
-  App.jsx                    ← routing utama, RequireAuth, lazy imports
-  contexts/AuthContext.jsx   ← auth state + profile
-  lib/
-    supabase.js              ← Supabase client init
-    access.js                ← semua ROLE arrays + helper functions
-    utils.js                 ← format helpers + period helpers + score converters
-    googleApis.js            ← Google Drive (SOP) + Google Sheets (KPI) fetchers
-  components/
-    BottomNav.jsx            ← SmartBottomNav, StaffBottomNav (per role)
-    ui/AppKit.jsx            ← SubpageShell, SectionPanel, ToneBadge,
-                                EmptyPanel, AppIcon, SegmentedControl
-  pages/
-    Login.jsx
-    staff/
-      Home.jsx               ← dashboard utama store staff
-      CeklisHarian.jsx       ← input ceklis 3 shift
-      Preparation.jsx        ← input prep harian
-      LaporanHarian.jsx      ← laporan harian
-      BebanOperasional.jsx   ← input opex
-    kpi/
-      KPIReport.jsx          ← KPI toko + Google Sheets
-      KPIPersonalPage.jsx    ← view scorecard KPI personal
-      KPIPersonalInputPage.jsx← head_store input KPI personal staff
-      PeerReview360Page.jsx  ← 360° peer review anonim
-    dm/
-      Dashboard.jsx          ← real-time store cards
-      DailyVisit.jsx
-      VisitHub.jsx
-      ApprovalSetoran.jsx
-      StoreStatus.jsx
-    ops/
-      Hub.jsx, VisitStatus.jsx, VisitMonitor.jsx
-    support/
-      StaffManagement.jsx
-    finance/
-      AuditSetoran.jsx
-    trainer/
-      Dashboard.jsx, StaffBaru.jsx, StaffLama.jsx, OJEPage.jsx
-    sc/
-      Dashboard.jsx, NewOrder.jsx, OrderDetail.jsx
-      PickingPage.jsx, QCPage.jsx, DistributionPage.jsx
-      SuratJalan.jsx, StageConfirm.jsx
-    tasks/
-      TasksPage.jsx
-    OpexOverview.jsx
+File utama:
+- src/pages/kpi/KPIPersonalPage.jsx
+- src/pages/kpi/KPIPersonalInputPage.jsx
+- src/lib/kpiDefaults.js
+- src/lib/access.js
 
-supabase/migrations/         ← 013 file SQL berurutan
-generate_kpi_personal.mjs    ← generate Excel config KPI (node generate_kpi_personal.mjs)
-KPI_Personal_Rekomendasi.xlsx← output dari script di atas
-Summary1.txt                 ← file ini
+Migration terkait:
+- 013_kpi_personal.sql
+- 014_kpi_personal_manager_workflow.sql
+- 015_seed_manager_kpi_items.sql
+- 016_seed_staff_generic_kpi_items.sql
+- 017_profiles_kpi_visibility.sql
+
+Status fitur:
+
+1. KPI personal view:
+   - Store roles bisa lihat KPI personal.
+   - Head Store, DM, AM, Ops, Support, Trainer bisa lihat sesuai scope.
+
+2. KPI personal input:
+   - Head Store bisa menilai target store-level:
+     staff, barista, kitchen, waitress, asst_head_store
+   - District Manager bisa menilai Head Store
+   - Area Manager bisa menilai District Manager
+   - Ops Manager bisa menilai District Manager fallback
+   - Support Supervisor bisa ikut jadi evaluator manager-level
+
+3. Fallback data:
+   - Jika kpi_personal_items kosong per role, frontend fallback ke
+     default item dari src/lib/kpiDefaults.js
+
+4. Role staff generic:
+   - Kini dianggap target KPI store-level
+   - Seed item generic staff disiapkan di migration 016
 
 ================================================================
-INTEGRASI EKSTERNAL
+KPI 360
 ================================================================
 
-Google Drive (SOP Viewer)
-  Folder ID: 1GXkR3-A0XXkxJxkNlCv2FJXUO4NLqOSa
-  26 file .docx → auto-load di StaffHome
-  Modal preview read-only (iframe Google Docs viewer)
-  Fetch via googleApis.js → fetchSopFiles()
-  ⚠️ TODO: restrict API key di Google Cloud Console ke operationerp.pages.dev
+File utama:
+- src/pages/kpi/PeerReview360Page.jsx
+- src/lib/kpiDefaults.js
 
-Google Sheets (KPI Toko)
-  Sheet ID: 13znU5AUVAuqG5jFxMtRhmFZpqYKe2pAdpYWJbsQCf_A
-  Dipakai di KPIReport.jsx
-  Tab bulanan + tab framework KPI
-  Fetch via googleApis.js → fetchKpiSheet()
+Status fitur:
 
-Cloudflare Pages
-  Deploy otomatis dari branch main
-  Build command: npm run build
-  Output dir: dist
-  Env vars di Cloudflare: VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY
-  Google API key hardcoded sebagai fallback di googleApis.js
+1. Daftar nama yang dinilai diisi otomatis dari profiles.
+   - Pengguna tidak perlu mengetik nama manual.
 
-================================================================
-CATATAN TEKNIS KRITIS UNTUK CODEX
-================================================================
+2. Grup penilaian:
+   - Store group
+   - Manager group
 
-1. NAMA KOLOM WAJIB BENAR:
-   kpi_personal_items.contribution  (BUKAN weight_pct)
-   kpi_personal_items.cara_penilaian (BUKAN description)
-   kpi_360_items.description         (ini BENAR, pakai description)
+3. Head Store punya dua tab:
+   - Grup Toko
+   - Grup Manager
 
-2. TIMEZONE:
-   Semua perhitungan tanggal pakai WIB (UTC+7)
-   todayWIB(), currentPeriodWIB() sudah handle ini
-   DB simpan timestamp sebagai UTC (Supabase default)
+4. District Manager dan Area Manager default ke manager group.
 
-3. is_late di daily_checklists:
-   WAJIB via TRIGGER, bukan generated column
-   (PostgreSQL tidak bisa pakai AT TIME ZONE di generated column)
+5. Fallback item:
+   - Jika kpi_360_items kosong, frontend fallback ke default 5 item
+     store dan 5 item manager.
 
-4. Upsert pattern:
-   Semua submit form pakai .upsert(..., { onConflict: '...' })
-   Bukan insert → jika sudah ada akan update (edit friendly)
-
-5. 360° anonimitas:
-   evaluator_id TERSIMPAN di DB di semua kondisi
-   Frontend HANYA tampilkan nama evaluator jika profile.role === 'ops_manager'
-   Jangan expose evaluator_id ke role lain
-
-6. Score calculation untuk KPI Personal:
-   Auto checklist = pctToScore(jumlah ceklis bulan itu / (daysInMonth × 3) × 100)
-   Auto prep      = pctToScore(jumlah prep bulan itu / (daysInMonth × 3) × 100)
-   Auto 360       = avg360ToScore(rata-rata semua kpi_360_scores untuk staff itu bulan itu)
-   Ini dihitung di frontend (KPIPersonalInputPage) saat form dibuka,
-   BUKAN disimpan sebagai auto_value di DB (kolom ada tapi tidak dipakai saat ini)
-
-7. Kolega filtering 360°:
-   Store group  → supabase.from('profiles').eq('branch_id', ...).in('role', store_roles)
-   Manager group (head_store punya) → query branches.district/area dulu,
-     lalu .contains('managed_districts', [district])
-   DM group → query branches by managed_districts, lalu head_store .in('branch_id', ids)
-   AM group → query branches by managed_areas, lalu head_store .in('branch_id', ids)
-
-8. period_month format: 'YYYY-MM' string, bukan DATE
-   Semua tabel KPI pakai TEXT untuk period_month
-
-9. Build clean:
-   npm run build harus selesai tanpa error sebelum push ke main
-
-10. Cloudflare env vars tidak bisa diubah via code:
-    Hanya bisa ubah di Cloudflare dashboard
+6. Penyebab bug kosong di production yang ditemukan:
+   - Query profile untuk daftar rekan blocked oleh RLS profiles,
+     bukan oleh data item atau periode.
 
 ================================================================
-STATUS MODUL SAAT INI
+ROOT CAUSE KPI/360 KOSONG DI PRODUCTION
 ================================================================
 
-✅ = Fully working
-⚠️ = Ada item pending (migration atau fitur lanjutan)
-🔲 = Belum dibuat
+Investigasi tanggal 22 April 2026 menunjukkan:
 
-[1] STORE DASHBOARD (/staff)         ✅
-[2] CEKLIS HARIAN (/staff/ceklis)    ✅ 3 shift incl. middle
-[3] PREPARATION (/staff/preparation) ✅ bar + kitchen, 3 shift
-[4] LAPORAN HARIAN (/staff/laporan)  ✅
-[5] BEBAN OPERASIONAL (/staff/opex)  ✅
-[6] KPI TOKO (/kpi)                  ✅ + Google Sheets
-[7] KPI PERSONAL (/kpi/personal)     ✅ kode selesai
-                                     ⚠️ migration 013 belum dijalankan
-[8] INPUT KPI (/kpi/personal/input)  ✅ kode selesai
-                                     ⚠️ migration 013 belum dijalankan
-[9] PENILAIAN 360° (/kpi/360)        ✅ kode selesai
-                                     ⚠️ migration 013 belum dijalankan
-[10] DM DASHBOARD (/dm)              ✅ real-time
-[11] VISIT HUB & AUDIT (/dm/visits)  ✅
-[12] OPS HUB (/ops)                  ✅
-[13] STAFF MANAGEMENT (/support/staff)✅
-[14] TRAINER (/trainer)              ✅
-[15] OJE (/trainer/oje)              ⚠️ kode ✅, migration 010 belum dijalankan
-[16] SUPPLY CHAIN (/sc)              ✅
-[17] SURAT JALAN (/sc/sj)            ✅ store roles bisa terima
-[18] FINANCE (/finance, /opex)       ✅
-[19] TASKS (/tasks)                  ✅
-[20] SOP VIEWER                      ✅ Google Drive iframe
-[21] AUTH + RLS                      ✅
+- kpi_360_items aktif ada:
+  - store = 5
+  - manager = 5
+- banyak head_store punya visible_store_peers > 0
+- banyak store profile valid dengan branch_id aktif
+- ada juga 42 akun role 'staff'
+- ada 13 akun store-level dengan branch_id NULL
+
+Kesimpulan:
+
+1. Item penilaian bukan masalah utama.
+2. Periode/tanggal 5 bukan penyebab kosongnya halaman.
+3. Penyebab utama adalah policy SELECT pada tabel profiles terlalu sempit.
+
+Fix yang disiapkan:
+- supabase/migrations/017_profiles_kpi_visibility.sql
+
+Isi fix 017:
+- Store roles bisa baca profile store roles di branch yang sama
+- Head Store bisa baca District Manager / Area Manager yang relevan
+  untuk 360 grup manager
+
+SQL diagnosis yang dipakai:
+- supabase/diagnose_kpi_visibility.sql
 
 ================================================================
-REKOMENDASI PENGERJAAN LANJUTAN
+SUPABASE / MIGRATIONS
 ================================================================
 
-PRIORITAS KRITIS (wajib sebelum KPI bisa dipakai)
-──────────────────────────────────────────────────
-A. Jalankan migration 010, 011, 013 di Supabase SQL Editor:
-   → file ada di supabase/migrations/
-   → jalankan berurutan: 010 dulu, 011, baru 013
-   → migration 012 sudah dijalankan sebelumnya
+Urutan migration penting saat ini:
 
-B. Restrict Google API Key:
-   → Buka Google Cloud Console
-   → API key → HTTP Referrer → tambah: operationerp.pages.dev/*
+- 001_schema.sql
+- 002_daily_visits_unique.sql
+- 002_supply_chain.sql
+- 003_supply_chain_scope_read.sql
+- 004_kpi_reports.sql
+- 005_support_roles.sql
+- 006_staff_roles.sql
+- 007_store_roles_access.sql
+- 008_sc_race_condition_and_tables.sql
+- 009_receive_qty_on_surat_jalan.sql
+- 010_oje_tables.sql
+- 011_daily_preparation.sql
+- 012_daily_checklists_middle_shift.sql
+- 013_kpi_personal.sql
+- 014_kpi_personal_manager_workflow.sql
+- 015_seed_manager_kpi_items.sql
+- 016_seed_staff_generic_kpi_items.sql
+- 017_profiles_kpi_visibility.sql
 
-PRIORITAS TINGGI (UX penting)
-──────────────────────────────
-C. Verifikasi KPI Personal oleh DM:
-   Saat ini kpi_personal_scores.verified_at belum bisa diisi dari frontend.
-   Perlu tambah tombol "Verifikasi" di /kpi/personal (hanya muncul untuk DM/AM/ops).
-   Action: UPDATE kpi_personal_scores SET verified_by=uid, verified_at=now()
-   WHERE staff_id=x AND period_month=y AND verified_at IS NULL
-
-D. Badge/notifikasi SJ baru di BottomNav:
-   Store roles perlu tahu ada kiriman baru (surat_jalan status='issued').
-   Tambah badge merah di BottomNav icon SC/SJ.
-
-E. Notifikasi Tasks untuk assignee:
-   head_store, asst_head_store, trainer yang punya tasks open
-   perlu badge di BottomNav.
-
-PRIORITAS MENENGAH
-───────────────────
-F. Export PDF OJE individual (window.print() + CSS @media print)
-
-G. DM Dashboard: tambah widget ringkasan OJE per toko (total bulan ini, grade dist)
-
-H. Trainer Dashboard: statistik OJE (total evaluasi bulan ini, distribusi grade)
-
-I. KPI Personal: grafik tren bulanan (6 bulan terakhir) per staff
-
-J. Panduan per role dari Google Drive (tab terpisah dari SOP umum)
-
-PRIORITAS RENDAH / BUTUH SPEC
-───────────────────────────────
-K. Badge Training sistem — butuh spec kriteria + tampilan
-L. OJT (On Job Training) full module — /trainer/ojt belum ada
-M. Kanban antar divisi — butuh spec kolom
-N. Auto Scan Nota — Google Vision API vs OpenAI Vision (belum putus)
-O. Actionable Notifications — butuh spec aksi dari notifikasi
-P. Role Support redefinition — butuh spec tugas baru
-Q. PIC Audit Setoran — alur assign belum jelas
+Catatan:
+- 016 dan 017 sangat penting untuk kasus KPI production terbaru.
 
 ================================================================
-CARA MENAMBAH / MENGUBAH ITEM KPI
+DASHBOARD / HALAMAN PENTING
 ================================================================
 
-Item KPI disimpan di DB (config table), bukan hardcode:
+Store:
+- src/pages/staff/Home.jsx
+- src/pages/staff/CeklisHarian.jsx
+- src/pages/staff/Preparation.jsx
+- src/pages/staff/LaporanHarian.jsx
+- src/pages/staff/BebanOperasional.jsx
 
-Untuk mengubah item KPI Personal:
-1. Edit generate_kpi_personal.mjs (array items[BARISTA] dll)
-2. Jalankan: node generate_kpi_personal.mjs  → update Excel
-3. Ubah langsung di Supabase SQL Editor:
-   UPDATE kpi_personal_items SET ... WHERE role='barista' AND item_key='...';
-   atau INSERT/DELETE baris baru
+Manager:
+- src/pages/dm/Dashboard.jsx
+- src/pages/dm/StoreStatus.jsx
+- src/pages/dm/DailyVisit.jsx
+- src/pages/dm/ApprovalSetoran.jsx
 
-Untuk mengubah item 360°:
-1. UPDATE/INSERT di kpi_360_items langsung di Supabase SQL Editor
-2. group_type: 'store' atau 'manager'
+Ops / Support:
+- src/pages/ops/Hub.jsx
+- src/pages/ops/VisitMonitor.jsx
+- src/pages/ops/VisitStatus.jsx
+- src/pages/support/StaffManagement.jsx
 
-Frontend akan otomatis load config terbaru tanpa perlu deploy ulang.
+Trainer:
+- src/pages/trainer/Dashboard.jsx
+- src/pages/trainer/OJEPage.jsx
 
 ================================================================
-SEED DATA YANG SUDAH ADA DI MIGRATION 013
+DOKUMEN OPERASIONAL
 ================================================================
 
-KPI Personal Items (31 total):
-  BARISTA (8 item, 100%):
-    checklist_completion 13%, prep_bar_completion 13%,
-    kualitas_minuman 18%, kecepatan_penyajian 13%,
-    kebersihan_bar 13%, waste_spoil_bar 10%,
-    kedisiplinan 10%, peer_review_360 10%
+Sudah tersedia:
 
-  KITCHEN (8 item, 100%): struktur sama dengan barista,
-    item kitchen: kualitas_makanan, kebersihan_kitchen, waste_spoil_kitchen
+- docs/ROLE_GUIDE.md
+  Panduan penggunaan aplikasi per role
+- docs/CHANGE_NOTIFICATION_TEMPLATES.md
+  Template pengumuman perubahan sistem
+- docs/MANUAL_INPUT_SOP.md
+  SOP input manual: opex, setoran, KPI, OJE, dll
+- docs/PROJECT_MAP.md
+  Peta struktur repo dan letak file penting
 
-  WAITRESS (6 item, 100%, tanpa preparation):
-    checklist_completion 15%, kualitas_pelayanan 25%,
-    kebersihan_area 20%, complain_handling 15%,
-    kedisiplinan 10%, peer_review_360 15%
+================================================================
+SCRIPT PENTING
+================================================================
 
-  ASST_HEAD_STORE (9 item, 100%):
-    checklist_monitoring 8%, prep_monitoring 8%,
-    pencapaian_sales 20%, coaching_briefing 13%,
-    stock_fifo 13%, opex_control 10%,
-    sop_kebersihan 8%, kedisiplinan 10%,
-    peer_review_360 10%
+Di folder scripts/:
 
-KPI 360° Items (10 total):
-  Grup Store (5): kerjasama_tim, komunikasi_sikap, inisiatif,
-                  kedisiplinan, tanggung_jawab
-  Grup Manager (5): kepemimpinan, komunikasi_arahan, coaching_tim,
-                    integritas, kolaborasi
+- convert-kpi.cjs
+  Konversi reference/kpi/2026-kpi-retail.xlsx -> src/data/kpi2026.js
+- export-kpi-sql.cjs
+  Generate SQL KPI report
+- generate-kpi-personal.mjs
+  Generator Excel rekomendasi KPI personal
+- import-staff.js
+  Bulk create user staff
+- fix-branch.js
+  Diagnosa branch_id profiles
+- upload-sop.js
+  Upload SOP
 
+================================================================
+FILE REFERENSI
+================================================================
+
+Sudah dipindah ke reference/:
+
+- reference/kpi/2026-kpi-retail.xlsx
+- reference/warehouse/ContohAdminWH.pdf
+- reference/imports/expense_codes_import.csv
+
+================================================================
+OPEN RISKS / NEXT CHECKS
+================================================================
+
+1. Apply migration 016 dan 017 ke production jika belum.
+
+2. Rapikan akun store-level yang branch_id masih NULL.
+   - Dari diagnosis terakhir ada 13 akun store-level tanpa branch_id.
+
+3. Pastikan deployment Cloudflare Pages sudah rebuild dari main terbaru.
+
+4. Setelah migration apply:
+   - cek ulang /kpi/personal/input
+   - cek ulang /kpi/360
+   - pastikan daftar target dan rekan muncul untuk akun store/head_store
+
+================================================================
+POINT OF TRUTH
+================================================================
+
+Untuk memahami repo ini dari awal, buka berurutan:
+
+1. README.md
+2. docs/PROJECT_MAP.md
+3. src/App.jsx
+4. src/lib/access.js
+5. src/contexts/AuthContext.jsx
+6. src/pages/kpi/KPIPersonalInputPage.jsx
+7. src/pages/kpi/PeerReview360Page.jsx
+8. supabase/migrations/013-017 yang berkaitan dengan KPI
+
+================================================================
+END OF SUMMARY
 ================================================================

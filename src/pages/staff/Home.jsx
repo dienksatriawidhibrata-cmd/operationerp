@@ -15,12 +15,14 @@ export default function StaffHome() {
   const [sopCards, setSopCards] = useState([])
   const [announcements, setAnnouncements] = useState([])
   const [viewingSop, setViewingSop] = useState(null)
+  const [tasks, setTasks] = useState([])
 
   const today = todayWIB()
   const yesterday = yesterdayWIB()
 
   useEffect(() => {
     fetchSopAndAnnouncements()
+    fetchTasks()
     if (!profile?.branch_id) {
       setLoading(false)
       return
@@ -35,6 +37,24 @@ export default function StaffHome() {
     ])
     setSopCards(sopFiles)
     if (annRes.data) setAnnouncements(annRes.data)
+  }
+
+  const fetchTasks = async () => {
+    if (!profile?.id || profile.role !== 'head_store') {
+      setTasks([])
+      return
+    }
+
+    const { data } = await supabase
+      .from('dm_tasks')
+      .select('id,title,due_date,is_done,created_at')
+      .eq('assigned_to', profile.id)
+      .eq('is_done', false)
+      .order('due_date', { ascending: true, nullsFirst: false })
+      .order('created_at', { ascending: false })
+      .limit(5)
+
+    setTasks(data || [])
   }
 
   const fetchStatus = async () => {
@@ -105,6 +125,8 @@ export default function StaffHome() {
 
   const ceklisDone = [status?.ceklisPagi, status?.ceklisMiddle, status?.ceklisMalam].filter(Boolean).length
   const ceklisPct = Math.round((ceklisDone / 3) * 100)
+  const laporanStatus = status?.laporan ? (status.laporan.is_late ? 'Terlambat' : 'Masuk') : 'Belum'
+  const opexStatus = (status?.totalOpex || 0) > 0 ? 'Sudah ada input' : 'Belum ada input'
 
   const quickActions = isHeadStore ? [
     { to: '/staff/laporan',      icon: 'chart',     label: 'Laporan\nHarian' },
@@ -154,6 +176,66 @@ export default function StaffHome() {
         {!loading && !profile?.branch_id && (
           <div className="mb-4 p-4 rounded-3xl bg-rose-50 border border-rose-100">
             <p className="text-sm text-rose-700 font-semibold">Akun belum dikonfigurasi ke cabang manapun. Hubungi ops manager.</p>
+          </div>
+        )}
+
+        {isHeadStore && (
+          <div className="bg-white rounded-[2rem] border border-amber-50 shadow-sm mb-5 overflow-hidden">
+            <div className="px-4 pt-4 pb-3">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xs font-black text-gray-800 uppercase tracking-wide">Laporan Harian</h2>
+                <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-lg">{branchName}</span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 mb-4">
+                <div className="bg-amber-50 rounded-2xl p-3 text-center">
+                  <div className="w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center"
+                    style={{ background: !loading && status?.laporan ? '#f59e0b' : '#fde68a' }}>
+                    <AppIcon name="chart" size={14}
+                      className={!loading && status?.laporan ? 'text-white' : 'text-amber-500'} />
+                  </div>
+                  <p className="text-[9px] font-bold text-gray-500 uppercase mb-1">Laporan</p>
+                  <div className="w-full bg-amber-100 h-1.5 rounded-full overflow-hidden">
+                    <div className={`h-1.5 rounded-full transition-all duration-500 ${!loading && status?.laporan ? 'bg-amber-500 w-full' : 'w-0'}`} />
+                  </div>
+                  <p className="text-[8px] text-gray-400 mt-1 font-semibold">{loading ? '...' : laporanStatus}</p>
+                </div>
+
+                <div className="bg-orange-50 rounded-2xl p-3 text-center">
+                  <div className="w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center"
+                    style={{ background: !loading && (status?.totalOpex || 0) > 0 ? '#f97316' : '#fed7aa' }}>
+                    <AppIcon name="opex" size={14}
+                      className={!loading && (status?.totalOpex || 0) > 0 ? 'text-white' : 'text-orange-500'} />
+                  </div>
+                  <p className="text-[9px] font-bold text-gray-500 uppercase mb-1">Opex</p>
+                  <div className="w-full bg-orange-100 h-1.5 rounded-full overflow-hidden">
+                    <div className={`h-1.5 rounded-full transition-all duration-500 ${!loading && (status?.totalOpex || 0) > 0 ? 'bg-orange-500 w-full' : 'w-0'}`} />
+                  </div>
+                  <p className="text-[8px] text-gray-400 mt-1 font-semibold">{loading ? '...' : opexStatus}</p>
+                </div>
+
+                <div className="bg-rose-50 rounded-2xl p-3 text-center">
+                  <div className="w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center"
+                    style={{ background: !loading && status?.laporan ? '#e11d48' : '#fecdd3' }}>
+                    <AppIcon name="finance" size={14}
+                      className={!loading && status?.laporan ? 'text-white' : 'text-rose-500'} />
+                  </div>
+                  <p className="text-[9px] font-bold text-gray-500 uppercase mb-1">Setoran</p>
+                  <div className="w-full bg-rose-100 h-1.5 rounded-full overflow-hidden">
+                    <div className={`h-1.5 rounded-full transition-all duration-500 ${!loading ? 'bg-rose-500 w-full' : 'w-0'}`} />
+                  </div>
+                  <p className="text-[8px] text-gray-400 mt-1 font-semibold">Cek via form</p>
+                </div>
+              </div>
+            </div>
+
+            <Link
+              to="/staff/laporan"
+              className="flex items-center justify-center gap-2 w-full py-3.5 bg-amber-500 text-white font-bold text-sm text-center hover:bg-amber-600 transition-colors active:scale-[0.98]"
+            >
+              <AppIcon name="chart" size={16} />
+              Buka Laporan Harian
+            </Link>
           </div>
         )}
 
@@ -306,6 +388,35 @@ export default function StaffHome() {
             </Link>
           )}
         </div>
+
+        {isHeadStore && (
+          <div className="mb-5 rounded-[2rem] border border-amber-100 bg-white shadow-sm overflow-hidden">
+            <div className="px-4 pt-4 pb-3">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-xs font-black text-gray-800 uppercase tracking-wide">Tugas</h2>
+                <Link to="/tasks" className="text-[10px] font-bold text-amber-600">Lihat Semua</Link>
+              </div>
+              {tasks.length > 0 ? (
+                <div className="space-y-2">
+                  {tasks.map((task) => (
+                    <div key={task.id} className="rounded-2xl bg-amber-50 px-3 py-3">
+                      <p className="text-sm font-semibold text-slate-900 leading-tight">{task.title}</p>
+                      <p className="mt-1 text-[11px] text-slate-500">
+                        {task.due_date
+                          ? `Jatuh tempo ${new Date(`${task.due_date}T00:00:00Z`).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}`
+                          : 'Belum ada jatuh tempo'}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-2xl bg-slate-50 px-3 py-3 text-sm text-slate-500">
+                  Tidak ada tugas aktif saat ini.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Quick Actions */}
         <div className={`grid gap-4 mb-5 ${quickActions.length <= 3 ? 'grid-cols-3' : 'grid-cols-4'}`}>

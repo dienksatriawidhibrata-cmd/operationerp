@@ -715,15 +715,18 @@ export default function DMDashboard() {
             <h2 className="text-xs font-bold text-blue-900 uppercase">Status Ceklis Toko (Hari Ini)</h2>
             <span className="text-[10px] text-gray-500 font-medium">{loading ? '...' : `${summary.total} Toko`}</span>
           </div>
-          <div className="grid grid-cols-3 gap-4 mb-5">
+          <div className="grid grid-cols-3 gap-4 mb-5 sm:grid-cols-6">
             {[
-              { label: 'Ceklis Pagi', val: summary.ceklisOK, color: '#22c55e' },
-              { label: 'Laporan H-1', val: summary.laporanOK, color: '#f97316' },
-              { label: 'Setoran', val: summary.total - summary.pendingSetoran, color: '#6366f1' },
+              { label: 'Ceklis Pagi', val: stores.filter((store) => store.ceklisPagi).length, color: '#22c55e' },
+              { label: 'Ceklis Middle', val: stores.filter((store) => store.ceklisMiddle).length, color: '#7c3aed' },
+              { label: 'Ceklis Malam', val: stores.filter((store) => store.ceklisMalam).length, color: '#6366f1' },
+              { label: 'Prep Pagi', val: stores.filter((store) => store.prepPagi).length, color: '#10b981' },
+              { label: 'Prep Middle', val: stores.filter((store) => store.prepMiddle).length, color: '#0d9488' },
+              { label: 'Prep Malam', val: stores.filter((store) => store.prepMalam).length, color: '#0891b2' },
             ].map((item, i) => {
               const offset = loading || summary.total === 0 ? 150 : 150 - (item.val / summary.total) * 150
               return (
-                <div key={item.label} className={`text-center ${i === 1 ? 'border-x border-blue-100' : ''}`}>
+                <div key={item.label} className={`text-center ${(i === 1 || i === 3) ? 'sm:border-l sm:border-blue-100' : ''}`}>
                   <p className="text-[9px] font-bold text-gray-400 mb-2 uppercase">{item.label}</p>
                   <div className="relative inline-flex items-center justify-center">
                     <svg className="w-14 h-14" style={{ transform: 'rotate(-90deg)' }}>
@@ -833,8 +836,8 @@ export default function DMDashboard() {
                 { to: '/kpi/personal/input', icon: 'checklist', label: 'Input KPI', sub: 'Penilaian bulanan tim', bg: 'bg-sky-50 border-sky-100 text-sky-600' },
                 ...(kpiEnabled ? [{ to: '/kpi', icon: 'chart', label: 'KPI Report', sub: 'Performa wilayah', bg: 'bg-primary-50 border-primary-100 text-primary-600' }] : []),
                 ...(supplyChainEnabled ? [{ to: '/sc', icon: 'finance', label: 'Supply Chain', sub: 'Order & pengiriman', bg: 'bg-violet-50 border-violet-100 text-violet-600' }] : []),
-                ...(isOpsManager ? [{ to: '/finance', icon: 'finance', label: 'Finance Audit', sub: 'Rekap setoran', bg: 'bg-amber-50 border-amber-100 text-amber-600' }] : []),
-                ...(isOpsManager ? [{ to: '/opex', icon: 'opex', label: 'Opex Overview', sub: 'Pantau BOH', bg: 'bg-primary-50 border-primary-100 text-primary-600' }] : []),
+            ...(isOpsManager ? [{ to: '/ops/laporan', icon: 'finance', label: 'Laporan Harian', sub: 'Setoran, opex, dan laporan', bg: 'bg-amber-50 border-amber-100 text-amber-600' }] : []),
+            ...(isOpsManager ? [{ to: '/finance/audit', icon: 'approval', label: 'Audit Finance', sub: 'Review setoran finance', bg: 'bg-primary-50 border-primary-100 text-primary-600' }] : []),
               ].map((link) => (
                 <Link key={link.to} to={link.to} className={`flex items-center gap-3 rounded-[1.5rem] border px-4 py-3 hover:opacity-80 transition-opacity ${link.bg}`}>
                   <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center shadow-sm shrink-0">

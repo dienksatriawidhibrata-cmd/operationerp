@@ -1,46 +1,49 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
-import { fmtRp, todayWIB } from '../../lib/utils'
 import { CHECKLIST_ITEMS } from '../../lib/constants'
+import { todayWIB } from '../../lib/utils'
 import { DMBottomNav, OpsBottomNav } from '../../components/BottomNav'
 import { isOpsLikeRole } from '../../lib/access'
 import PhotoViewer from '../../components/PhotoViewer'
-import {
-  EmptyPanel,
-  SectionPanel,
-  SubpageShell,
-  ToneBadge,
-} from '../../components/ui/AppKit'
-
-// ── Date helpers ──────────────────────────────────────────
+import { EmptyPanel, SubpageShell, ToneBadge } from '../../components/ui/AppKit'
 
 function prevDate(d) {
-  const dt = new Date(d + 'T00:00:00Z')
+  const dt = new Date(`${d}T00:00:00Z`)
   dt.setUTCDate(dt.getUTCDate() - 1)
   return dt.toISOString().slice(0, 10)
 }
+
 function nextDate(d) {
-  const dt = new Date(d + 'T00:00:00Z')
+  const dt = new Date(`${d}T00:00:00Z`)
   dt.setUTCDate(dt.getUTCDate() + 1)
   return dt.toISOString().slice(0, 10)
 }
+
 function displayDate(d) {
   if (!d) return '-'
   const [y, m, day] = d.split('-')
   return `${day}/${m}/${y}`
 }
+
 function displayDateShort(d) {
   if (!d) return '-'
-  const dt = new Date(d + 'T00:00:00Z')
-  return dt.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
-}
-function displayTime(ts) {
-  if (!ts) return '-'
-  return new Date(ts).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })
+  return new Date(`${d}T00:00:00Z`).toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  })
 }
 
-// ── Accordion ─────────────────────────────────────────────
+function displayTime(ts) {
+  if (!ts) return '-'
+  return new Date(ts).toLocaleTimeString('id-ID', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Asia/Jakarta',
+  })
+}
 
 function AccordionRow({ label, icon, statusBadge, isOpen, onToggle, loading, children }) {
   return (
@@ -69,20 +72,20 @@ function AccordionRow({ label, icon, statusBadge, isOpen, onToggle, loading, chi
   )
 }
 
-// ── Checklist content ─────────────────────────────────────
-
 const PLATFORM_ITEMS_PAGI = [
   { key: 'toko_buka', label: 'Toko Buka' },
   { key: 'gofood_aktif', label: 'GoFood' },
   { key: 'grabfood_aktif', label: 'GrabFood' },
   { key: 'shopeefood_aktif', label: 'ShopeeFood' },
 ]
-const PLATFORM_ITEMS_MALAM = [
+
+const PLATFORM_ITEMS_NON_PAGI = [
   { key: 'toko_close', label: 'Toko Close' },
   { key: 'gofood_close', label: 'GoFood Close' },
   { key: 'grabfood_close', label: 'GrabFood Close' },
   { key: 'shopeefood_close', label: 'ShopeeFood Close' },
 ]
+
 const AREA_KEYS = CHECKLIST_ITEMS.filter((item) => item.key.endsWith('_bersih')).map((item) => ({
   key: item.key,
   label: item.label,
@@ -95,13 +98,11 @@ function CeklisContent({ checklist }) {
 
   const answers = checklist.answers || {}
   const photos = checklist.photos || {}
-  const platformItems = checklist.shift === 'pagi' ? PLATFORM_ITEMS_PAGI : PLATFORM_ITEMS_MALAM
-
+  const platformItems = checklist.shift === 'pagi' ? PLATFORM_ITEMS_PAGI : PLATFORM_ITEMS_NON_PAGI
   const groomingPhotos = photos.staff_grooming || []
   const allAreaPhotos = AREA_KEYS.flatMap(({ key }) => photos[key] || [])
-
-  // flat array for cross-category lightbox navigation
   const allPhotos = [...(checklist.shift === 'pagi' ? groomingPhotos : []), ...allAreaPhotos]
+
   const areaOffsets = {}
   let runningOffset = checklist.shift === 'pagi' ? groomingPhotos.length : 0
   AREA_KEYS.forEach(({ key }) => {
@@ -119,14 +120,10 @@ function CeklisContent({ checklist }) {
               answers[key] ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-600'
             }`}
           >
-            {answers[key] ? '✓' : '✗'} {label}
+            {answers[key] ? '✓' : '×'} {label}
           </span>
         ))}
-        {checklist.is_late && (
-          <span className="inline-flex items-center rounded-xl bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700">
-            Terlambat
-          </span>
-        )}
+        {checklist.is_late && <ToneBadge tone="warn">Terlambat</ToneBadge>}
       </div>
 
       {checklist.shift === 'pagi' && (
@@ -145,7 +142,7 @@ function CeklisContent({ checklist }) {
             return (
               <div key={key} className="flex items-start gap-3 rounded-[18px] bg-slate-50 px-3 py-2.5">
                 <span className={`mt-0.5 text-sm font-semibold ${ok ? 'text-emerald-600' : 'text-rose-500'}`}>
-                  {ok ? '✓' : '✗'}
+                  {ok ? '✓' : '×'}
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="text-xs font-medium text-slate-700">{label}</div>
@@ -179,151 +176,78 @@ function CeklisContent({ checklist }) {
         </div>
       )}
 
-      <div className="text-[11px] text-slate-400">
-        Submit: {displayTime(checklist.submitted_at)}
-      </div>
+      <div className="text-[11px] text-slate-400">Submit: {displayTime(checklist.submitted_at)}</div>
     </div>
   )
 }
 
-// ── Setoran content ───────────────────────────────────────
-
-function SetoranContent({ setoran }) {
-  if (!setoran) {
-    return <EmptyPanel title="Belum ada setoran" description="Setoran untuk tanggal ini belum disubmit." />
+function PreparationContent({ preparation }) {
+  if (!preparation) {
+    return <EmptyPanel title="Belum ada preparation" description="Preparation untuk shift ini belum disubmit." />
   }
 
-  const statusTone = setoran.status === 'approved' ? 'ok' : setoran.status === 'submitted' ? 'warn' : setoran.status === 'rejected' ? 'danger' : 'slate'
-  const statusLabel = { approved: 'Approved', submitted: 'Pending', rejected: 'Ditolak', draft: 'Draft' }[setoran.status] || setoran.status
+  const answers = preparation.answers || {}
+  const keys = Object.keys(answers)
+  const okCount = keys.filter((key) => !!answers[key]).length
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <ToneBadge tone={statusTone}>{statusLabel}</ToneBadge>
-        <span className="text-[11px] text-slate-400">{displayTime(setoran.submitted_at)}</span>
-      </div>
-
       <div className="grid grid-cols-3 gap-2">
-        {[
-          { label: 'Cash POS', value: fmtRp(setoran.cash_pos) },
-          { label: 'Disetorkan', value: fmtRp(setoran.cash_disetorkan) },
-          { label: 'Selisih', value: fmtRp(setoran.selisih), tone: Number(setoran.selisih) === 0 ? 'ok' : 'danger' },
-        ].map(({ label, value, tone }) => (
-          <div key={label} className="rounded-[18px] bg-slate-50 px-3 py-2.5 text-center">
-            <div className="text-[10px] text-slate-400">{label}</div>
-            <div className={`mt-1 text-xs font-bold ${tone === 'ok' ? 'text-emerald-700' : tone === 'danger' ? 'text-rose-600' : 'text-slate-900'}`}>{value}</div>
-          </div>
-        ))}
+        <div className="rounded-[18px] bg-slate-50 px-3 py-2.5 text-center">
+          <div className="text-[10px] text-slate-400">Item</div>
+          <div className="mt-1 text-sm font-bold text-slate-900">{keys.length}</div>
+        </div>
+        <div className="rounded-[18px] bg-slate-50 px-3 py-2.5 text-center">
+          <div className="text-[10px] text-slate-400">OK</div>
+          <div className="mt-1 text-sm font-bold text-emerald-700">{okCount}</div>
+        </div>
+        <div className="rounded-[18px] bg-slate-50 px-3 py-2.5 text-center">
+          <div className="text-[10px] text-slate-400">Submit</div>
+          <div className="mt-1 text-sm font-bold text-slate-900">{displayTime(preparation.updated_at || preparation.created_at)}</div>
+        </div>
       </div>
 
-      {setoran.alasan_selisih && (
+      {keys.length > 0 ? (
+        <div className="space-y-2">
+          {keys.map((key) => (
+            <div key={key} className="flex items-center gap-3 rounded-[18px] bg-slate-50 px-3 py-2.5">
+              <span className={`text-sm font-semibold ${answers[key] ? 'text-emerald-600' : 'text-rose-500'}`}>
+                {answers[key] ? '✓' : '×'}
+              </span>
+              <div className="min-w-0 flex-1 text-xs font-medium capitalize text-slate-700">
+                {key.replaceAll('_', ' ')}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <EmptyPanel title="Belum ada rincian item" description="Preparation tersimpan tanpa detail jawaban." />
+      )}
+
+      {preparation.photos?.length > 0 && (
         <div>
-          <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Alasan Selisih</div>
-          <p className="text-sm text-slate-600">{setoran.alasan_selisih}</p>
+          <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Foto Preparation</div>
+          <PhotoViewer urls={preparation.photos} emptyText="" />
         </div>
       )}
 
-      {setoran.foto_bukti?.length > 0 && (
-        <div>
-          <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Foto Bukti</div>
-          <PhotoViewer urls={setoran.foto_bukti} emptyText="" />
-        </div>
-      )}
-
-      {setoran.rejection_reason && (
-        <div className="rounded-[18px] bg-rose-50 px-3 py-2.5">
-          <div className="text-xs font-semibold text-rose-700">Alasan Tolak</div>
-          <p className="mt-1 text-sm text-rose-600">{setoran.rejection_reason}</p>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ── OPEX content ──────────────────────────────────────────
-
-function OpexContent({ expenses }) {
-  if (!expenses || expenses.length === 0) {
-    return <EmptyPanel title="Tidak ada OPEX" description="Belum ada pengeluaran operasional pada tanggal ini." />
-  }
-
-  const total = expenses.reduce((sum, e) => sum + Number(e.total || 0), 0)
-
-  return (
-    <div className="space-y-3">
-      <div className="text-right text-sm font-semibold text-slate-700">
-        Total: {fmtRp(total)}
-      </div>
-      {expenses.map((exp) => (
-        <div key={exp.id} className="rounded-[18px] bg-slate-50 px-3 py-3">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <div className="text-xs font-semibold text-slate-500">{exp.category}</div>
-              <div className="mt-0.5 text-sm font-medium text-slate-900">{exp.item_name}</div>
-              {exp.detail && <div className="mt-0.5 text-xs text-slate-400">{exp.detail}</div>}
-            </div>
-            <div className="shrink-0 text-right">
-              <div className="text-xs text-slate-400">{exp.qty} × {fmtRp(exp.harga_satuan)}</div>
-              <div className="mt-0.5 text-sm font-semibold text-slate-900">{fmtRp(exp.total)}</div>
-            </div>
-          </div>
-          {exp.foto_bukti?.length > 0 && (
-            <div className="mt-2">
-              <PhotoViewer urls={exp.foto_bukti} emptyText="" />
-            </div>
-          )}
-        </div>
-      ))}
-    </div>
-  )
-}
-
-// ── Laporan content ───────────────────────────────────────
-
-function LaporanContent({ laporan }) {
-  if (!laporan) {
-    return <EmptyPanel title="Belum ada laporan" description="Laporan harian untuk tanggal ini belum disubmit." />
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {[
-          { label: 'Net Sales', value: fmtRp(laporan.net_sales) },
-          { label: 'Avg Spend', value: fmtRp(laporan.avg_spend) },
-          { label: 'Kunjungan', value: laporan.jumlah_kunjungan },
-          { label: 'Staff', value: laporan.jumlah_staff },
-        ].map(({ label, value }) => (
-          <div key={label} className="rounded-[18px] bg-slate-50 px-3 py-2.5 text-center">
-            <div className="text-[10px] text-slate-400">{label}</div>
-            <div className="mt-1 text-sm font-bold text-slate-900">{value}</div>
-          </div>
-        ))}
-      </div>
-
-      {laporan.notes && (
+      {preparation.notes && (
         <div>
           <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Catatan</div>
-          <p className="text-sm leading-6 text-slate-600">{laporan.notes}</p>
+          <p className="text-sm leading-6 text-slate-600">{preparation.notes}</p>
         </div>
       )}
-
-      <div className="flex items-center gap-2 text-[11px] text-slate-400">
-        <span>Submit: {displayTime(laporan.submitted_at)}</span>
-        {laporan.is_late && <ToneBadge tone="warn">Terlambat</ToneBadge>}
-      </div>
     </div>
   )
 }
-
-// ── Main page ─────────────────────────────────────────────
 
 const SECTIONS = [
   { key: 'ceklis_pagi', label: 'Ceklis Pagi', icon: '☀️' },
+  { key: 'ceklis_middle', label: 'Ceklis Middle', icon: '⛅' },
   { key: 'ceklis_malam', label: 'Ceklis Malam', icon: '🌙' },
-  { key: 'setoran', label: 'Setoran', icon: '💰' },
-  { key: 'opex', label: 'OPEX', icon: '🧾' },
-  { key: 'laporan', label: 'Laporan Harian', icon: '📋' },
+  { key: 'prep_pagi', label: 'Preparation Pagi', icon: '🥣' },
+  { key: 'prep_middle', label: 'Preparation Middle', icon: '🥤' },
+  { key: 'prep_malam', label: 'Preparation Malam', icon: '🌃' },
 ]
 
 export default function StoreStatus() {
@@ -333,71 +257,80 @@ export default function StoreStatus() {
   const [selectedId, setSelectedId] = useState(null)
   const [selectedDate, setSelectedDate] = useState(todayWIB())
   const [openSection, setOpenSection] = useState(null)
-  const [dateStatus, setDateStatus] = useState({})   // branchId → { pagi: bool, malam: bool }
-  const [sectionData, setSectionData] = useState({}) // `${branchId}|${date}|${section}` → data
+  const [dateStatus, setDateStatus] = useState({})
+  const [sectionData, setSectionData] = useState({})
   const [loadingSections, setLoadingSections] = useState(new Set())
-  const [showList, setShowList] = useState(false)    // mobile store list toggle
+  const [showList, setShowList] = useState(false)
 
   const today = todayWIB()
   const isOpsManager = isOpsLikeRole(profile?.role)
 
-  // ── Fetch branches ────────────────────────────────────────
-
   useEffect(() => {
     if (!profile?.role) return
+
     const fetchBranches = async () => {
       setLoadingBranches(true)
-      let q = supabase.from('branches').select('id,name,store_id,district,area').eq('is_active', true)
-      if (profile.role === 'district_manager') q = q.in('district', profile.managed_districts || [])
-      else if (profile.role === 'area_manager') q = q.in('area', profile.managed_areas || [])
-      const { data } = await q.order('name')
+      let query = supabase.from('branches').select('id,name,store_id,district,area').eq('is_active', true)
+      if (profile.role === 'district_manager') query = query.in('district', profile.managed_districts || [])
+      else if (profile.role === 'area_manager') query = query.in('area', profile.managed_areas || [])
+      const { data } = await query.order('name')
       setBranches(data || [])
-      if (data?.length) setSelectedId(data[0].id)
+      if (data?.length) setSelectedId((current) => current || data[0].id)
       setLoadingBranches(false)
     }
-    fetchBranches()
-  }, [profile?.id, profile?.role])
 
-  // ── Fetch ceklis status for selected date ─────────────────
+    fetchBranches()
+  }, [profile?.id, profile?.managed_areas, profile?.managed_districts, profile?.role])
 
   useEffect(() => {
     if (!branches.length) return
+
     const fetchStatus = async () => {
-      const ids = branches.map((b) => b.id)
-      const { data } = await supabase
-        .from('daily_checklists')
-        .select('branch_id,shift')
-        .in('branch_id', ids)
-        .eq('tanggal', selectedDate)
+      const ids = branches.map((branch) => branch.id)
+      const [checklistsRes, preparationRes] = await Promise.all([
+        supabase.from('daily_checklists').select('branch_id,shift').in('branch_id', ids).eq('tanggal', selectedDate),
+        supabase.from('daily_preparation').select('branch_id,shift').in('branch_id', ids).eq('tanggal', selectedDate),
+      ])
+
       const map = {}
-      ;(data || []).forEach(({ branch_id, shift }) => {
+      ;(checklistsRes.data || []).forEach(({ branch_id, shift }) => {
         if (!map[branch_id]) map[branch_id] = {}
         map[branch_id][shift] = true
       })
+      ;(preparationRes.data || []).forEach(({ branch_id, shift }) => {
+        if (!map[branch_id]) map[branch_id] = {}
+        if (shift === 'pagi') map[branch_id].prepPagi = true
+        if (shift === 'middle') map[branch_id].prepMiddle = true
+        if (shift === 'malam') map[branch_id].prepMalam = true
+      })
+
       setDateStatus(map)
     }
-    fetchStatus()
-  }, [selectedDate, branches])
 
-  // ── Reset section cache when branch or date changes ───────
+    fetchStatus()
+  }, [branches, selectedDate])
 
   useEffect(() => {
     setOpenSection(null)
-  }, [selectedId, selectedDate])
-
-  // ── Lazy-load section data ────────────────────────────────
+  }, [selectedDate, selectedId])
 
   const loadSection = useCallback(async (section) => {
     if (!selectedId) return
-    const key = `${selectedId}|${selectedDate}|${section}`
-    if (sectionData[key] !== undefined || loadingSections.has(key)) return
 
-    setLoadingSections((prev) => new Set([...prev, key]))
+    const cacheKey = `${selectedId}|${selectedDate}|${section}`
+    if (sectionData[cacheKey] !== undefined || loadingSections.has(cacheKey)) return
+
+    setLoadingSections((current) => new Set([...current, cacheKey]))
 
     let result = null
+
     try {
-      if (section === 'ceklis_pagi' || section === 'ceklis_malam') {
-        const shift = section === 'ceklis_pagi' ? 'pagi' : 'malam'
+      if (section.startsWith('ceklis_')) {
+        const shift =
+          section === 'ceklis_pagi' ? 'pagi' :
+          section === 'ceklis_middle' ? 'middle' :
+          'malam'
+
         const { data } = await supabase
           .from('daily_checklists')
           .select('*')
@@ -405,86 +338,66 @@ export default function StoreStatus() {
           .eq('tanggal', selectedDate)
           .eq('shift', shift)
           .maybeSingle()
+
         result = data
-      } else if (section === 'setoran') {
+      } else {
+        const shift =
+          section === 'prep_pagi' ? 'pagi' :
+          section === 'prep_middle' ? 'middle' :
+          'malam'
+
         const { data } = await supabase
-          .from('daily_deposits')
+          .from('daily_preparation')
           .select('*')
           .eq('branch_id', selectedId)
           .eq('tanggal', selectedDate)
+          .eq('shift', shift)
           .maybeSingle()
-        result = data
-      } else if (section === 'opex') {
-        const { data } = await supabase
-          .from('operational_expenses')
-          .select('*')
-          .eq('branch_id', selectedId)
-          .eq('tanggal', selectedDate)
-          .order('created_at')
-        result = data || []
-      } else if (section === 'laporan') {
-        const { data } = await supabase
-          .from('daily_reports')
-          .select('*')
-          .eq('branch_id', selectedId)
-          .eq('tanggal', selectedDate)
-          .maybeSingle()
+
         result = data
       }
-    } catch {}
+    } catch {
+      result = null
+    }
 
-    setSectionData((prev) => ({ ...prev, [key]: result }))
-    setLoadingSections((prev) => {
-      const next = new Set(prev)
-      next.delete(key)
+    setSectionData((current) => ({ ...current, [cacheKey]: result }))
+    setLoadingSections((current) => {
+      const next = new Set(current)
+      next.delete(cacheKey)
       return next
     })
-  }, [selectedId, selectedDate, sectionData, loadingSections])
+  }, [loadingSections, sectionData, selectedDate, selectedId])
 
   const toggleSection = (section) => {
     if (openSection === section) {
       setOpenSection(null)
-    } else {
-      setOpenSection(section)
-      loadSection(section)
+      return
     }
+
+    setOpenSection(section)
+    loadSection(section)
   }
 
-  // ── Helpers ───────────────────────────────────────────────
-
-  const selectedBranch = branches.find((b) => b.id === selectedId)
-  const shortName = (b) => b?.name?.replace('Bagi Kopi ', '') || '-'
-
-  const getSectionData = (section) => {
-    const key = `${selectedId}|${selectedDate}|${section}`
-    return sectionData[key]
-  }
-  const isSectionLoading = (section) => {
-    const key = `${selectedId}|${selectedDate}|${section}`
-    return loadingSections.has(key)
-  }
+  const selectedBranch = branches.find((branch) => branch.id === selectedId)
+  const shortName = (branch) => branch?.name?.replace('Bagi Kopi ', '') || '-'
+  const getSectionData = (section) => sectionData[`${selectedId}|${selectedDate}|${section}`]
+  const isSectionLoading = (section) => loadingSections.has(`${selectedId}|${selectedDate}|${section}`)
 
   const getSectionBadge = (section) => {
-    const s = dateStatus[selectedId]
-    if (section === 'ceklis_pagi') {
-      return s?.pagi
-        ? <ToneBadge tone="ok">Masuk</ToneBadge>
-        : <ToneBadge tone="danger">Belum</ToneBadge>
-    }
-    if (section === 'ceklis_malam') {
-      return s?.malam
-        ? <ToneBadge tone="ok">Masuk</ToneBadge>
-        : <ToneBadge tone="slate">Belum</ToneBadge>
-    }
+    const status = dateStatus[selectedId]
+    if (section === 'ceklis_pagi') return status?.pagi ? <ToneBadge tone="ok">Masuk</ToneBadge> : <ToneBadge tone="danger">Belum</ToneBadge>
+    if (section === 'ceklis_middle') return status?.middle ? <ToneBadge tone="ok">Masuk</ToneBadge> : <ToneBadge tone="warn">Belum</ToneBadge>
+    if (section === 'ceklis_malam') return status?.malam ? <ToneBadge tone="ok">Masuk</ToneBadge> : <ToneBadge tone="slate">Belum</ToneBadge>
+    if (section === 'prep_pagi') return status?.prepPagi ? <ToneBadge tone="ok">Masuk</ToneBadge> : <ToneBadge tone="danger">Belum</ToneBadge>
+    if (section === 'prep_middle') return status?.prepMiddle ? <ToneBadge tone="ok">Masuk</ToneBadge> : <ToneBadge tone="warn">Belum</ToneBadge>
+    if (section === 'prep_malam') return status?.prepMalam ? <ToneBadge tone="ok">Masuk</ToneBadge> : <ToneBadge tone="slate">Belum</ToneBadge>
     return null
   }
 
   const footer = isOpsManager ? <OpsBottomNav /> : <DMBottomNav />
 
-  // ── Store list component ──────────────────────────────────
-
   const StoreList = ({ onSelect }) => (
-    <div className="space-y-1 overflow-y-auto flex-1 min-h-0">
+    <div className="flex flex-1 flex-col space-y-1 overflow-y-auto min-h-0">
       {loadingBranches ? (
         <div className="flex justify-center py-8">
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary-600 border-t-transparent" />
@@ -494,31 +407,27 @@ export default function StoreStatus() {
       ) : (
         branches.map((branch) => {
           const status = dateStatus[branch.id]
-          const hasPagi = !!status?.pagi
+          const hasAny = !!(status?.pagi || status?.middle || status?.malam || status?.prepPagi || status?.prepMiddle || status?.prepMalam)
           const isSelected = branch.id === selectedId
+
           return (
             <button
               key={branch.id}
               type="button"
-              onClick={() => { setSelectedId(branch.id); onSelect?.() }}
+              onClick={() => {
+                setSelectedId(branch.id)
+                onSelect?.()
+              }}
               className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors ${
                 isSelected ? 'bg-primary-600 text-white' : 'hover:bg-slate-100'
               }`}
             >
-              <span className={`h-2 w-2 shrink-0 rounded-full ${hasPagi ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+              <span className={`h-2 w-2 shrink-0 rounded-full ${hasAny ? 'bg-emerald-400' : 'bg-rose-400'}`} />
               <span className="min-w-0 flex-1">
-                <span className={`block text-xs ${isSelected ? 'text-primary-200' : 'text-slate-400'}`}>
-                  {branch.store_id}
-                </span>
-                <span className={`block truncate text-sm font-semibold ${isSelected ? 'text-white' : 'text-slate-900'}`}>
-                  {shortName(branch)}
-                </span>
+                <span className={`block text-xs ${isSelected ? 'text-primary-200' : 'text-slate-400'}`}>{branch.store_id}</span>
+                <span className={`block truncate text-sm font-semibold ${isSelected ? 'text-white' : 'text-slate-900'}`}>{shortName(branch)}</span>
               </span>
-              {isOpsManager && (
-                <span className={`text-[10px] ${isSelected ? 'text-primary-200' : 'text-slate-400'}`}>
-                  {branch.district}
-                </span>
-              )}
+              {isOpsManager && <span className={`text-[10px] ${isSelected ? 'text-primary-200' : 'text-slate-400'}`}>{branch.district}</span>}
             </button>
           )
         })
@@ -526,20 +435,17 @@ export default function StoreStatus() {
     </div>
   )
 
-  // ── Render ────────────────────────────────────────────────
-
   return (
     <SubpageShell
       title="Status Toko"
       subtitle={selectedBranch ? `${shortName(selectedBranch)} / ${displayDateShort(selectedDate)}` : 'Pilih toko'}
-      eyebrow="Monitoring"
+      eyebrow="Monitoring Operasional"
       footer={footer}
     >
-      {/* Mobile: store picker bar */}
       <div className="mb-4 flex items-center gap-2 lg:hidden">
         <button
           type="button"
-          onClick={() => setShowList((v) => !v)}
+          onClick={() => setShowList((current) => !current)}
           className="flex flex-1 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-left shadow-sm"
         >
           {selectedBranch && (
@@ -551,7 +457,6 @@ export default function StoreStatus() {
           <span className="text-slate-400">▾</span>
         </button>
 
-        {/* Date nav */}
         <button
           type="button"
           onClick={() => setSelectedDate(prevDate(selectedDate))}
@@ -570,32 +475,26 @@ export default function StoreStatus() {
         </button>
       </div>
 
-      {/* Mobile: store list overlay */}
       {showList && (
         <div className="mb-4 overflow-hidden rounded-[22px] border border-slate-200 bg-white p-3 shadow-lg lg:hidden">
           <StoreList onSelect={() => setShowList(false)} />
         </div>
       )}
 
-      {/* Desktop + mobile content layout */}
-      <div className="lg:grid lg:grid-cols-[260px_1fr] lg:gap-4 lg:h-[calc(100vh-7rem)]">
-
-        {/* Desktop: left sidebar store list */}
+      <div className="lg:grid lg:h-[calc(100vh-7rem)] lg:grid-cols-[260px_1fr] lg:gap-4">
         <aside className="hidden lg:flex lg:flex-col lg:overflow-hidden">
-          <div className="overflow-hidden rounded-[22px] border border-slate-200 bg-white p-3 shadow-sm flex flex-col min-h-0 flex-1">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[22px] border border-slate-200 bg-white p-3 shadow-sm">
             <div className="mb-3 flex items-center gap-2 px-1">
               <span className="flex h-2 w-2 rounded-full bg-emerald-400" />
-              <span className="text-[11px] text-slate-400">Ceklis pagi masuk</span>
+              <span className="text-[11px] text-slate-400">Ada input operasional</span>
               <span className="ml-2 flex h-2 w-2 rounded-full bg-rose-400" />
-              <span className="text-[11px] text-slate-400">Belum</span>
+              <span className="text-[11px] text-slate-400">Belum ada input</span>
             </div>
             <StoreList />
           </div>
         </aside>
 
-        {/* Right: detail panel */}
         <main className="lg:overflow-y-auto lg:pb-24">
-          {/* Desktop date nav */}
           <div className="mb-4 hidden items-center gap-3 lg:flex">
             <button
               type="button"
@@ -604,9 +503,7 @@ export default function StoreStatus() {
             >
               ‹
             </button>
-            <span className="flex-1 text-center text-sm font-semibold text-slate-700">
-              {displayDateShort(selectedDate)}
-            </span>
+            <span className="flex-1 text-center text-sm font-semibold text-slate-700">{displayDateShort(selectedDate)}</span>
             <button
               type="button"
               onClick={() => setSelectedDate(nextDate(selectedDate))}
@@ -618,7 +515,7 @@ export default function StoreStatus() {
           </div>
 
           {!selectedBranch ? (
-            <EmptyPanel title="Pilih toko" description="Pilih toko dari daftar di atas untuk melihat status harian." />
+            <EmptyPanel title="Pilih toko" description="Pilih toko dari daftar di samping untuk melihat status operasional harian." />
           ) : (
             <div className="space-y-3">
               {SECTIONS.map(({ key, label, icon }) => (
@@ -631,11 +528,11 @@ export default function StoreStatus() {
                   onToggle={() => toggleSection(key)}
                   loading={isSectionLoading(key)}
                 >
-                  {key === 'ceklis_pagi' && <CeklisContent checklist={getSectionData(key)} />}
-                  {key === 'ceklis_malam' && <CeklisContent checklist={getSectionData(key)} />}
-                  {key === 'setoran' && <SetoranContent setoran={getSectionData(key)} />}
-                  {key === 'opex' && <OpexContent expenses={getSectionData(key)} />}
-                  {key === 'laporan' && <LaporanContent laporan={getSectionData(key)} />}
+                  {key.startsWith('ceklis_') ? (
+                    <CeklisContent checklist={getSectionData(key)} />
+                  ) : (
+                    <PreparationContent preparation={getSectionData(key)} />
+                  )}
                 </AccordionRow>
               ))}
             </div>

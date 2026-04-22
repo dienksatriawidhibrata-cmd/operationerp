@@ -79,7 +79,7 @@ export default function OpsHub() {
   const reportLinks = [
     { to: '/dm', icon: 'home', label: 'DM Dashboard', sub: 'Ringkasan semua toko', bg: 'bg-blue-50 border-blue-100', color: 'text-blue-600' },
     { to: '/kpi/personal/input', icon: 'checklist', label: 'Input KPI Personal', sub: 'Penilaian manager & store lead', bg: 'bg-sky-50 border-sky-100', color: 'text-sky-600' },
-    { to: '/finance', icon: 'finance', label: 'Audit Finance', sub: 'Rekap setoran & audit', bg: 'bg-slate-100', color: 'text-slate-600' },
+    { to: '/ops/laporan', icon: 'finance', label: 'Laporan Harian', sub: 'Setoran, opex, dan laporan harian', bg: 'bg-slate-100', color: 'text-slate-600' },
     { to: '/trainer', icon: 'users', label: 'Trainer Hub', sub: 'Penilaian staff', bg: 'bg-emerald-50 border-emerald-100', color: 'text-emerald-600' },
     { to: '/trainer/oje', icon: 'checklist', label: 'OJE', sub: 'On Job Evaluation', bg: 'bg-teal-50 border-teal-100', color: 'text-teal-600' },
     { to: '/ops/visit-monitor', icon: 'map', label: 'Audit Log Visit', sub: 'Skor & foto kunjungan', bg: 'bg-violet-50 border-violet-100', color: 'text-violet-600' },
