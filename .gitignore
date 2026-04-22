@@ -1,4 +1,8 @@
 node_modules/ 
 .env 
+backend/.env
 dist/
 staff_import.csv
+.venv/
+__pycache__/
+*.pyc

@@ -2,6 +2,8 @@
 
 ERP operasional berbasis React, Vite, dan Supabase.
 
+Sekarang repo ini juga punya starter backend Python di folder `backend/` untuk kebutuhan API server-side memakai FastAPI + `supabase-py`.
+
 ## Stack
 
 | Layer | Teknologi |
@@ -36,6 +38,19 @@ Catatan keamanan:
 2. Deploy `google-apps-script/upload.gs` sebagai web app dan isi `VITE_APPS_SCRIPT_URL`.
 3. Isi seluruh env di `.env`.
 4. Jalankan `npm install` lalu `npm run dev`.
+
+## Python Backend Starter
+
+Jika butuh backend terpisah untuk logic server-side:
+
+1. Masuk ke folder `backend/`
+2. Buat virtual environment Python
+3. Install dependency dari `backend/requirements.txt`
+4. Salin `backend/.env.example` menjadi `backend/.env`
+5. Isi `SUPABASE_URL` dan `SUPABASE_KEY`
+6. Jalankan `uvicorn app.main:app --reload`
+
+Dokumentasi ringkasnya ada di `backend/README.md`.
 
 ## Auth
 
