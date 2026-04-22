@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
-import { fmtRp, todayWIB, yesterdayWIB, visitGrade } from '../../lib/utils'
+import { fmtRp, roleLabel, todayWIB, yesterdayWIB, visitGrade } from '../../lib/utils'
 import { canViewKPI, canViewSupplyChain, isOpsLikeRole } from '../../lib/access'
 import {
   getBrowserNotificationPermission,
@@ -196,6 +196,7 @@ export default function DMDashboard() {
   const [visitSummary, setVisitSummary] = useState(EMPTY_VISIT_SUMMARY)
   const [managerCoverage, setManagerCoverage] = useState([])
   const [managerDailyStatus, setManagerDailyStatus] = useState([])
+  const [dashboardIssue, setDashboardIssue] = useState('')
   const [expandedManagerId, setExpandedManagerId] = useState(null)
   const [notifPermission, setNotifPermission] = useState(getBrowserNotificationPermission())
   const [tokoOpen, setTokoOpen] = useState(false)
@@ -289,181 +290,200 @@ export default function DMDashboard() {
   }
 
   const fetchDashboard = async () => {
-    const shouldBlockScreen = stores.length === 0
-    if (shouldBlockScreen) {
-      setLoading(true)
-    }
-    const monthWindowStart = getMonthStart(addMonths(today, -5))
+    try {
+      const shouldBlockScreen = stores.length === 0
+      if (shouldBlockScreen) {
+        setLoading(true)
+      }
+      setDashboardIssue('')
+      const monthWindowStart = getMonthStart(addMonths(today, -5))
 
-    let branchQuery = supabase.from('branches').select('*').eq('is_active', true)
-    if (profile.role === 'district_manager') {
-      branchQuery = branchQuery.in('district', profile.managed_districts || [])
-    } else if (profile.role === 'area_manager') {
-      branchQuery = branchQuery.in('area', profile.managed_areas || [])
-    }
+      let branchQuery = supabase.from('branches').select('*').eq('is_active', true)
+      if (profile.role === 'district_manager') {
+        branchQuery = branchQuery.in('district', profile.managed_districts || [])
+      } else if (profile.role === 'area_manager') {
+        branchQuery = branchQuery.in('area', profile.managed_areas || [])
+      }
 
-    const { data: branches, error: branchError } = await branchQuery.order('name')
-    if (branchError || !branches || branches.length === 0) {
+      const { data: branches, error: branchError } = await branchQuery.order('name')
+      if (branchError || !branches || branches.length === 0) {
+        setDashboardIssue(
+          branchError
+            ? `Gagal memuat daftar toko: ${branchError.message || 'akses branch ditolak.'}`
+            : 'Daftar toko kosong untuk akun ini.'
+        )
+        if (isOpsManager) {
+          const todayVisitDate = todayWIB()
+          const [managerRes, managerTodayVisitRes] = await Promise.all([
+            supabase
+              .from('profiles')
+              .select('id,full_name,role,managed_districts,managed_areas')
+              .in('role', ['district_manager', 'area_manager'])
+              .eq('is_active', true)
+              .order('full_name'),
+            supabase
+              .from('daily_visits')
+              .select('id,branch_id,tanggal,total_score,max_score,auditor_id')
+              .eq('tanggal', todayVisitDate)
+              .order('created_at', { ascending: false }),
+          ])
+
+          if (!managerRes.error) {
+            setManagerDailyStatus(buildManagerDailyStatus(managerRes.data || [], [], managerTodayVisitRes?.data || []))
+          } else {
+            setManagerDailyStatus([])
+          }
+        } else {
+          setManagerDailyStatus([])
+        }
+
+        accessibleBranchIdsRef.current = new Set()
+        setStores([])
+        setVisits([])
+        setAlerts([])
+        setActivities([])
+        setOpexRows([])
+        setSummary(EMPTY_SUMMARY)
+        setVisitSummary(EMPTY_VISIT_SUMMARY)
+        setOpexSummary(EMPTY_OPEX_SUMMARY)
+        setManagerCoverage([])
+        setLoading(false)
+        return
+      }
+
+      const branchIds = branches.map((branch) => branch.id)
+      const branchMap = Object.fromEntries(branches.map((branch) => [branch.id, branch]))
+      accessibleBranchIdsRef.current = new Set(branchIds)
+      const range = getVisitRange(visitPeriod, today)
+
+      const requests = [
+        supabase
+          .from('daily_checklists')
+          .select('id,branch_id,shift,is_late,submitted_at,photos,answers,notes,item_oos')
+          .in('branch_id', branchIds)
+          .eq('tanggal', today),
+        supabase
+          .from('daily_preparation')
+          .select('id,branch_id,shift')
+          .in('branch_id', branchIds)
+          .eq('tanggal', today),
+        supabase
+          .from('daily_reports')
+          .select('id,branch_id,tanggal,net_sales,submitted_at')
+          .in('branch_id', branchIds)
+          .gte('tanggal', monthWindowStart)
+          .lte('tanggal', today),
+        supabase
+          .from('daily_deposits')
+          .select('id,branch_id,status,selisih,submitted_at,approved_at,rejection_reason')
+          .in('branch_id', branchIds)
+          .eq('tanggal', yesterday),
+        supabase
+          .from('operational_expenses')
+          .select('id,branch_id,tanggal,category,total,item_name,created_at')
+          .in('branch_id', branchIds)
+          .gte('tanggal', monthWindowStart)
+          .lte('tanggal', today)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('daily_visits')
+          .select('id,branch_id,tanggal,total_score,max_score,auditor_id,branch:branches(name,store_id),auditor:profiles(full_name,role)')
+          .in('branch_id', branchIds)
+          .gte('tanggal', range.start)
+          .lte('tanggal', range.end)
+          .order('tanggal', { ascending: false }),
+        supabase
+          .from('daily_visits')
+          .select('branch_id,tanggal,total_score,max_score')
+          .eq('auditor_id', profile.id)
+          .in('branch_id', branchIds)
+          .order('tanggal', { ascending: false }),
+      ]
+
       if (isOpsManager) {
-        const todayVisitDate = todayWIB()
-        const [managerRes, managerTodayVisitRes] = await Promise.all([
+        requests.push(
           supabase
             .from('profiles')
             .select('id,full_name,role,managed_districts,managed_areas')
             .in('role', ['district_manager', 'area_manager'])
             .eq('is_active', true)
-            .order('full_name'),
+            .order('full_name')
+        )
+        requests.push(
           supabase
             .from('daily_visits')
             .select('id,branch_id,tanggal,total_score,max_score,auditor_id')
-            .eq('tanggal', todayVisitDate)
-            .order('created_at', { ascending: false }),
-        ])
-
-        if (!managerRes.error) {
-          setManagerDailyStatus(buildManagerDailyStatus(managerRes.data || [], [], managerTodayVisitRes?.data || []))
-        } else {
-          setManagerDailyStatus([])
-        }
-      } else {
-        setManagerDailyStatus([])
+            .in('branch_id', branchIds)
+            .eq('tanggal', today)
+            .order('created_at', { ascending: false })
+        )
       }
 
-      accessibleBranchIdsRef.current = new Set()
-      setStores([])
-      setVisits([])
-      setAlerts([])
-      setActivities([])
-      setOpexRows([])
-      setSummary(EMPTY_SUMMARY)
-      setVisitSummary(EMPTY_VISIT_SUMMARY)
-      setOpexSummary(EMPTY_OPEX_SUMMARY)
-      setManagerCoverage([])
-      setLoading(false)
-      return
-    }
+      const [
+        ceklisRes,
+        prepRes,
+        laporanRes,
+        setoranRes,
+        opexRes,
+        visitRes,
+        myVisitRes,
+        managerRes,
+        managerTodayVisitRes,
+      ] = await Promise.all(requests)
 
-    const branchIds = branches.map((branch) => branch.id)
-    const branchMap = Object.fromEntries(branches.map((branch) => [branch.id, branch]))
-    accessibleBranchIdsRef.current = new Set(branchIds)
-    const range = getVisitRange(visitPeriod, today)
+      if (
+        ceklisRes.error ||
+        prepRes.error ||
+        laporanRes.error ||
+        setoranRes.error ||
+        opexRes.error ||
+        visitRes.error ||
+        myVisitRes.error ||
+        managerRes?.error ||
+        managerTodayVisitRes?.error
+      ) {
+        const firstError = [
+          ceklisRes.error,
+          prepRes.error,
+          laporanRes.error,
+          setoranRes.error,
+          opexRes.error,
+          visitRes.error,
+          myVisitRes.error,
+          managerRes?.error,
+          managerTodayVisitRes?.error,
+        ].find(Boolean)
+        setDashboardIssue(`Sebagian data dashboard gagal dimuat: ${firstError?.message || 'terjadi error query.'}`)
+        setStores([])
+        setVisits([])
+        setAlerts([])
+        setActivities([])
+        setOpexRows([])
+        setSummary({ ...EMPTY_SUMMARY, total: branches.length })
+        setVisitSummary({
+          label: range.label,
+          totalVisits: 0,
+          visitedCount: 0,
+          unvisitedCount: branches.length,
+          coveragePct: 0,
+        })
+        setOpexSummary(EMPTY_OPEX_SUMMARY)
+        setManagerCoverage([])
+        setManagerDailyStatus([])
+        setLoading(false)
+        return
+      }
 
-    const requests = [
-      supabase
-        .from('daily_checklists')
-        .select('id,branch_id,shift,is_late,submitted_at,photos,answers,notes,item_oos')
-        .in('branch_id', branchIds)
-        .eq('tanggal', today),
-      supabase
-        .from('daily_preparation')
-        .select('id,branch_id,shift')
-        .in('branch_id', branchIds)
-        .eq('tanggal', today),
-      supabase
-        .from('daily_reports')
-        .select('id,branch_id,tanggal,net_sales,submitted_at')
-        .in('branch_id', branchIds)
-        .gte('tanggal', monthWindowStart)
-        .lte('tanggal', today),
-      supabase
-        .from('daily_deposits')
-        .select('id,branch_id,status,selisih,submitted_at,approved_at,rejection_reason')
-        .in('branch_id', branchIds)
-        .eq('tanggal', yesterday),
-      supabase
-        .from('operational_expenses')
-        .select('id,branch_id,tanggal,category,total,item_name,created_at')
-        .in('branch_id', branchIds)
-        .gte('tanggal', monthWindowStart)
-        .lte('tanggal', today)
-        .order('created_at', { ascending: false }),
-      supabase
-        .from('daily_visits')
-        .select('id,branch_id,tanggal,total_score,max_score,auditor_id,branch:branches(name,store_id),auditor:profiles(full_name,role)')
-        .in('branch_id', branchIds)
-        .gte('tanggal', range.start)
-        .lte('tanggal', range.end)
-        .order('tanggal', { ascending: false }),
-      supabase
-        .from('daily_visits')
-        .select('branch_id,tanggal,total_score,max_score')
-        .eq('auditor_id', profile.id)
-        .in('branch_id', branchIds)
-        .order('tanggal', { ascending: false }),
-    ]
+      const checklistsByBranch = {}
+      const reportsByBranchDay = {}
+      const reportsByBranchMonth = {}
+      const depositsByBranch = {}
+      const latestVisitByBranch = {}
+      const myLatestVisitByBranch = {}
+      const expensesByBranchDate = {}
 
-    if (isOpsManager) {
-      requests.push(
-        supabase
-          .from('profiles')
-          .select('id,full_name,role,managed_districts,managed_areas')
-          .in('role', ['district_manager', 'area_manager'])
-          .eq('is_active', true)
-          .order('full_name')
-      )
-      requests.push(
-        supabase
-          .from('daily_visits')
-          .select('id,branch_id,tanggal,total_score,max_score,auditor_id')
-          .in('branch_id', branchIds)
-          .eq('tanggal', today)
-          .order('created_at', { ascending: false })
-      )
-    }
-
-    const [
-      ceklisRes,
-      prepRes,
-      laporanRes,
-      setoranRes,
-      opexRes,
-      visitRes,
-      myVisitRes,
-      managerRes,
-      managerTodayVisitRes,
-    ] = await Promise.all(requests)
-
-    if (
-      ceklisRes.error ||
-      prepRes.error ||
-      laporanRes.error ||
-      setoranRes.error ||
-      opexRes.error ||
-      visitRes.error ||
-      myVisitRes.error ||
-      managerRes?.error ||
-      managerTodayVisitRes?.error
-    ) {
-      setStores([])
-      setVisits([])
-      setAlerts([])
-      setActivities([])
-      setOpexRows([])
-      setSummary({ ...EMPTY_SUMMARY, total: branches.length })
-      setVisitSummary({
-        label: range.label,
-        totalVisits: 0,
-        visitedCount: 0,
-        unvisitedCount: branches.length,
-        coveragePct: 0,
-      })
-      setOpexSummary(EMPTY_OPEX_SUMMARY)
-      setManagerCoverage([])
-      setManagerDailyStatus([])
-      setLoading(false)
-      return
-    }
-
-    const checklistsByBranch = {}
-    const reportsByBranchDay = {}
-    const reportsByBranchMonth = {}
-    const depositsByBranch = {}
-    const latestVisitByBranch = {}
-    const myLatestVisitByBranch = {}
-    const expensesByBranchDate = {}
-
-    const prepByBranch = {}
-    ;(ceklisRes.data || []).forEach((item) => {
+      const prepByBranch = {}
+      ;(ceklisRes.data || []).forEach((item) => {
       if (!checklistsByBranch[item.branch_id]) checklistsByBranch[item.branch_id] = {}
       checklistsByBranch[item.branch_id][item.shift] = item
     })
@@ -504,7 +524,7 @@ export default function DMDashboard() {
       expensesByBranchDate[key].push(expense)
     })
 
-    const enrichedStores = branches.map((branch) => {
+      const enrichedStores = branches.map((branch) => {
       const todayExpenses = expensesByBranchDate[`${branch.id}:${today}`] || []
       const monthlyReports = reportsByBranchMonth[branch.id] || {}
       const monthlyBudget = buildMonthlyBudget(monthlyReports, expensesByBranchDate, branch.id)
@@ -533,68 +553,72 @@ export default function DMDashboard() {
       }
     })
 
-    const months = buildAvailableMonths(reportsByBranchMonth, expensesByBranchDate, today)
-    setAvailableMonths(months)
-    if (!months.find((month) => month.key === budgetMonth) && months[0]) {
-      suppressBudgetMonthRefetchRef.current = true
-      setBudgetMonth(months[0].key)
+      const months = buildAvailableMonths(reportsByBranchMonth, expensesByBranchDate, today)
+      setAvailableMonths(months)
+      if (!months.find((month) => month.key === budgetMonth) && months[0]) {
+        suppressBudgetMonthRefetchRef.current = true
+        setBudgetMonth(months[0].key)
+      }
+
+      const visitedBranchIds = new Set((visitRes.data || []).map((item) => item.branch_id))
+      const visitedCount = visitedBranchIds.size
+      const pendingSetoran = enrichedStores.filter((store) => store.setoran?.status === 'submitted').length
+
+      setSummary({
+        total: branches.length,
+        ceklisOK: enrichedStores.filter((store) => store.ceklisPagi).length,
+        laporanOK: enrichedStores.filter((store) => store.laporan).length,
+        visitedCount,
+        pendingSetoran,
+      })
+
+      setVisitSummary({
+        label: range.label,
+        totalVisits: (visitRes.data || []).length,
+        visitedCount,
+        unvisitedCount: Math.max(branches.length - visitedCount, 0),
+        coveragePct: branches.length ? visitedCount / branches.length : 0,
+      })
+
+      if (isOpsManager) {
+        setManagerCoverage(buildManagerCoverage(managerRes?.data || [], branches, visitRes.data || []))
+        setManagerDailyStatus(buildManagerDailyStatus(managerRes?.data || [], branches, managerTodayVisitRes?.data || []))
+      } else {
+        setManagerCoverage([])
+        setManagerDailyStatus([])
+      }
+
+      const nextAlerts = buildAlerts(enrichedStores, today, yesterday)
+      const nextActivities = buildActivities({
+        branchMap,
+        checklists: ceklisRes.data || [],
+        reports: laporanRes.data || [],
+        deposits: setoranRes.data || [],
+        expenses: opexRes.data || [],
+      })
+      const nextOpexRows = buildOpexRows(enrichedStores)
+
+      setStores(enrichedStores)
+      setVisits(visitRes.data || [])
+      setAlerts(nextAlerts)
+      setActivities(nextActivities)
+      setOpexRows(nextOpexRows)
+      setOpexSummary({
+        tracked: nextOpexRows.length,
+        withinBudget: nextOpexRows.filter((row) => row.status === 'within').length,
+        overBudget: nextOpexRows.filter((row) => row.status === 'over').length,
+        pendingReport: nextOpexRows.filter((row) => row.status === 'pending').length,
+      })
+      setLoading(false)
+
+      syncBrowserNotifications(
+        buildBrowserNotificationCandidates(nextAlerts, nextActivities),
+        notifPermission
+      )
+    } catch (error) {
+      setDashboardIssue(`Runtime dashboard error: ${error?.message || 'unknown error'}`)
+      setLoading(false)
     }
-
-    const visitedBranchIds = new Set((visitRes.data || []).map((item) => item.branch_id))
-    const visitedCount = visitedBranchIds.size
-    const pendingSetoran = enrichedStores.filter((store) => store.setoran?.status === 'submitted').length
-
-    setSummary({
-      total: branches.length,
-      ceklisOK: enrichedStores.filter((store) => store.ceklisPagi).length,
-      laporanOK: enrichedStores.filter((store) => store.laporan).length,
-      visitedCount,
-      pendingSetoran,
-    })
-
-    setVisitSummary({
-      label: range.label,
-      totalVisits: (visitRes.data || []).length,
-      visitedCount,
-      unvisitedCount: Math.max(branches.length - visitedCount, 0),
-      coveragePct: branches.length ? visitedCount / branches.length : 0,
-    })
-
-    if (isOpsManager) {
-      setManagerCoverage(buildManagerCoverage(managerRes?.data || [], branches, visitRes.data || []))
-      setManagerDailyStatus(buildManagerDailyStatus(managerRes?.data || [], branches, managerTodayVisitRes?.data || []))
-    } else {
-      setManagerCoverage([])
-      setManagerDailyStatus([])
-    }
-
-    const nextAlerts = buildAlerts(enrichedStores, today, yesterday)
-    const nextActivities = buildActivities({
-      branchMap,
-      checklists: ceklisRes.data || [],
-      reports: laporanRes.data || [],
-      deposits: setoranRes.data || [],
-      expenses: opexRes.data || [],
-    })
-    const nextOpexRows = buildOpexRows(enrichedStores)
-
-    setStores(enrichedStores)
-    setVisits(visitRes.data || [])
-    setAlerts(nextAlerts)
-    setActivities(nextActivities)
-    setOpexRows(nextOpexRows)
-    setOpexSummary({
-      tracked: nextOpexRows.length,
-      withinBudget: nextOpexRows.filter((row) => row.status === 'within').length,
-      overBudget: nextOpexRows.filter((row) => row.status === 'over').length,
-      pendingReport: nextOpexRows.filter((row) => row.status === 'pending').length,
-    })
-    setLoading(false)
-
-    syncBrowserNotifications(
-      buildBrowserNotificationCandidates(nextAlerts, nextActivities),
-      notifPermission
-    )
   }
 
   const syncBrowserNotifications = (candidates, permission) => {
@@ -747,6 +771,11 @@ export default function DMDashboard() {
       </div>
 
       <main className="mx-auto max-w-7xl px-4 pb-36 pt-5 sm:px-6 lg:px-8 lg:pb-32">
+        {!!dashboardIssue && (
+          <div className="mb-4 rounded-[1.5rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            {dashboardIssue}
+          </div>
+        )}
 
         {/* Store Status Overview */}
         <div className="bg-gradient-to-br from-white to-blue-50/50 p-5 rounded-[2.5rem] border border-blue-100 shadow-sm mb-5">

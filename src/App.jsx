@@ -57,7 +57,7 @@ const KPI360ResultsPage  = lazy(() => import('./pages/kpi/KPI360ResultsPage'))
 function RootRedirect() {
   const { user, profile, loading, profileError, signOut } = useAuth()
 
-  if (loading && !user) return <AuthScreen message="Menyiapkan sesi login..." />
+  if (loading) return <AuthScreen message="Menyiapkan sesi login..." />
   if (!user) return <Navigate to="/login" replace />
   if (!profile) return <AuthScreen message={profileError || 'Menghubungkan data profil...'} />
   if (profile.is_active === false) return <DeactivatedScreen onSignOut={signOut} />
@@ -79,7 +79,7 @@ function RootRedirect() {
 function RequireAuth({ children, roles }) {
   const { user, profile, loading, profileError, signOut } = useAuth()
 
-  if (loading && (!user || !profile)) return <AuthScreen message="Menyiapkan sesi login..." />
+  if (loading) return <AuthScreen message="Menyiapkan sesi login..." />
   if (!user) return <Navigate to="/login" replace />
   if (!profile) return <AuthScreen message={profileError || 'Menghubungkan data profil...'} />
   if (profile.is_active === false) return <DeactivatedScreen onSignOut={signOut} />

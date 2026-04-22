@@ -7,6 +7,16 @@ const PROFILE_CACHE_KEY = 'bagikopi_ops_profile_cache'
 const SESSION_TIMEOUT_MS = 8000
 const AUTH_STORAGE_KEY = 'bagikopi-ops-auth'
 
+function clearCachedSessionUser() {
+  if (typeof window === 'undefined') return
+
+  try {
+    window.localStorage.removeItem(AUTH_STORAGE_KEY)
+  } catch {
+    // Ignore cache clear errors.
+  }
+}
+
 function readCachedSessionUser() {
   if (typeof window === 'undefined') return null
 
@@ -46,6 +56,11 @@ function writeCachedProfile(profile) {
   } catch {
     // Ignore cache write errors.
   }
+}
+
+function clearLocalAuthState() {
+  clearCachedSessionUser()
+  writeCachedProfile(null)
 }
 
 export function AuthProvider({ children }) {
@@ -96,6 +111,7 @@ export function AuthProvider({ children }) {
     if (!session?.user) {
       currentUserIdRef.current = null
       setProfile(null)
+      clearLocalAuthState()
       setLoading(false)
       return
     }
@@ -136,20 +152,18 @@ export function AuthProvider({ children }) {
       setUser(cachedUser)
       setProfile(cachedProfile)
       currentUserIdRef.current = cachedUser.id
-      setLoading(false)
     }
 
     getSessionWithTimeout()
       .then(async ({ data: { session } }) => {
         await hydrateSession(session)
       })
-      .catch(async () => {
-        const cachedProfile = readCachedProfile(currentUserIdRef.current)
-        if (cachedProfile) {
-          setProfile(cachedProfile)
-          setLoading(false)
-          return
-        }
+      .catch(async (error) => {
+        currentUserIdRef.current = null
+        setUser(null)
+        setProfile(null)
+        setProfileError(error?.message || 'Sesi login tidak bisa diverifikasi. Silakan login ulang.')
+        clearLocalAuthState()
         setLoading(false)
       })
 
@@ -180,7 +194,7 @@ export function AuthProvider({ children }) {
     setUser(null)
     setProfile(null)
     setProfileError('')
-    writeCachedProfile(null)
+    clearLocalAuthState()
   }
 
   return (
