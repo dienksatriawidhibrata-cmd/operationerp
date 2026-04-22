@@ -304,6 +304,31 @@ export default function DMDashboard() {
 
     const { data: branches, error: branchError } = await branchQuery.order('name')
     if (branchError || !branches || branches.length === 0) {
+      if (isOpsManager) {
+        const todayVisitDate = todayWIB()
+        const [managerRes, managerTodayVisitRes] = await Promise.all([
+          supabase
+            .from('profiles')
+            .select('id,full_name,role,managed_districts,managed_areas')
+            .in('role', ['district_manager', 'area_manager'])
+            .eq('is_active', true)
+            .order('full_name'),
+          supabase
+            .from('daily_visits')
+            .select('id,branch_id,tanggal,total_score,max_score,auditor_id')
+            .eq('tanggal', todayVisitDate)
+            .order('created_at', { ascending: false }),
+        ])
+
+        if (!managerRes.error) {
+          setManagerDailyStatus(buildManagerDailyStatus(managerRes.data || [], [], managerTodayVisitRes?.data || []))
+        } else {
+          setManagerDailyStatus([])
+        }
+      } else {
+        setManagerDailyStatus([])
+      }
+
       accessibleBranchIdsRef.current = new Set()
       setStores([])
       setVisits([])
@@ -314,7 +339,6 @@ export default function DMDashboard() {
       setVisitSummary(EMPTY_VISIT_SUMMARY)
       setOpexSummary(EMPTY_OPEX_SUMMARY)
       setManagerCoverage([])
-      setManagerDailyStatus([])
       setLoading(false)
       return
     }
@@ -760,34 +784,40 @@ export default function DMDashboard() {
           </Link>
         </div>
 
-        {isOpsManager && managerDailyStatus.length > 0 && (
+        {isOpsManager && (
           <div className="bg-gradient-to-br from-white to-blue-50/50 p-5 rounded-[2.5rem] border border-blue-100 shadow-sm mb-5">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xs font-bold text-blue-900 uppercase">Status Visit Manager (Hari Ini)</h2>
               <span className="text-[10px] text-gray-500 font-medium">{managerDailyStatus.filter((item) => item.submittedCount > 0).length}/{managerDailyStatus.length} submit</span>
             </div>
 
-            <div className="space-y-3 mb-5">
-              {managerDailyStatus.map((manager) => (
-                <div key={manager.id} className="flex items-center gap-3 rounded-[1.5rem] border border-blue-100 bg-white px-4 py-3">
-                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-[10px] font-black text-white ${manager.role === 'area_manager' ? 'bg-violet-500' : 'bg-blue-600'}`}>
-                    {managerInitials(manager.full_name)}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-bold text-slate-900">{manager.full_name}</div>
-                    <div className="text-[10px] text-slate-400">{manager.roleLabel}</div>
-                  </div>
-                  <div className="shrink-0 text-right">
-                    <div className={`text-sm font-black ${manager.submittedCount > 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
-                      {manager.submittedCount}/{manager.dailyTarget}
+            {managerDailyStatus.length > 0 ? (
+              <div className="space-y-3 mb-5">
+                {managerDailyStatus.map((manager) => (
+                  <div key={manager.id} className="flex items-center gap-3 rounded-[1.5rem] border border-blue-100 bg-white px-4 py-3">
+                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-[10px] font-black text-white ${manager.role === 'area_manager' ? 'bg-violet-500' : 'bg-blue-600'}`}>
+                      {managerInitials(manager.full_name)}
                     </div>
-                    <div className="text-[10px] text-slate-400">
-                      {manager.submittedCount > 0 ? 'visit hari ini sudah' : 'hari ini belum visit'}
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-bold text-slate-900">{manager.full_name}</div>
+                      <div className="text-[10px] text-slate-400">{manager.roleLabel}</div>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <div className={`text-sm font-black ${manager.submittedCount > 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
+                        {manager.submittedCount}/{manager.dailyTarget}
+                      </div>
+                      <div className="text-[10px] text-slate-400">
+                        {manager.submittedCount > 0 ? 'visit hari ini sudah' : 'hari ini belum visit'}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="mb-5 rounded-[1.75rem] border border-dashed border-blue-100 bg-white/80 px-4 py-5 text-center text-sm text-slate-500">
+                Data manager visit belum muncul. Kalau koneksi branch atau visit belum masuk, kartu ini tetap akan tampil dan otomatis terisi saat data tersedia.
+              </div>
+            )}
 
             <Link to="/ops/visit-monitor" className="flex w-full py-3 bg-blue-600 text-white rounded-2xl font-bold text-xs items-center justify-center gap-2 hover:bg-blue-700 transition-colors">
               <AppIcon name="map" size={16} />
