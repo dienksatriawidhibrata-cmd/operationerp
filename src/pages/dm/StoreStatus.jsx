@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
-import { CHECKLIST_ITEMS } from '../../lib/constants'
+import { CHECKLIST_ITEMS, PREPARATION_ITEMS } from '../../lib/constants'
 import { todayWIB } from '../../lib/utils'
 import { DMBottomNav, OpsBottomNav } from '../../components/BottomNav'
 import { isOpsLikeRole } from '../../lib/access'
@@ -90,6 +90,30 @@ const AREA_KEYS = CHECKLIST_ITEMS.filter((item) => item.key.endsWith('_bersih'))
   key: item.key,
   label: item.label,
 }))
+
+const PREPARATION_LABELS = Object.fromEntries(PREPARATION_ITEMS.map((item) => [item.key, item.label]))
+
+function normalizePreparationEntries(preparation) {
+  const answers = preparation?.answers || {}
+
+  return Object.entries(answers).map(([key, value]) => {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      return {
+        key,
+        label: PREPARATION_LABELS[key] || key.replaceAll('_', ' '),
+        qty: value.qty === '' || value.qty == null ? null : Number(value.qty),
+        photos: Array.isArray(value.photos) ? value.photos : [],
+      }
+    }
+
+    return {
+      key,
+      label: PREPARATION_LABELS[key] || key.replaceAll('_', ' '),
+      qty: value === '' || value == null ? null : Number(value),
+      photos: [],
+    }
+  })
+}
 
 function CeklisContent({ checklist }) {
   if (!checklist) {
@@ -186,20 +210,20 @@ function PreparationContent({ preparation }) {
     return <EmptyPanel title="Belum ada preparation" description="Preparation untuk shift ini belum disubmit." />
   }
 
-  const answers = preparation.answers || {}
-  const keys = Object.keys(answers)
-  const okCount = keys.filter((key) => !!answers[key]).length
+  const entries = normalizePreparationEntries(preparation)
+  const filledEntries = entries.filter((entry) => entry.qty != null)
+  const photoCount = filledEntries.filter((entry) => entry.photos.length > 0).length
 
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-3 gap-2">
         <div className="rounded-[18px] bg-slate-50 px-3 py-2.5 text-center">
           <div className="text-[10px] text-slate-400">Item</div>
-          <div className="mt-1 text-sm font-bold text-slate-900">{keys.length}</div>
+          <div className="mt-1 text-sm font-bold text-slate-900">{filledEntries.length}</div>
         </div>
         <div className="rounded-[18px] bg-slate-50 px-3 py-2.5 text-center">
-          <div className="text-[10px] text-slate-400">OK</div>
-          <div className="mt-1 text-sm font-bold text-emerald-700">{okCount}</div>
+          <div className="text-[10px] text-slate-400">Foto</div>
+          <div className="mt-1 text-sm font-bold text-emerald-700">{photoCount}</div>
         </div>
         <div className="rounded-[18px] bg-slate-50 px-3 py-2.5 text-center">
           <div className="text-[10px] text-slate-400">Submit</div>
@@ -207,16 +231,29 @@ function PreparationContent({ preparation }) {
         </div>
       </div>
 
-      {keys.length > 0 ? (
+      {filledEntries.length > 0 ? (
         <div className="space-y-2">
-          {keys.map((key) => (
-            <div key={key} className="flex items-center gap-3 rounded-[18px] bg-slate-50 px-3 py-2.5">
-              <span className={`text-sm font-semibold ${answers[key] ? 'text-emerald-600' : 'text-rose-500'}`}>
-                {answers[key] ? '✓' : '×'}
-              </span>
-              <div className="min-w-0 flex-1 text-xs font-medium capitalize text-slate-700">
-                {key.replaceAll('_', ' ')}
+          {filledEntries.map((entry) => (
+            <div key={entry.key} className="rounded-[18px] bg-slate-50 px-3 py-3">
+              <div className="flex items-center gap-3">
+                <span className={`text-sm font-semibold ${entry.photos.length > 0 ? 'text-emerald-600' : 'text-amber-500'}`}>
+                  {entry.photos.length > 0 ? '✓' : '!'}
+                </span>
+                <div className="min-w-0 flex-1 text-xs font-medium capitalize text-slate-700">
+                  {entry.label}
+                </div>
+                <ToneBadge tone="info">Qty {entry.qty}</ToneBadge>
               </div>
+
+              {entry.photos.length > 0 ? (
+                <div className="mt-2">
+                  <PhotoViewer urls={entry.photos} emptyText="" />
+                </div>
+              ) : (
+                <div className="mt-2 rounded-2xl border border-dashed border-slate-200 bg-white px-3 py-3 text-xs text-slate-400">
+                  Foto item belum ada pada data ini.
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -224,17 +261,17 @@ function PreparationContent({ preparation }) {
         <EmptyPanel title="Belum ada rincian item" description="Preparation tersimpan tanpa detail jawaban." />
       )}
 
-      {preparation.photos?.length > 0 && (
-        <div>
-          <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Foto Preparation</div>
-          <PhotoViewer urls={preparation.photos} emptyText="" />
-        </div>
-      )}
-
       {preparation.notes && (
         <div>
           <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Catatan</div>
           <p className="text-sm leading-6 text-slate-600">{preparation.notes}</p>
+        </div>
+      )}
+
+      {preparation.photos?.length > 0 && filledEntries.every((entry) => entry.photos.length === 0) && (
+        <div>
+          <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Foto Lama Preparation</div>
+          <PhotoViewer urls={preparation.photos} emptyText="" />
         </div>
       )}
     </div>

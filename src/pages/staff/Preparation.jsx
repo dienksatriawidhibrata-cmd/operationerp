@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { todayWIB } from '../../lib/utils'
+import { PREPARATION_ITEMS } from '../../lib/constants'
 import PhotoUpload from '../../components/PhotoUpload'
 import PhotoViewer from '../../components/PhotoViewer'
 import Alert from '../../components/Alert'
@@ -10,36 +11,41 @@ import {
   EmptyPanel, InlineStat, SectionPanel, SegmentedControl, SubpageShell,
 } from '../../components/ui/AppKit'
 
-// ── Tambah item baru: cukup tambah baris di sini ──────────────────────────
-// key: unik (snake_case), label: nama tampil, section: 'Bar' atau 'Kitchen'
-const PREP_ITEMS = [
-  // Preparation – Bar
-  { key: 'bar_kopi_susu',        label: 'Kopi Susu',            section: 'Bar' },
-  { key: 'bar_matcha',           label: 'Matcha',               section: 'Bar' },
-  { key: 'bar_chocolate',        label: 'Chocolate',            section: 'Bar' },
-  { key: 'bar_bpt',              label: 'BPT',                  section: 'Bar' },
-  { key: 'bar_rosella_tea',      label: 'Rosella Tea',          section: 'Bar' },
-  { key: 'bar_jpt',              label: 'JPT',                  section: 'Bar' },
-  // Preparation – Kitchen
-  { key: 'kit_indomie',          label: 'Indomie',              section: 'Kitchen' },
-  { key: 'kit_nasi_goreng',      label: 'Nasi Goreng',          section: 'Kitchen' },
-  { key: 'kit_sausage_fries',    label: 'Sausage & Fries',      section: 'Kitchen' },
-  { key: 'kit_fries_bolognaise', label: 'Fries Bolognaise',     section: 'Kitchen' },
-  { key: 'kit_tahu_lada_garam',  label: 'Tahu Lada Garam',      section: 'Kitchen' },
-  { key: 'kit_tahu_walik',       label: 'Tahu Walik',           section: 'Kitchen' },
-  { key: 'kit_cireng',           label: 'Cireng',               section: 'Kitchen' },
-  { key: 'kit_combro',           label: 'Combro',               section: 'Kitchen' },
-  { key: 'kit_mix_platter',      label: 'Mix Platter',          section: 'Kitchen' },
-  { key: 'kit_garlic_oil',       label: 'Garlic Oil',           section: 'Kitchen' },
-  { key: 'kit_bawang_goreng',    label: 'Bawang Putih Goreng',  section: 'Kitchen' },
-  { key: 'kit_acar',             label: 'Acar',                 section: 'Kitchen' },
-  { key: 'kit_salad',            label: 'Salad',                section: 'Kitchen' },
-  { key: 'kit_sambal_matah',     label: 'Sambal Matah',         section: 'Kitchen' },
-  { key: 'kit_sambal_goang',     label: 'Sambal Goang',         section: 'Kitchen' },
-  { key: 'kit_saus_nashville',   label: 'Saus Nashville',       section: 'Kitchen' },
-]
+const SECTIONS = [...new Set(PREPARATION_ITEMS.map((i) => i.section))]
 
-const SECTIONS = [...new Set(PREP_ITEMS.map((i) => i.section))]
+function normalizePreparationAnswers(rawAnswers = {}) {
+  const qtyMap = {}
+  const photoMap = {}
+
+  PREPARATION_ITEMS.forEach((item) => {
+    const current = rawAnswers?.[item.key]
+
+    if (current && typeof current === 'object' && !Array.isArray(current)) {
+      qtyMap[item.key] = current.qty === '' || current.qty == null ? '' : Number(current.qty)
+      photoMap[item.key] = Array.isArray(current.photos) ? current.photos : []
+      return
+    }
+
+    qtyMap[item.key] = current === '' || current == null ? '' : Number(current)
+    photoMap[item.key] = []
+  })
+
+  return { qtyMap, photoMap }
+}
+
+function buildPreparationAnswers(qtyMap = {}, photoMap = {}) {
+  return PREPARATION_ITEMS.reduce((acc, item) => {
+    const qty = qtyMap[item.key]
+    const photos = photoMap[item.key] || []
+    if (qty === '' || qty == null) return acc
+
+    acc[item.key] = {
+      qty: Number(qty),
+      photos,
+    }
+    return acc
+  }, {})
+}
 
 export default function Preparation() {
   const { profile } = useAuth()
@@ -48,8 +54,8 @@ export default function Preparation() {
 
   const [activeShift, setActiveShift] = useState('pagi')
   const [existing, setExisting] = useState({ pagi: null, middle: null, malam: null })
-  const [answers, setAnswers] = useState({})
-  const [photos, setPhotos] = useState([])
+  const [qtyMap, setQtyMap] = useState({})
+  const [photoMap, setPhotoMap] = useState({})
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
   const [done, setDone] = useState(false)
@@ -63,12 +69,13 @@ export default function Preparation() {
   useEffect(() => {
     const cur = existing[activeShift]
     if (cur) {
-      setAnswers(cur.answers || {})
-      setPhotos(cur.photos || [])
+      const normalized = normalizePreparationAnswers(cur.answers || {})
+      setQtyMap(normalized.qtyMap)
+      setPhotoMap(normalized.photoMap)
       setNotes(cur.notes || '')
     } else {
-      setAnswers({})
-      setPhotos([])
+      setQtyMap({})
+      setPhotoMap({})
       setNotes('')
     }
     setError('')
@@ -89,11 +96,25 @@ export default function Preparation() {
     setExisting(map)
   }
 
-  const setQty = (key, val) => setAnswers((cur) => ({ ...cur, [key]: val === '' ? '' : Number(val) }))
+  const setQty = (key, val) => setQtyMap((cur) => ({ ...cur, [key]: val === '' ? '' : Number(val) }))
+  const setItemPhotos = (key, urls) => setPhotoMap((cur) => ({ ...cur, [key]: urls }))
 
   const handleSubmit = async () => {
     setSaving(true)
     setError('')
+
+    const missingPhotos = PREPARATION_ITEMS
+      .filter((item) => qtyMap[item.key] !== '' && qtyMap[item.key] != null)
+      .filter((item) => (photoMap[item.key] || []).length === 0)
+
+    if (missingPhotos.length > 0) {
+      setError(`Foto wajib diisi per item. Lengkapi foto untuk: ${missingPhotos.slice(0, 3).map((item) => item.label).join(', ')}${missingPhotos.length > 3 ? ' dan lainnya' : ''}.`)
+      setSaving(false)
+      return
+    }
+
+    const answers = buildPreparationAnswers(qtyMap, photoMap)
+    const photos = PREPARATION_ITEMS.flatMap((item) => photoMap[item.key] || [])
 
     const payload = {
       branch_id: branchId,
@@ -121,7 +142,7 @@ export default function Preparation() {
   }
 
   const isReadOnly = !!existing[activeShift] && !isEditing
-  const filledCount = PREP_ITEMS.filter((i) => answers[i.key] !== '' && answers[i.key] !== undefined).length
+  const filledCount = PREPARATION_ITEMS.filter((i) => qtyMap[i.key] !== '' && qtyMap[i.key] !== undefined).length
 
   return (
     <SubpageShell
@@ -148,7 +169,7 @@ export default function Preparation() {
       >
         <div className="grid gap-3 sm:grid-cols-3">
           <InlineStat label="Tanggal" value={today} tone="primary" />
-          <InlineStat label="Terisi" value={`${filledCount}/${PREP_ITEMS.length}`} tone={isReadOnly ? 'emerald' : 'primary'} />
+          <InlineStat label="Terisi" value={`${filledCount}/${PREPARATION_ITEMS.length}`} tone={isReadOnly ? 'emerald' : 'primary'} />
           <InlineStat label="Status" value={isReadOnly ? 'Sudah Submit' : 'Belum Submit'} tone={isReadOnly ? 'emerald' : 'warn'} />
         </div>
       </SectionPanel>
@@ -170,46 +191,52 @@ export default function Preparation() {
         {error && <Alert variant="error">{error}</Alert>}
 
         {SECTIONS.map((section) => (
-          <SectionPanel key={section} eyebrow="Jumlah Preparation" title={`Preparation – ${section}`}>
+          <SectionPanel key={section} eyebrow="Jumlah Preparation" title={`Preparation - ${section}`} description="Isi jumlah dan unggah 1 foto untuk setiap item yang disiapkan.">
             <div className="space-y-2">
-              {PREP_ITEMS.filter((i) => i.section === section).map((item) => (
-                <div key={item.key} className="flex items-center justify-between gap-4 rounded-[18px] bg-slate-50 px-4 py-3">
-                  <span className="text-sm text-slate-700 flex-1">{item.label}</span>
-                  {isReadOnly ? (
-                    <span className="text-sm font-bold text-primary-700 w-16 text-right">
-                      {answers[item.key] !== undefined && answers[item.key] !== '' ? answers[item.key] : '—'}
-                    </span>
-                  ) : (
-                    <input
-                      type="number"
-                      min="0"
-                      className="input py-1.5 text-sm text-center w-20 shrink-0"
-                      placeholder="0"
-                      value={answers[item.key] ?? ''}
-                      onChange={(e) => setQty(item.key, e.target.value)}
-                    />
-                  )}
+              {PREPARATION_ITEMS.filter((i) => i.section === section).map((item) => (
+                <div key={item.key} className="rounded-[18px] bg-slate-50 px-4 py-3">
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-sm text-slate-700 flex-1">{item.label}</span>
+                    {isReadOnly ? (
+                      <span className="text-sm font-bold text-primary-700 w-16 text-right">
+                        {qtyMap[item.key] !== undefined && qtyMap[item.key] !== '' ? qtyMap[item.key] : '-'}
+                      </span>
+                    ) : (
+                      <input
+                        type="number"
+                        min="0"
+                        className="input py-1.5 text-sm text-center w-20 shrink-0"
+                        placeholder="0"
+                        value={qtyMap[item.key] ?? ''}
+                        onChange={(e) => setQty(item.key, e.target.value)}
+                      />
+                    )}
+                  </div>
+
+                  <div className="mt-3">
+                    {isReadOnly ? (
+                      (photoMap[item.key] || []).length > 0 ? (
+                        <PhotoViewer urls={photoMap[item.key] || []} emptyText="" />
+                      ) : (
+                        <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-3 py-3 text-xs text-slate-400">
+                          Tidak ada foto item.
+                        </div>
+                      )
+                    ) : (
+                      <PhotoUpload
+                        folder={`preparation/${today}/${activeShift}/${item.key}`}
+                        value={photoMap[item.key] || []}
+                        onChange={(urls) => setItemPhotos(item.key, urls)}
+                        label={`Upload Foto ${item.label}`}
+                        max={1}
+                      />
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
           </SectionPanel>
         ))}
-
-        <SectionPanel eyebrow="Dokumentasi" title="Foto Preparation">
-          {isReadOnly ? (
-            photos.length > 0
-              ? <PhotoViewer urls={photos} />
-              : <EmptyPanel title="Tidak ada foto" description="Tidak ada foto untuk shift ini." />
-          ) : (
-            <PhotoUpload
-              folder={`preparation/${today}/${activeShift}`}
-              value={photos}
-              onChange={setPhotos}
-              label="Upload Foto Preparation"
-              max={5}
-            />
-          )}
-        </SectionPanel>
 
         <SectionPanel eyebrow="Notes" title="Catatan Shift">
           {isReadOnly ? (

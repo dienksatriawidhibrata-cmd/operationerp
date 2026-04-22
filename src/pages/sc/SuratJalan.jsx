@@ -33,6 +33,48 @@ function formatQty(value) {
 const SJ_STATUS_TONE = { draft: 'slate', issued: 'info', shipped: 'warn', delivered: 'ok' }
 const SJ_STATUS_LABEL = { draft: 'Draft', issued: 'Diterbitkan', shipped: 'Dalam Perjalanan', delivered: 'Terkirim' }
 
+function sanitizeCsvCell(value) {
+  const text = String(value ?? '').replace(/"/g, '""')
+  return `"${text}"`
+}
+
+function downloadReceiveCsv(sj, items) {
+  if (!sj) return
+
+  const rows = [
+    ['SJ Number', sj.sj_number],
+    ['Store', sj.branch?.name || '-'],
+    ['Order', sj.order?.order_number || '-'],
+    ['Tanggal Kirim', sj.tanggal_kirim || '-'],
+    ['Status', SJ_STATUS_LABEL[sj.status] || sj.status],
+    ['Received At', sj.received_at ? new Date(sj.received_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }) : '-'],
+    ['Receive Note', sj.receive_note || '-'],
+    [],
+    ['SKU', 'Nama Item', 'Qty Kirim', 'Qty Diterima', 'Unit', 'Selisih', 'Catatan Item'],
+    ...items.map((item) => [
+      item.sku_code,
+      item.sku_name,
+      item.qty_kirim,
+      item.qty_received ?? item.qty_kirim,
+      item.unit,
+      Number(item.qty_received ?? item.qty_kirim) - Number(item.qty_kirim),
+      item.receive_note || '',
+    ]),
+  ]
+
+  const csv = rows
+    .map((row) => row.map((cell) => sanitizeCsvCell(cell)).join(','))
+    .join('\n')
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url = window.URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `${sj.sj_number || 'penerimaan'}-penerimaan.csv`
+  link.click()
+  window.URL.revokeObjectURL(url)
+}
+
 function NewSJForm() {
   const { profile } = useAuth()
   const navigate = useNavigate()
@@ -227,6 +269,7 @@ function NewSJForm() {
 function ReceiveSJForm({ sjId }) {
   const navigate = useNavigate()
   const { profile } = useAuth()
+  const isWarehouseAdmin = profile?.role === 'warehouse_admin'
   const [sj, setSj] = useState(null)
   const [items, setItems] = useState([])
   const [qtyMap, setQtyMap] = useState({})
@@ -351,6 +394,7 @@ function ReceiveSJForm({ sjId }) {
   const totalKirim = items.reduce((sum, item) => sum + Number(item.qty_kirim), 0)
   const totalTerima = items.reduce((sum, item) => sum + Number(qtyMap[item.id] ?? item.qty_kirim), 0)
   const discrepancyCount = items.filter((item) => Number(qtyMap[item.id] ?? item.qty_kirim) !== Number(item.qty_kirim)).length
+  const canDownload = isWarehouseAdmin || !isStoreRole(profile?.role)
 
   return (
     <div className="space-y-6">
@@ -362,6 +406,33 @@ function ReceiveSJForm({ sjId }) {
           <InlineStat label="SKU" value={items.length} tone="slate" />
           <InlineStat label="Qty Kirim" value={formatQty(totalKirim)} tone="slate" />
           <InlineStat label="Selisih" value={discrepancyCount} tone={discrepancyCount > 0 ? 'amber' : 'emerald'} />
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <ToneBadge tone={SJ_STATUS_TONE[sj?.status] ?? 'slate'}>{SJ_STATUS_LABEL[sj?.status] ?? sj?.status}</ToneBadge>
+          {sj?.received_at && (
+            <ToneBadge tone="info">
+              Diterima {new Date(sj.received_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}
+            </ToneBadge>
+          )}
+          {canDownload && (
+            <button
+              type="button"
+              onClick={() => downloadReceiveCsv(
+                {
+                  ...sj,
+                  receive_note: generalNote,
+                },
+                items.map((item) => ({
+                  ...item,
+                  qty_received: Number(qtyMap[item.id] ?? item.qty_kirim),
+                  receive_note: noteMap[item.id] || '',
+                }))
+              )}
+              className="rounded-full border border-primary-200 bg-primary-50 px-3 py-1.5 text-xs font-semibold text-primary-700 hover:bg-primary-100"
+            >
+              Download Penerimaan
+            </button>
+          )}
         </div>
       </SectionPanel>
 
@@ -452,6 +523,7 @@ function SJList() {
   const navigate = useNavigate()
   const { profile } = useAuth()
   const isStoreOnly = isStoreRole(profile?.role)
+  const isWarehouseAdmin = profile?.role === 'warehouse_admin'
   const canShip = canMarkSuratJalanShipped(profile?.role)
   const canDeliver = canMarkSuratJalanDelivered(profile?.role)
   const [list, setList] = useState([])
@@ -581,6 +653,7 @@ function SJList() {
                   </div>
                   {sj.pengirim && <div className="text-xs text-slate-400">Pengirim: {sj.pengirim}</div>}
                   {sj.received_at && <div className="text-xs text-slate-400">Diterima: {new Date(sj.received_at).toLocaleString('id-ID')}</div>}
+                  {sj.receive_note && <div className="mt-1 text-xs text-slate-500">Catatan terima: {sj.receive_note}</div>}
                 </div>
                 <ToneBadge tone={SJ_STATUS_TONE[sj.status] ?? 'slate'}>
                   {SJ_STATUS_LABEL[sj.status] ?? sj.status}
@@ -617,7 +690,7 @@ function SJList() {
                     onClick={() => navigate(`/sc/sj?receive=${sj.id}`)}
                     className="rounded-xl bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200"
                   >
-                    Edit Penerimaan
+                    {isStoreOnly ? 'Edit Penerimaan' : isWarehouseAdmin ? 'Lihat Penerimaan' : 'Review Penerimaan'}
                   </button>
                 )}
               </div>

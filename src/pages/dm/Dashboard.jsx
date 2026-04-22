@@ -195,6 +195,7 @@ export default function DMDashboard() {
   const [visitPeriod, setVisitPeriod] = useState('week')
   const [visitSummary, setVisitSummary] = useState(EMPTY_VISIT_SUMMARY)
   const [managerCoverage, setManagerCoverage] = useState([])
+  const [managerDailyStatus, setManagerDailyStatus] = useState([])
   const [expandedManagerId, setExpandedManagerId] = useState(null)
   const [notifPermission, setNotifPermission] = useState(getBrowserNotificationPermission())
   const [tokoOpen, setTokoOpen] = useState(false)
@@ -313,6 +314,7 @@ export default function DMDashboard() {
       setVisitSummary(EMPTY_VISIT_SUMMARY)
       setOpexSummary(EMPTY_OPEX_SUMMARY)
       setManagerCoverage([])
+      setManagerDailyStatus([])
       setLoading(false)
       return
     }
@@ -375,6 +377,14 @@ export default function DMDashboard() {
           .eq('is_active', true)
           .order('full_name')
       )
+      requests.push(
+        supabase
+          .from('daily_visits')
+          .select('id,branch_id,tanggal,total_score,max_score,auditor_id')
+          .in('branch_id', branchIds)
+          .eq('tanggal', today)
+          .order('created_at', { ascending: false })
+      )
     }
 
     const [
@@ -386,6 +396,7 @@ export default function DMDashboard() {
       visitRes,
       myVisitRes,
       managerRes,
+      managerTodayVisitRes,
     ] = await Promise.all(requests)
 
     if (
@@ -396,7 +407,8 @@ export default function DMDashboard() {
       opexRes.error ||
       visitRes.error ||
       myVisitRes.error ||
-      managerRes?.error
+      managerRes?.error ||
+      managerTodayVisitRes?.error
     ) {
       setStores([])
       setVisits([])
@@ -413,6 +425,7 @@ export default function DMDashboard() {
       })
       setOpexSummary(EMPTY_OPEX_SUMMARY)
       setManagerCoverage([])
+      setManagerDailyStatus([])
       setLoading(false)
       return
     }
@@ -525,8 +538,10 @@ export default function DMDashboard() {
 
     if (isOpsManager) {
       setManagerCoverage(buildManagerCoverage(managerRes?.data || [], branches, visitRes.data || []))
+      setManagerDailyStatus(buildManagerDailyStatus(managerRes?.data || [], branches, managerTodayVisitRes?.data || []))
     } else {
       setManagerCoverage([])
+      setManagerDailyStatus([])
     }
 
     const nextAlerts = buildAlerts(enrichedStores, today, yesterday)
@@ -744,6 +759,42 @@ export default function DMDashboard() {
             Detail Kepatuhan Toko
           </Link>
         </div>
+
+        {isOpsManager && managerDailyStatus.length > 0 && (
+          <div className="bg-gradient-to-br from-white to-blue-50/50 p-5 rounded-[2.5rem] border border-blue-100 shadow-sm mb-5">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xs font-bold text-blue-900 uppercase">Status Visit Manager (Hari Ini)</h2>
+              <span className="text-[10px] text-gray-500 font-medium">{managerDailyStatus.filter((item) => item.submittedCount > 0).length}/{managerDailyStatus.length} submit</span>
+            </div>
+
+            <div className="space-y-3 mb-5">
+              {managerDailyStatus.map((manager) => (
+                <div key={manager.id} className="flex items-center gap-3 rounded-[1.5rem] border border-blue-100 bg-white px-4 py-3">
+                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-[10px] font-black text-white ${manager.role === 'area_manager' ? 'bg-violet-500' : 'bg-blue-600'}`}>
+                    {managerInitials(manager.full_name)}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-bold text-slate-900">{manager.full_name}</div>
+                    <div className="text-[10px] text-slate-400">{manager.roleLabel}</div>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <div className={`text-sm font-black ${manager.submittedCount > 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
+                      {manager.submittedCount}/{manager.dailyTarget}
+                    </div>
+                    <div className="text-[10px] text-slate-400">
+                      {manager.submittedCount > 0 ? 'visit hari ini sudah' : 'hari ini belum visit'}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <Link to="/ops/visit-monitor" className="flex w-full py-3 bg-blue-600 text-white rounded-2xl font-bold text-xs items-center justify-center gap-2 hover:bg-blue-700 transition-colors">
+              <AppIcon name="map" size={16} />
+              Detail Visit Manager
+            </Link>
+          </div>
+        )}
 
         {/* Quick Actions */}
         <div className="grid grid-cols-4 gap-4 mb-5">
@@ -1178,6 +1229,41 @@ function buildManagerCoverage(managers, branches, visits) {
       }
     })
     .filter((manager) => manager.totalStores > 0)
+}
+
+function buildManagerDailyStatus(managers, branches, visits) {
+  return managers
+    .map((manager) => {
+      const managedBranches = branches.filter((branch) => canManagerAccessBranch(manager, branch))
+      const managedBranchIds = new Set(managedBranches.map((branch) => branch.id))
+      const managerVisits = visits.filter((visit) => visit.auditor_id === manager.id && managedBranchIds.has(visit.branch_id))
+
+      return {
+        id: manager.id,
+        full_name: manager.full_name,
+        role: manager.role,
+        roleLabel: roleLabel(manager.role),
+        dailyTarget: 1,
+        submittedCount: managerVisits.length > 0 ? 1 : 0,
+        visitsToday: managerVisits.length,
+        managedStoreCount: managedBranches.length,
+      }
+    })
+    .filter((manager) => manager.managedStoreCount > 0)
+    .sort((a, b) => {
+      if (a.role !== b.role) return a.role === 'district_manager' ? -1 : 1
+      return a.full_name.localeCompare(b.full_name, 'id-ID')
+    })
+}
+
+function managerInitials(name = '') {
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase() || '--'
 }
 
 function buildAlerts(stores, today, yesterday) {

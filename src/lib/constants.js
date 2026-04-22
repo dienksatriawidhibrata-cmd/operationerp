@@ -205,6 +205,31 @@ export const CHECKLIST_ITEMS = [
   { key: 'item_oos',             label: 'Item Out of Stock',          shift: 'both',        type: 'text_array', requiresPhoto: false, section: 'oos' },
 ]
 
+export const PREPARATION_ITEMS = [
+  { key: 'bar_kopi_susu', label: 'Kopi Susu', section: 'Bar' },
+  { key: 'bar_matcha', label: 'Matcha', section: 'Bar' },
+  { key: 'bar_chocolate', label: 'Chocolate', section: 'Bar' },
+  { key: 'bar_bpt', label: 'BPT', section: 'Bar' },
+  { key: 'bar_rosella_tea', label: 'Rosella Tea', section: 'Bar' },
+  { key: 'bar_jpt', label: 'JPT', section: 'Bar' },
+  { key: 'kit_indomie', label: 'Indomie', section: 'Kitchen' },
+  { key: 'kit_nasi_goreng', label: 'Nasi Goreng', section: 'Kitchen' },
+  { key: 'kit_sausage_fries', label: 'Sausage & Fries', section: 'Kitchen' },
+  { key: 'kit_fries_bolognaise', label: 'Fries Bolognaise', section: 'Kitchen' },
+  { key: 'kit_tahu_lada_garam', label: 'Tahu Lada Garam', section: 'Kitchen' },
+  { key: 'kit_tahu_walik', label: 'Tahu Walik', section: 'Kitchen' },
+  { key: 'kit_cireng', label: 'Cireng', section: 'Kitchen' },
+  { key: 'kit_combro', label: 'Combro', section: 'Kitchen' },
+  { key: 'kit_mix_platter', label: 'Mix Platter', section: 'Kitchen' },
+  { key: 'kit_garlic_oil', label: 'Garlic Oil', section: 'Kitchen' },
+  { key: 'kit_bawang_goreng', label: 'Bawang Putih Goreng', section: 'Kitchen' },
+  { key: 'kit_acar', label: 'Acar', section: 'Kitchen' },
+  { key: 'kit_salad', label: 'Salad', section: 'Kitchen' },
+  { key: 'kit_sambal_matah', label: 'Sambal Matah', section: 'Kitchen' },
+  { key: 'kit_sambal_goang', label: 'Sambal Goang', section: 'Kitchen' },
+  { key: 'kit_saus_nashville', label: 'Saus Nashville', section: 'Kitchen' },
+]
+
 /**
  * Audit items untuk Daily Visit — 22 items, max 110 poin
  */
