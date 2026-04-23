@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 
-from ..dependencies import get_supabase
+from ..dependencies import get_supabase, require_auth
 from ..utils import jakarta_today, jakarta_yesterday, parse_iso_date
 
-router = APIRouter(tags=["store-compliance"])
+router = APIRouter(tags=["store-compliance"], dependencies=[Depends(require_auth)])
 
 
 def _bool_map(rows: list[dict], branch_id: str, shift: str) -> bool:

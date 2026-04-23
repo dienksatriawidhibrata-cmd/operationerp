@@ -2,13 +2,14 @@ import json
 from functools import lru_cache
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
 from ..config import get_settings
+from ..dependencies import require_auth
 
-router = APIRouter(tags=["sop"])
+router = APIRouter(tags=["sop"], dependencies=[Depends(require_auth)])
 
 DOCS_SCOPES = [
     "https://www.googleapis.com/auth/documents.readonly",

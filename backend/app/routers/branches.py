@@ -1,8 +1,8 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
-from ..dependencies import get_supabase
+from ..dependencies import get_supabase, require_auth
 
-router = APIRouter(tags=["branches"])
+router = APIRouter(tags=["branches"], dependencies=[Depends(require_auth)])
 
 
 @router.get("/branches")

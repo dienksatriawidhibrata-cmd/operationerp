@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 
-from ..dependencies import get_supabase
+from ..dependencies import get_supabase, require_auth
 from ..utils import jakarta_today, parse_iso_date, score_percent
 
-router = APIRouter(tags=["manager-visits"])
+router = APIRouter(tags=["manager-visits"], dependencies=[Depends(require_auth)])
 
 
 def _can_manager_access_branch(manager: dict, branch: dict) -> bool:

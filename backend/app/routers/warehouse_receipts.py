@@ -1,11 +1,11 @@
 from datetime import datetime
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import PlainTextResponse
 
-from ..dependencies import get_supabase
+from ..dependencies import get_supabase, require_auth
 
-router = APIRouter(tags=["warehouse-receipts"])
+router = APIRouter(tags=["warehouse-receipts"], dependencies=[Depends(require_auth)])
 
 
 def _csv_cell(value) -> str:

@@ -1,4 +1,4 @@
-import { Suspense, lazy } from 'react'
+import React, { Suspense, lazy } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext'
 import {
@@ -139,10 +139,52 @@ function DeactivatedScreen({ onSignOut }) {
   )
 }
 
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props)
+    this.state = { hasError: false }
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+
+  componentDidCatch(error, info) {
+    console.error('[ErrorBoundary]', error, info.componentStack)
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-primary-50 flex items-center justify-center px-6">
+          <div className="max-w-sm w-full bg-white rounded-2xl shadow-sm border border-rose-100 p-6 text-center space-y-4">
+            <div className="text-4xl">⚠️</div>
+            <div className="text-sm font-semibold text-slate-800">Terjadi Kesalahan</div>
+            <div className="text-xs text-slate-500">
+              Halaman ini mengalami error yang tidak terduga. Coba muat ulang halaman.
+            </div>
+            <button
+              onClick={() => {
+                this.setState({ hasError: false })
+                window.location.reload()
+              }}
+              className="btn-primary text-sm"
+            >
+              Muat Ulang
+            </button>
+          </div>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
+
 const ALL_MANAGER = [...MANAGER_ROLES, ...SUPPORT_ROLES]
 
 export default function App() {
   return (
+    <ErrorBoundary>
     <Routes>
       <Route path="/" element={<RootRedirect />} />
       <Route path="/login" element={<Login />} />
@@ -352,5 +394,6 @@ export default function App() {
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </ErrorBoundary>
   )
 }
