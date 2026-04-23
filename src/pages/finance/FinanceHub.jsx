@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { roleLabel, todayWIB, yesterdayWIB } from '../../lib/utils'
@@ -38,7 +39,13 @@ function statusTone(current) {
   return current ? 'ok' : 'warn'
 }
 
-function MissingListCard({ title, tone, rows, emptyText }) {
+function monthStart(isoDate) {
+  const [year, month] = String(isoDate || '').split('-')
+  if (!year || !month) return todayWIB()
+  return `${year}-${month}-01`
+}
+
+function MissingListCard({ title, tone, rows, emptyText, getDetailHref }) {
   return (
     <SectionPanel
       eyebrow="Perlu Follow Up"
@@ -61,6 +68,16 @@ function MissingListCard({ title, tone, rows, emptyText }) {
                 <ToneBadge tone={tone}>Belum masuk</ToneBadge>
               </div>
               <div className="mt-3 text-sm text-slate-600">{row.lastLabel}</div>
+              {getDetailHref && (
+                <div className="mt-3">
+                  <Link
+                    to={getDetailHref(row)}
+                    className="inline-flex items-center rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:border-primary-200 hover:text-primary-700"
+                  >
+                    Lihat detail OPEX
+                  </Link>
+                </div>
+              )}
             </article>
           ))}
         </div>
@@ -144,7 +161,7 @@ export default function FinanceHub({
           depositsRes.error?.message ||
           expensesRes.error?.message ||
           reportsRes.error?.message ||
-          'Gagal memuat data laporan harian.'
+          'Gagal memuat data laporan harian.',
         )
         setLoading(false)
         return
@@ -164,7 +181,7 @@ export default function FinanceHub({
 
   const areaOptions = useMemo(
     () => Array.from(new Set(branches.map((branch) => branch.area).filter(Boolean))).sort(),
-    [branches]
+    [branches],
   )
 
   const districtOptions = useMemo(
@@ -173,10 +190,10 @@ export default function FinanceHub({
         branches
           .filter((branch) => areaFilter === 'all' || branch.area === areaFilter)
           .map((branch) => branch.district)
-          .filter(Boolean)
-      )
+          .filter(Boolean),
+      ),
     ).sort(),
-    [areaFilter, branches]
+    [areaFilter, branches],
   )
 
   useEffect(() => {
@@ -288,13 +305,13 @@ export default function FinanceHub({
         eyebrow="Laporan Harian"
         title="Ringkasan Kepatuhan Harian"
         description="Halaman ini dibuat ringkas agar kamu bisa langsung melihat status setoran, opex, dan laporan harian tanpa membaca terlalu banyak detail."
-        meta={
+        meta={(
           <>
             <ToneBadge tone="info">Setoran {formatDateLabel(setoranDate)}</ToneBadge>
             <ToneBadge tone="info">Opex {formatDateLabel(opexDate)}</ToneBadge>
             <ToneBadge tone="info">Laporan {formatDateLabel(laporanDate)}</ToneBadge>
           </>
-        }
+        )}
       >
         <div className="grid gap-3 sm:grid-cols-3">
           <InlineStat label="Setoran" value={`${summary.setoran}/${summary.total}`} tone={statusTone(summary.setoran === summary.total)} />
@@ -350,6 +367,7 @@ export default function FinanceHub({
               tone="slate"
               rows={missingOpex}
               emptyText="Semua toko pada scope ini sudah mengisi opex."
+              getDetailHref={(row) => `/opex?branch=${encodeURIComponent(row.branch.id)}&from=${monthStart(opexDate)}&to=${opexDate}&view=by_store`}
             />
             <MissingListCard
               title="Toko Belum Laporan Harian"

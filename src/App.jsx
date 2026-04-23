@@ -30,6 +30,7 @@ const ApprovalSetoran = lazy(() => import('./pages/dm/ApprovalSetoran'))
 const StoreStatus = lazy(() => import('./pages/dm/StoreStatus'))
 const AuditSetoran   = lazy(() => import('./pages/finance/AuditSetoran'))
 const FinanceHub     = lazy(() => import('./pages/finance/FinanceHub'))
+const OpexOverview   = lazy(() => import('./pages/OpexOverview'))
 const KPIHub         = lazy(() => import('./pages/kpi/KPIHub'))
 const KPIReport      = lazy(() => import('./pages/kpi/KPIReport'))
 const OpsHub          = lazy(() => import('./pages/ops/Hub'))
@@ -236,8 +237,8 @@ export default function App() {
       } />
 
       <Route path="/opex" element={
-        <RequireAuth roles={[...FINANCE_ROLES, 'ops_manager', ...SUPPORT_ROLES]}>
-          <Navigate to="/finance" replace />
+        <RequireAuth roles={[...FINANCE_ROLES, ...MANAGER_ROLES, ...SUPPORT_ROLES]}>
+          <OpexOverview />
         </RequireAuth>
       } />
 

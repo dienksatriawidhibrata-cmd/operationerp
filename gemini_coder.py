@@ -6,9 +6,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from google import genai
+from google.genai import errors as genai_errors
 
 
-DEFAULT_MODEL = "models/gemini-1.5-pro"
+DEFAULT_MODEL = "models/gemini-2.5-flash"
 DEFAULT_EXTENSIONS = {".py", ".txt", ".md", ".json", ".yaml", ".yml", ".sql", ".js", ".ts", ".tsx", ".jsx"}
 DEFAULT_MAX_FILES = 6
 DEFAULT_MAX_CONTEXT_CHARS = 48000
@@ -207,11 +208,28 @@ def make_prompt(question: str, root: Path, contexts: list[FileContext]) -> str:
 
 def ask_gemini(model_name: str, prompt: str, api_key: str) -> str:
     client = genai.Client(api_key=api_key)
-    response = client.models.generate_content(
-        model=model_name,
-        contents=prompt,
-    )
-    return getattr(response, "text", "") or "Gemini tidak mengembalikan teks."
+    try:
+        response = client.models.generate_content(
+            model=model_name,
+            contents=prompt,
+        )
+        return getattr(response, "text", "") or "Gemini tidak mengembalikan teks."
+    except genai_errors.ClientError as error:
+        message = str(error)
+        if "NOT_FOUND" in message or "not found" in message.lower():
+            return (
+                f"Model `{model_name}` tidak tersedia untuk Gemini API key ini.\n"
+                "Coba pakai model lain, misalnya `models/gemini-2.5-flash` "
+                "atau `models/gemini-2.5-pro`."
+            )
+        if "UNAUTHENTICATED" in message or "401" in message:
+            return (
+                "API key Gemini tidak valid atau belum terbaca benar.\n"
+                "Pastikan `GEMINI_API_KEY` berisi key Google AI Studio yang dimulai dengan `AIza`."
+            )
+        return f"Gemini API error: {message}"
+    except Exception as error:  # noqa: BLE001
+        return f"Gagal menghubungi Gemini: {error}"
 
 
 def interactive_loop(root: Path, file_paths: list[Path], max_files: int, model_name: str, api_key: str) -> None:

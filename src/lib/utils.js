@@ -1,5 +1,7 @@
+import * as XLSX from 'xlsx'
+
 /**
- * Format angka ke Rupiah, e.g. 1500000 → "Rp 1.500.000"
+ * Format angka ke Rupiah, e.g. 1500000 -> "Rp 1.500.000"
  */
 export function fmtRp(n) {
   if (n == null || isNaN(n)) return 'Rp 0'
@@ -11,7 +13,7 @@ export function fmtRp(n) {
  */
 export function fmtDate(date) {
   return new Date(date).toLocaleDateString('id-ID', {
-    weekday: 'long', day: 'numeric', month: 'short', year: 'numeric'
+    weekday: 'long', day: 'numeric', month: 'short', year: 'numeric',
   })
 }
 
@@ -20,7 +22,7 @@ export function fmtDate(date) {
  */
 export function fmtDateShort(date) {
   return new Date(date).toLocaleDateString('id-ID', {
-    day: 'numeric', month: 'short'
+    day: 'numeric', month: 'short',
   })
 }
 
@@ -29,7 +31,6 @@ export function fmtDateShort(date) {
  */
 export function todayWIB() {
   const now = new Date()
-  // UTC+7
   const wib = new Date(now.getTime() + 7 * 3600 * 1000)
   return wib.toISOString().split('T')[0]
 }
@@ -59,7 +60,7 @@ export function nowTimeWIB() {
 export function sisaWaktuLaporan(tanggalOperasional) {
   const deadline = new Date(tanggalOperasional)
   deadline.setDate(deadline.getDate() + 1)
-  deadline.setUTCHours(7, 0, 0, 0) // 14:00 WIB = 07:00 UTC
+  deadline.setUTCHours(7, 0, 0, 0)
   const now = new Date()
   const diff = deadline - now
   if (diff <= 0) return 'Terlambat'
@@ -74,9 +75,9 @@ export function sisaWaktuLaporan(tanggalOperasional) {
 export function visitGrade(score, maxScore = 110) {
   const pct = score / maxScore * 100
   if (pct >= 90) return { label: 'Excellent', color: 'text-green-600', bg: 'bg-green-50' }
-  if (pct >= 80) return { label: 'Good',      color: 'text-blue-600',  bg: 'bg-blue-50' }
-  if (pct >= 60) return { label: 'Fair',      color: 'text-yellow-600',bg: 'bg-yellow-50' }
-  return             { label: 'Poor',      color: 'text-red-600',   bg: 'bg-red-50' }
+  if (pct >= 80) return { label: 'Good', color: 'text-blue-600', bg: 'bg-blue-50' }
+  if (pct >= 60) return { label: 'Fair', color: 'text-yellow-600', bg: 'bg-yellow-50' }
+  return { label: 'Poor', color: 'text-red-600', bg: 'bg-red-50' }
 }
 
 /**
@@ -102,13 +103,11 @@ export function roleLabel(role) {
   return map[role] || role
 }
 
-/** Returns 'YYYY-MM' for current month in WIB */
 export function currentPeriodWIB() {
   const now = new Date(new Date().getTime() + 7 * 3600 * 1000)
   return now.toISOString().slice(0, 7)
 }
 
-/** 'YYYY-MM' -> { startDate: 'YYYY-MM-01', endDate: 'YYYY-MM-DD', daysInMonth: number } */
 export function periodBounds(yyyymm) {
   if (!yyyymm) {
     return { startDate: '', endDate: '', daysInMonth: 0 }
@@ -124,7 +123,6 @@ export function periodBounds(yyyymm) {
   }
 }
 
-/** 'YYYY-MM' → 'Apr 2026' */
 export function periodLabel(yyyymm) {
   if (!yyyymm) return ''
   const [y, m] = yyyymm.split('-')
@@ -132,7 +130,6 @@ export function periodLabel(yyyymm) {
     .toLocaleDateString('id-ID', { month: 'short', year: 'numeric' })
 }
 
-/** Returns last n periods as ['2026-04','2026-03',...] */
 export function lastNPeriods(n = 6) {
   const result = []
   const now = new Date(new Date().getTime() + 7 * 3600 * 1000)
@@ -143,7 +140,6 @@ export function lastNPeriods(n = 6) {
   return result
 }
 
-/** Checklist/prep completion % → 1-5 score */
 export function pctToScore(pct) {
   if (pct >= 90) return 5
   if (pct >= 80) return 4
@@ -152,7 +148,6 @@ export function pctToScore(pct) {
   return 1
 }
 
-/** 360° average → 1-5 score */
 export function avg360ToScore(avg) {
   if (avg >= 4.0) return 5
   if (avg >= 3.0) return 4
@@ -161,44 +156,53 @@ export function avg360ToScore(avg) {
   return 1
 }
 
-/**
- * Apakah role ini level store?
- */
 export function isStoreRole(role) {
   return ['staff', 'asst_head_store', 'head_store'].includes(role)
 }
 
-/**
- * Apakah role ini level managerial (bisa audit)?
- */
 export function isManagerRole(role) {
   return ['district_manager', 'area_manager', 'ops_manager'].includes(role)
 }
 
 /**
  * Download data as a UTF-8 CSV file (with BOM so Excel opens correctly).
- * @param {string} filename - e.g. "opex_april_2026.csv"
- * @param {string[]} headers - column headers
- * @param {Array<Array<string|number|null>>} rows - array of row arrays
+ * @param {string} filename
+ * @param {string[]} headers
+ * @param {Array<Array<string|number|null>>} rows
  */
 export function downloadCsv(filename, headers, rows) {
   const escape = (val) => {
     if (val == null) return ''
     const str = String(val)
     return str.includes(',') || str.includes('"') || str.includes('\n')
-      ? '"' + str.replace(/"/g, '""') + '"'
+      ? `"${str.replace(/"/g, '""')}"`
       : str
   }
+
   const lines = [headers.map(escape).join(',')]
-  rows.forEach(row => lines.push(row.map(escape).join(',')))
-  // \uFEFF = UTF-8 BOM — makes Excel on Windows recognise Indonesian characters
+  rows.forEach((row) => lines.push(row.map(escape).join(',')))
+
   const blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' })
-  const url  = URL.createObjectURL(blob)
-  const a    = document.createElement('a')
-  a.href     = url
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
   a.download = filename
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)
   URL.revokeObjectURL(url)
+}
+
+/**
+ * Download tabular data as an XLSX file.
+ * @param {string} filename
+ * @param {string} sheetName
+ * @param {string[]} headers
+ * @param {Array<Array<string|number|null>>} rows
+ */
+export function downloadXlsx(filename, sheetName, headers, rows) {
+  const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows])
+  const workbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(workbook, worksheet, sheetName)
+  XLSX.writeFile(workbook, filename)
 }
