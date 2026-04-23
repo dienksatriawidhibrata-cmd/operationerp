@@ -172,9 +172,12 @@ export function AuthProvider({ children }) {
         const nextUserId = session?.user?.id ?? null
         const sameUser = currentUserIdRef.current && currentUserIdRef.current === nextUserId
         const hasUsableProfile = !!profileRef.current || !!readCachedProfile(nextUserId)
-        const keepScreenStable = sameUser && hasUsableProfile && event === 'TOKEN_REFRESHED'
+        const isStableSessionRefresh = sameUser && hasUsableProfile && session?.user
 
-        if (!keepScreenStable) {
+        // On mobile, returning from camera/file picker can trigger auth events
+        // even though the user session is still healthy. Keep the current screen
+        // visible while we re-verify profile data for the same signed-in user.
+        if (!isStableSessionRefresh) {
           setLoading(true)
         }
 
