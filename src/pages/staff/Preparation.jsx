@@ -13,6 +13,48 @@ import {
 
 const SECTIONS = [...new Set(PREPARATION_ITEMS.map((i) => i.section))]
 
+function buildPreparationDraftKey(branchId, tanggal, shift) {
+  if (!branchId || !tanggal || !shift) return ''
+  return `bagikopi-ops-preparation-draft:${branchId}:${tanggal}:${shift}`
+}
+
+function readPreparationDraft(branchId, tanggal, shift) {
+  if (typeof window === 'undefined') return null
+  const key = buildPreparationDraftKey(branchId, tanggal, shift)
+  if (!key) return null
+
+  try {
+    const raw = window.localStorage.getItem(key)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
+function writePreparationDraft(branchId, tanggal, shift, draft) {
+  if (typeof window === 'undefined') return
+  const key = buildPreparationDraftKey(branchId, tanggal, shift)
+  if (!key) return
+
+  try {
+    window.localStorage.setItem(key, JSON.stringify(draft))
+  } catch {
+    // Ignore draft cache write failures.
+  }
+}
+
+function clearPreparationDraft(branchId, tanggal, shift) {
+  if (typeof window === 'undefined') return
+  const key = buildPreparationDraftKey(branchId, tanggal, shift)
+  if (!key) return
+
+  try {
+    window.localStorage.removeItem(key)
+  } catch {
+    // Ignore draft cache clear failures.
+  }
+}
+
 function normalizePreparationAnswers(rawAnswers = {}) {
   const qtyMap = {}
   const photoMap = {}
@@ -74,14 +116,25 @@ export default function Preparation() {
       setPhotoMap(normalized.photoMap)
       setNotes(cur.notes || '')
     } else {
-      setQtyMap({})
-      setPhotoMap({})
-      setNotes('')
+      const draft = readPreparationDraft(branchId, today, activeShift)
+      setQtyMap(draft?.qtyMap || {})
+      setPhotoMap(draft?.photoMap || {})
+      setNotes(draft?.notes || '')
     }
     setError('')
     setDone(false)
     setIsEditing(false)
-  }, [existing, activeShift])
+  }, [existing, activeShift, branchId, today])
+
+  useEffect(() => {
+    if (!branchId || existing[activeShift]) return
+
+    writePreparationDraft(branchId, today, activeShift, {
+      qtyMap,
+      photoMap,
+      notes,
+    })
+  }, [branchId, today, activeShift, existing, qtyMap, photoMap, notes])
 
   const fetchExisting = async () => {
     const { data } = await supabase
@@ -134,6 +187,7 @@ export default function Preparation() {
     if (submitErr) {
       setError('Gagal menyimpan: ' + submitErr.message)
     } else {
+      clearPreparationDraft(branchId, today, activeShift)
       setDone(true)
       setIsEditing(false)
       await fetchExisting()

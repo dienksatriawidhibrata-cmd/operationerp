@@ -41,6 +41,48 @@ const SECTION_CONFIG = {
   },
 }
 
+function buildChecklistDraftKey(branchId, tanggal, shift) {
+  if (!branchId || !tanggal || !shift) return ''
+  return `bagikopi-ops-checklist-draft:${branchId}:${tanggal}:${shift}`
+}
+
+function readChecklistDraft(branchId, tanggal, shift) {
+  if (typeof window === 'undefined') return null
+  const key = buildChecklistDraftKey(branchId, tanggal, shift)
+  if (!key) return null
+
+  try {
+    const raw = window.localStorage.getItem(key)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
+function writeChecklistDraft(branchId, tanggal, shift, draft) {
+  if (typeof window === 'undefined') return
+  const key = buildChecklistDraftKey(branchId, tanggal, shift)
+  if (!key) return
+
+  try {
+    window.localStorage.setItem(key, JSON.stringify(draft))
+  } catch {
+    // Ignore draft cache write failures.
+  }
+}
+
+function clearChecklistDraft(branchId, tanggal, shift) {
+  if (typeof window === 'undefined') return
+  const key = buildChecklistDraftKey(branchId, tanggal, shift)
+  if (!key) return
+
+  try {
+    window.localStorage.removeItem(key)
+  } catch {
+    // Ignore draft cache clear failures.
+  }
+}
+
 export default function CeklisHarian() {
   const { profile } = useAuth()
   const today = todayWIB()
@@ -71,19 +113,31 @@ export default function CeklisHarian() {
       setOosList(currentExisting.item_oos || [])
       setNotes(currentExisting.notes || '')
     } else {
-      setAnswers({})
-      setPhotos({})
-      setOosList([])
-      setNotes('')
+      const draft = readChecklistDraft(branchId, today, activeShift)
+      setAnswers(draft?.answers || {})
+      setPhotos(draft?.photos || {})
+      setOosList(draft?.item_oos || [])
+      setNotes(draft?.notes || '')
     }
     setError('')
-  }, [existing, activeShift])
+  }, [existing, activeShift, branchId, today])
 
   useEffect(() => {
     setDone(false)
     setError('')
     setIsEditing(false)
   }, [activeShift])
+
+  useEffect(() => {
+    if (!branchId || existing[activeShift]) return
+
+    writeChecklistDraft(branchId, today, activeShift, {
+      answers,
+      photos,
+      item_oos: oosList,
+      notes,
+    })
+  }, [branchId, today, activeShift, existing, answers, photos, oosList, notes])
 
   const fetchExisting = async () => {
     const { data, error: fetchErr } = await supabase
@@ -159,6 +213,7 @@ export default function CeklisHarian() {
     if (submitErr) {
       setError('Gagal menyimpan: ' + submitErr.message)
     } else {
+      clearChecklistDraft(branchId, today, activeShift)
       setDone(true)
       setIsEditing(false)
       await fetchExisting()
