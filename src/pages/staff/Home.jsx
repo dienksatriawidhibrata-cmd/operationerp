@@ -499,7 +499,7 @@ export default function StaffHome() {
           <div className="mb-6">
             <div className="flex justify-between items-center mb-3">
               <h2 className="font-extrabold text-gray-800 text-sm">Panduan SOP</h2>
-              <span className="text-[10px] text-gray-400 font-semibold">{sopCards.length} dokumen</span>
+              <Link to="/sop" className="text-[10px] text-blue-600 font-bold">Selengkapnya</Link>
             </div>
             <div className="flex gap-3 overflow-x-auto pb-1 -mx-5 px-5 scrollbar-hide">
               {sopCards.map((sop) => (

@@ -5,7 +5,7 @@ import { SmartBottomNav } from '../../components/BottomNav'
 import {
   SubpageShell, SectionPanel, ToneBadge, EmptyPanel, AppIcon,
 } from '../../components/ui/AppKit'
-import { currentPeriodWIB, lastNPeriods, periodLabel, pctToScore, avg360ToScore, roleLabel } from '../../lib/utils'
+import { currentPeriodWIB, lastNPeriods, periodBounds, periodLabel, pctToScore, avg360ToScore, roleLabel } from '../../lib/utils'
 import {
   KPI_PERSONAL_STORE_TARGET_ROLES,
   canEvaluateKpiTarget,
@@ -41,25 +41,33 @@ function ScorePicker({ value, onChange, disabled }) {
   )
 }
 
-async function calcAutoValues(branchId, staffId, period) {
-  const [y, m] = period.split('-').map(Number)
-  const startDate = `${period}-01`
-  const endDate = new Date(y, m, 0).toISOString().split('T')[0]
+async function calcAutoValues(branchId, staff, period) {
+  const { startDate, endDate, daysInMonth } = periodBounds(period)
+  const usePersonalSubmissionTracking = ['staff', 'barista', 'kitchen', 'waitress'].includes(staff?.role)
+
+  let ceklisQuery = supabase.from('daily_checklists')
+    .select('id', { count: 'exact', head: true })
+    .eq('branch_id', branchId)
+    .gte('tanggal', startDate)
+    .lte('tanggal', endDate)
+
+  let prepQuery = supabase.from('daily_preparation')
+    .select('id', { count: 'exact', head: true })
+    .eq('branch_id', branchId)
+    .gte('tanggal', startDate)
+    .lte('tanggal', endDate)
+
+  if (usePersonalSubmissionTracking && staff?.id) {
+    ceklisQuery = ceklisQuery.eq('submitted_by', staff.id)
+    prepQuery = prepQuery.eq('submitted_by', staff.id)
+  }
 
   const [ceklisRes, prepRes, threeSixtyRes] = await Promise.all([
-    supabase.from('daily_checklists')
-      .select('id', { count: 'exact' })
-      .eq('branch_id', branchId)
-      .gte('tanggal', startDate)
-      .lte('tanggal', endDate),
-    supabase.from('daily_preparation')
-      .select('id', { count: 'exact' })
-      .eq('branch_id', branchId)
-      .gte('tanggal', startDate)
-      .lte('tanggal', endDate),
+    ceklisQuery,
+    prepQuery,
     supabase.from('kpi_360_submissions')
       .select('id')
-      .eq('evaluatee_id', staffId)
+      .eq('evaluatee_id', staff.id)
       .eq('period_month', period),
   ])
 
@@ -67,7 +75,6 @@ async function calcAutoValues(branchId, staffId, period) {
     throw new Error(ceklisRes.error?.message || prepRes.error?.message || threeSixtyRes.error?.message || 'Gagal menghitung skor otomatis.')
   }
 
-  const daysInMonth = new Date(y, m, 0).getDate()
   const maxCeklis = daysInMonth * 3
   const maxPrep = daysInMonth * 3
   const ceklisPct = maxCeklis > 0 ? Math.round(((ceklisRes.count || 0) / maxCeklis) * 100) : 0
@@ -277,7 +284,7 @@ function TargetKPIForm({ staff, period, branchId, items, existingScores, isVerif
     let active = true
     setAutoVals(null)
 
-    calcAutoValues(branchId, staff.id, period)
+    calcAutoValues(branchId, staff, period)
       .then((result) => {
         if (active) setAutoVals(result)
       })
@@ -288,7 +295,7 @@ function TargetKPIForm({ staff, period, branchId, items, existingScores, isVerif
     return () => {
       active = false
     }
-  }, [branchId, needsAutoValues, period, staff.id])
+  }, [branchId, needsAutoValues, period, staff])
 
   const mergedScores = { ...scores }
   items.forEach((item) => {

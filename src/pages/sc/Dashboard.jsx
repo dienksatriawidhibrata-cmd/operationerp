@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { DMBottomNav, OpsBottomNav, SCBottomNav, StaffBottomNav } from '../../components/BottomNav'
+import SopPreviewSection from '../../components/SopPreviewSection'
 import {
   canCreateSupplyOrder,
   canIssueSuratJalan,
@@ -287,6 +288,8 @@ export default function SCDashboard() {
             </div>
           </div>
         </div>
+
+        <SopPreviewSection title="Panduan SOP" accent="slate" />
 
         {/* Urgent SJ Orders */}
         {canIssueSJ && urgentCount > 0 && (

@@ -40,6 +40,7 @@ const TrainerDashboard = lazy(() => import('./pages/trainer/Dashboard'))
 const TrainerStaffBaru = lazy(() => import('./pages/trainer/StaffBaru'))
 const TrainerStaffLama = lazy(() => import('./pages/trainer/StaffLama'))
 const TrainerOJE       = lazy(() => import('./pages/trainer/OJEPage'))
+const SopPage          = lazy(() => import('./pages/SopPage'))
 const SCDashboard    = lazy(() => import('./pages/sc/Dashboard'))
 const SCNewOrder     = lazy(() => import('./pages/sc/NewOrder'))
 const SCOrderDetail  = lazy(() => import('./pages/sc/OrderDetail'))
@@ -274,6 +275,12 @@ export default function App() {
       <Route path="/tasks" element={
         <RequireAuth roles={[...MANAGER_ROLES, ...SUPPORT_ROLES, ...TASK_ASSIGNEE_ROLES]}>
           <TasksPage />
+        </RequireAuth>
+      } />
+
+      <Route path="/sop" element={
+        <RequireAuth roles={[...STORE_ROLES, ...MANAGER_ROLES, ...SUPPORT_ROLES, ...TRAINER_ROLES, ...SC_ROLES]}>
+          <SopPage />
         </RequireAuth>
       } />
 

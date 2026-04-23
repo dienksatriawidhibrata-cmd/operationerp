@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { SmartBottomNav } from '../../components/BottomNav'
+import SopPreviewSection from '../../components/SopPreviewSection'
 import { AppIcon } from '../../components/ui/AppKit'
 import { todayWIB } from '../../lib/utils'
 
@@ -173,6 +174,8 @@ export default function TrainerDashboard() {
             </div>
           </div>
         )}
+
+        <SopPreviewSection title="Panduan SOP" accent="indigo" />
 
         {/* Notice Board */}
         <div className="bg-gradient-to-r from-indigo-700 to-blue-500 p-5 rounded-[2rem] text-white relative overflow-hidden shadow-lg">

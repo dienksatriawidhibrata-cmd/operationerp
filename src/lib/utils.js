@@ -108,6 +108,22 @@ export function currentPeriodWIB() {
   return now.toISOString().slice(0, 7)
 }
 
+/** 'YYYY-MM' -> { startDate: 'YYYY-MM-01', endDate: 'YYYY-MM-DD', daysInMonth: number } */
+export function periodBounds(yyyymm) {
+  if (!yyyymm) {
+    return { startDate: '', endDate: '', daysInMonth: 0 }
+  }
+
+  const [y, m] = yyyymm.split('-').map(Number)
+  const daysInMonth = new Date(y, m, 0).getDate()
+
+  return {
+    startDate: `${yyyymm}-01`,
+    endDate: `${yyyymm}-${String(daysInMonth).padStart(2, '0')}`,
+    daysInMonth,
+  }
+}
+
 /** 'YYYY-MM' → 'Apr 2026' */
 export function periodLabel(yyyymm) {
   if (!yyyymm) return ''

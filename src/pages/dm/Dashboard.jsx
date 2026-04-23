@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
-import { fmtRp, roleLabel, todayWIB, yesterdayWIB, visitGrade } from '../../lib/utils'
+import { currentPeriodWIB, fmtRp, roleLabel, todayWIB, yesterdayWIB, visitGrade } from '../../lib/utils'
 import { canViewKPI, canViewSupplyChain, isOpsLikeRole } from '../../lib/access'
 import {
   getBrowserNotificationPermission,
@@ -10,8 +10,11 @@ import {
   showBrowserNotification,
 } from '../../lib/notifications'
 import { DMBottomNav, OpsBottomNav } from '../../components/BottomNav'
+import LeaderboardSection from '../../components/LeaderboardSection'
 import PhotoViewer from '../../components/PhotoViewer'
+import SopPreviewSection from '../../components/SopPreviewSection'
 import TaskWidget from '../../components/TaskWidget'
+import { fetchOperationalLeaderboards } from '../../lib/opsLeaderboards'
 import {
   ActionCard,
   AppCanvas,
@@ -201,6 +204,17 @@ export default function DMDashboard() {
   const [notifPermission, setNotifPermission] = useState(getBrowserNotificationPermission())
   const [tokoOpen, setTokoOpen] = useState(false)
   const [visitOpen, setVisitOpen] = useState(false)
+  const [scopedBranchIds, setScopedBranchIds] = useState([])
+  const [leaderboardPeriod, setLeaderboardPeriod] = useState(currentPeriodWIB())
+  const [leaderboardView, setLeaderboardView] = useState('store')
+  const [operationalLeaderboards, setOperationalLeaderboards] = useState({
+    staffTop: [],
+    staffBottom: [],
+    storesTop: [],
+    storesBottom: [],
+    headStoresTop: [],
+    headStoresBottom: [],
+  })
 
   const isOpsManager = isOpsLikeRole(profile?.role)
   const kpiEnabled = canViewKPI(profile?.role)
@@ -227,6 +241,38 @@ export default function DMDashboard() {
   useEffect(() => {
     dashboardRefreshRef.current = () => fetchDashboard()
   })
+
+  useEffect(() => {
+    if (!scopedBranchIds.length) {
+      setOperationalLeaderboards({
+        staffTop: [],
+        staffBottom: [],
+        storesTop: [],
+        storesBottom: [],
+        headStoresTop: [],
+        headStoresBottom: [],
+      })
+      return
+    }
+
+    fetchOperationalLeaderboards({
+      supabase,
+      period: leaderboardPeriod,
+      today,
+      branchIds: scopedBranchIds,
+    })
+      .then(setOperationalLeaderboards)
+      .catch(() => {
+        setOperationalLeaderboards({
+          staffTop: [],
+          staffBottom: [],
+          storesTop: [],
+          storesBottom: [],
+          headStoresTop: [],
+          headStoresBottom: [],
+        })
+      })
+  }, [leaderboardPeriod, scopedBranchIds, today])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -338,6 +384,7 @@ export default function DMDashboard() {
         }
 
         accessibleBranchIdsRef.current = new Set()
+        setScopedBranchIds([])
         setStores([])
         setVisits([])
         setAlerts([])
@@ -352,6 +399,7 @@ export default function DMDashboard() {
       }
 
       const branchIds = branches.map((branch) => branch.id)
+      setScopedBranchIds(branchIds)
       const branchMap = Object.fromEntries(branches.map((branch) => [branch.id, branch]))
       accessibleBranchIdsRef.current = new Set(branchIds)
       const range = getVisitRange(visitPeriod, today)
@@ -960,6 +1008,23 @@ export default function DMDashboard() {
                 </Link>
               ))}
             </div>
+
+            <SopPreviewSection title="Panduan SOP" accent="blue" />
+
+            <SectionPanel
+              eyebrow="Leaderboard"
+              title="Peringkat Operasional"
+              description="Tabel staff otomatis mengikuti scope area atau district kamu."
+              className="border-slate-100 bg-slate-50/70 shadow-none"
+            >
+              <LeaderboardSection
+                selectedPeriod={leaderboardPeriod}
+                onPeriodChange={setLeaderboardPeriod}
+                leaderboardView={leaderboardView}
+                onViewChange={setLeaderboardView}
+                leaderboards={operationalLeaderboards}
+              />
+            </SectionPanel>
 
             <DashSection
               icon="🏪"
