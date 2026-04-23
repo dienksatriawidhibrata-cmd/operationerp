@@ -6,15 +6,12 @@ import { StaffBottomNav } from '../../components/BottomNav'
 import { canViewKPI, canViewSupplyChain, isStoreRole } from '../../lib/access'
 import { AppIcon } from '../../components/ui/AppKit'
 import { fmtRp, todayWIB, yesterdayWIB, sisaWaktuLaporan } from '../../lib/utils'
-import { fetchSopFiles } from '../../lib/googleApis'
 
 export default function StaffHome() {
   const { profile, signOut } = useAuth()
   const [status, setStatus] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [sopCards, setSopCards] = useState([])
   const [announcements, setAnnouncements] = useState([])
-  const [viewingSop, setViewingSop] = useState(null)
   const [tasks, setTasks] = useState([])
 
   const today = todayWIB()
@@ -31,11 +28,9 @@ export default function StaffHome() {
   }, [profile])
 
   const fetchSopAndAnnouncements = async () => {
-    const [sopFiles, annRes] = await Promise.all([
-      fetchSopFiles().catch(() => []),
+    const [annRes] = await Promise.all([
       supabase.from('announcements').select('id,title,body,published_at').eq('is_active', true).order('published_at', { ascending: false }).limit(5),
     ])
-    setSopCards(sopFiles)
     if (annRes.data) setAnnouncements(annRes.data)
   }
 
@@ -133,15 +128,18 @@ export default function StaffHome() {
     { to: '/kpi/personal/input', icon: 'checklist', label: 'Input\nKPI Team' },
     { to: '/kpi/360',            icon: 'spark',     label: 'Penilaian\n360°' },
     { to: '/sc/sj',              icon: 'finance',   label: 'Terima\nBarang' },
+    { to: '/sop',                icon: 'checklist', label: 'Panduan\nSOP' },
   ] : isStoreLevel ? [
     { to: '/staff/preparation',  icon: 'approval',  label: 'Prep\nHarian' },
     { to: '/kpi/personal',       icon: 'chart',     label: 'KPI\nPersonal' },
     { to: '/kpi/360',            icon: 'spark',     label: 'Penilaian\n360°' },
     { to: '/sc/sj',              icon: 'finance',   label: 'Terima\nBarang' },
+    { to: '/sop',                icon: 'checklist', label: 'Panduan\nSOP' },
   ] : [
     ...(kpiEnabled ? [{ to: '/kpi', icon: 'checklist', label: 'KPI\nKerja' }] : []),
     ...(supplyChainEnabled ? [{ to: '/sc/sj', icon: 'finance', label: 'Penerimaan\nBarang' }] : []),
-  ].slice(0, 4)
+    { to: '/sop', icon: 'checklist', label: 'Panduan\nSOP' },
+  ]
 
   const hasPendingReportReminder = !loading && !status?.laporan && profile?.branch_id && (isHeadStore || !isStoreLevel)
 
@@ -494,55 +492,6 @@ export default function StaffHome() {
           </div>
         </div>
 
-        {/* SOP Section */}
-        {sopCards.length > 0 && (
-          <div className="mb-6">
-            <div className="flex justify-between items-center mb-3">
-              <h2 className="font-extrabold text-gray-800 text-sm">Panduan SOP</h2>
-              <Link to="/sop" className="text-[10px] text-blue-600 font-bold">Selengkapnya</Link>
-            </div>
-            <div className="flex gap-3 overflow-x-auto pb-1 -mx-5 px-5 scrollbar-hide">
-              {sopCards.map((sop) => (
-                <button
-                  key={sop.id}
-                  onClick={() => setViewingSop(sop)}
-                  className="flex-shrink-0 w-36 bg-white border border-blue-50 rounded-[1.5rem] p-4 shadow-sm active:scale-[0.97] transition-transform text-left"
-                >
-                  <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 mb-3">
-                    <AppIcon name="checklist" size={18} />
-                  </div>
-                  <p className="text-[10px] font-bold text-gray-800 leading-tight">{sop.name}</p>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* SOP Viewer Modal */}
-        {viewingSop && (
-          <div className="fixed inset-0 z-50 flex flex-col bg-black/60" onClick={() => setViewingSop(null)}>
-            <div
-              className="relative flex flex-col bg-white rounded-t-[2rem] mt-auto h-[92dvh]"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-                <p className="font-bold text-sm text-gray-900 truncate pr-4">{viewingSop.name}</p>
-                <button
-                  onClick={() => setViewingSop(null)}
-                  className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 flex-shrink-0 text-lg font-bold"
-                >
-                  ×
-                </button>
-              </div>
-              <iframe
-                src={viewingSop.previewUrl}
-                title={viewingSop.name}
-                className="flex-1 w-full border-0"
-                sandbox="allow-scripts allow-same-origin"
-              />
-            </div>
-          </div>
-        )}
 
         {/* Announcements */}
         {announcements.length > 0 && (

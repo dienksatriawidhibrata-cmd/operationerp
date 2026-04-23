@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { OpsBottomNav } from '../../components/BottomNav'
-import SopPreviewSection from '../../components/SopPreviewSection'
 import { AppIcon } from '../../components/ui/AppKit'
 import { currentPeriodWIB, lastNPeriods, periodBounds, periodLabel, roleLabel, todayWIB } from '../../lib/utils'
 
@@ -362,6 +361,7 @@ export default function OpsHub() {
     { to: '/dm', icon: 'home', label: 'DM\nDashboard', bg: 'bg-blue-50 border-blue-100 text-blue-600' },
     { to: '/kpi/personal/input', icon: 'checklist', label: 'Input\nKPI', bg: 'bg-sky-50 border-sky-100 text-sky-600' },
     { to: '/tasks', icon: 'checklist', label: 'Manajemen\nTugas', bg: 'bg-emerald-50 border-emerald-100 text-emerald-600' },
+    { to: '/sop', icon: 'checklist', label: 'Panduan\nSOP', bg: 'bg-indigo-50 border-indigo-100 text-indigo-600' },
   ]
 
   const reportLinks = [
@@ -470,8 +470,6 @@ export default function OpsHub() {
             </Link>
           ))}
         </div>
-
-        <SopPreviewSection title="Panduan SOP" accent="blue" />
 
         <h2 className="mb-4 text-sm font-extrabold text-gray-800">Leaderboard Operasional</h2>
         <div className="mb-4">

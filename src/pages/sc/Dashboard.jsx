@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { DMBottomNav, OpsBottomNav, SCBottomNav, StaffBottomNav } from '../../components/BottomNav'
-import SopPreviewSection from '../../components/SopPreviewSection'
 import {
   canCreateSupplyOrder,
   canIssueSuratJalan,
@@ -157,6 +156,7 @@ export default function SCDashboard() {
     { to: '/sc/qc', icon: 'approval', label: 'Quality\nControl', bg: 'bg-white text-blue-600', border: 'border-2 border-blue-50' },
     { to: '/sc/distribution', icon: 'map', label: 'Jadwal\nKirim', bg: 'bg-white text-blue-600', border: 'border-2 border-blue-50' },
     { to: '/sc/sj', icon: 'finance', label: 'Surat\nJalan', bg: 'bg-white text-blue-600', border: 'border-2 border-blue-50' },
+    { to: '/sop', icon: 'checklist', label: 'Panduan\nSOP', bg: 'bg-white text-blue-600', border: 'border-2 border-blue-50' },
   ].filter(Boolean)
 
   return (
@@ -257,7 +257,7 @@ export default function SCDashboard() {
 
         {/* Quick Actions */}
         <div className={`grid gap-4 mb-6 ${quickActions.length <= 4 ? 'grid-cols-4' : 'grid-cols-4'}`}>
-          {quickActions.slice(0, 4).map((action) => (
+          {quickActions.map((action) => (
             <Link key={action.to} to={action.to} className="flex flex-col items-center gap-2">
               <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-sm active:scale-95 transition-transform ${action.bg} ${action.border}`}>
                 <AppIcon name={action.icon} size={22} />
@@ -288,8 +288,6 @@ export default function SCDashboard() {
             </div>
           </div>
         </div>
-
-        <SopPreviewSection title="Panduan SOP" accent="slate" />
 
         {/* Urgent SJ Orders */}
         {canIssueSJ && urgentCount > 0 && (

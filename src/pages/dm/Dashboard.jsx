@@ -12,7 +12,6 @@ import {
 import { DMBottomNav, OpsBottomNav } from '../../components/BottomNav'
 import LeaderboardSection from '../../components/LeaderboardSection'
 import PhotoViewer from '../../components/PhotoViewer'
-import SopPreviewSection from '../../components/SopPreviewSection'
 import TaskWidget from '../../components/TaskWidget'
 import { fetchOperationalLeaderboards } from '../../lib/opsLeaderboards'
 import {
@@ -992,6 +991,7 @@ export default function DMDashboard() {
                 { to: '/dm/visits', icon: 'map', label: 'SOP Visit', sub: 'Daily audit toko', bg: 'bg-blue-50 border-blue-100 text-blue-600' },
                 { to: '/dm/approval', icon: 'approval', label: 'Approval', sub: 'Setoran harian', bg: 'bg-emerald-50 border-emerald-100 text-emerald-600' },
                 { to: '/kpi/personal/input', icon: 'checklist', label: 'Input KPI', sub: 'Penilaian bulanan tim', bg: 'bg-sky-50 border-sky-100 text-sky-600' },
+                { to: '/sop', icon: 'checklist', label: 'Panduan SOP', sub: 'Buku SOP operasional', bg: 'bg-indigo-50 border-indigo-100 text-indigo-600' },
                 ...(kpiEnabled ? [{ to: '/kpi', icon: 'chart', label: 'KPI Report', sub: 'Performa wilayah', bg: 'bg-primary-50 border-primary-100 text-primary-600' }] : []),
                 ...(supplyChainEnabled ? [{ to: '/sc', icon: 'finance', label: 'Supply Chain', sub: 'Order & pengiriman', bg: 'bg-violet-50 border-violet-100 text-violet-600' }] : []),
             ...(isOpsManager ? [{ to: '/ops/laporan', icon: 'finance', label: 'Laporan Harian', sub: 'Setoran, opex, dan laporan', bg: 'bg-amber-50 border-amber-100 text-amber-600' }] : []),
@@ -1008,8 +1008,6 @@ export default function DMDashboard() {
                 </Link>
               ))}
             </div>
-
-            <SopPreviewSection title="Panduan SOP" accent="blue" />
 
             <SectionPanel
               eyebrow="Leaderboard"

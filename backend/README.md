@@ -9,6 +9,7 @@ Starter backend terpisah untuk kebutuhan server-side memakai FastAPI dan `supaba
 - `/api/manager-visits/summary` untuk status submit AM/DM
 - `/api/store-compliance/summary` untuk ringkasan ceklis, prep, laporan, dan setoran toko
 - `/api/warehouse/receipts` dan `/api/warehouse/receipts.csv` untuk laporan penerimaan barang toko
+- `/api/sop/docs` dan `/api/sop/docs/{document_id}` untuk baca Google Docs SOP beserta document tabs
 - config env terpusat
 - CORS untuk frontend lokal
 
@@ -19,7 +20,10 @@ Starter backend terpisah untuk kebutuhan server-side memakai FastAPI dan `supaba
 3. Install dependency
 4. Salin `.env.example` menjadi `.env`
 5. Isi `SUPABASE_URL` dan `SUPABASE_KEY`
-6. Jalankan server
+6. Untuk SOP Google Docs, isi `GOOGLE_SOP_FOLDER_ID` dan salah satu dari:
+   `GOOGLE_SERVICE_ACCOUNT_JSON` atau `GOOGLE_SERVICE_ACCOUNT_FILE`
+7. Share folder/dokumen SOP ke service account tersebut minimal sebagai viewer
+8. Jalankan server
 
 ## Command
 

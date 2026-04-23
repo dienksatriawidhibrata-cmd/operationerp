@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { fetchSopFiles } from '../lib/googleApis'
+import { fetchSopDocumentContent, fetchSopDocuments } from '../lib/googleApis'
 import { DMBottomNav, OpsBottomNav, SCBottomNav, SmartBottomNav, StaffBottomNav } from '../components/BottomNav'
 import { isFinanceRole, isManagerRole, isOpsLikeRole, isStoreRole, isSupplyChainRole } from '../lib/access'
 import { AppIcon } from '../components/ui/AppKit'
@@ -13,73 +13,438 @@ function getFooter(role) {
   return <SmartBottomNav />
 }
 
+function blockTitle(style) {
+  if (style === 'HEADING_1') return 'text-2xl font-black text-slate-950'
+  if (style === 'HEADING_2') return 'text-xl font-bold text-slate-900'
+  if (style === 'HEADING_3') return 'text-lg font-bold text-slate-900'
+  return 'text-base font-semibold text-slate-900'
+}
+
+function renderBlock(block, index) {
+  if (block.type === 'heading') {
+    return (
+      <h2 key={index} className={blockTitle(block.style)}>
+        {block.text}
+      </h2>
+    )
+  }
+
+  if (block.type === 'list_item') {
+    return (
+      <div key={index} className="flex items-start gap-3 text-sm leading-6 text-slate-600">
+        <span className="mt-2 h-1.5 w-1.5 rounded-full bg-blue-500" />
+        <span>{block.text}</span>
+      </div>
+    )
+  }
+
+  if (block.type === 'table') {
+    return (
+      <div key={index} className="overflow-x-auto rounded-[1.5rem] border border-slate-200 bg-white">
+        <table className="min-w-full border-collapse text-left text-sm">
+          <tbody>
+            {block.rows.map((row, rowIndex) => (
+              <tr key={rowIndex} className={rowIndex === 0 ? 'bg-slate-100' : 'bg-white'}>
+                {row.map((cell, cellIndex) => (
+                  <td
+                    key={cellIndex}
+                    className={`border border-slate-200 px-4 py-3 align-top ${
+                      rowIndex === 0 ? 'font-semibold text-slate-900' : 'text-slate-600'
+                    }`}
+                  >
+                    {cell || '-'}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+
+  return (
+    <p key={index} className="text-sm leading-7 text-slate-600">
+      {block.text}
+    </p>
+  )
+}
+
+function normalizeDocLabel(name) {
+  return String(name || '').replace(/\.(docx?|pdf|pptx?)$/i, '').trim()
+}
+
+function formatDocDate(value) {
+  return value ? new Date(value).toLocaleDateString('id-ID') : 'Google Docs'
+}
+
+function getDocumentCategory(doc) {
+  const label = normalizeDocLabel(doc?.name).toLowerCase()
+  if (label.includes('buku besar') || label.includes('produk') || label.includes('recipe')) {
+    return 'produk'
+  }
+
+  return 'umum'
+}
+
 export default function SopPage() {
   const { profile } = useAuth()
-  const [sops, setSops] = useState([])
-  const [activeSop, setActiveSop] = useState(null)
+  const [documents, setDocuments] = useState([])
+  const [activeCategory, setActiveCategory] = useState('umum')
+  const [activeDocumentId, setActiveDocumentId] = useState('')
+  const [activeDocument, setActiveDocument] = useState(null)
+  const [activeTabId, setActiveTabId] = useState('')
+  const [loadingDocs, setLoadingDocs] = useState(true)
+  const [loadingContent, setLoadingContent] = useState(false)
+  const [error, setError] = useState('')
 
   useEffect(() => {
-    fetchSopFiles().then((rows) => {
-      setSops(rows || [])
-      setActiveSop((rows || [])[0] || null)
-    }).catch(() => {
-      setSops([])
-      setActiveSop(null)
-    })
+    let cancelled = false
+
+    setLoadingDocs(true)
+    fetchSopDocuments()
+      .then((rows) => {
+        if (cancelled) return
+        const docs = rows || []
+        setDocuments(docs)
+        const hasGeneralDocs = docs.some((doc) => getDocumentCategory(doc) === 'umum')
+        const nextCategory = hasGeneralDocs ? 'umum' : 'produk'
+        const firstDoc = docs.find((doc) => getDocumentCategory(doc) === nextCategory) || docs[0] || null
+        setActiveCategory(nextCategory)
+        setActiveDocumentId(firstDoc?.id || '')
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setDocuments([])
+        setError(err.message || 'Gagal memuat daftar SOP.')
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingDocs(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
   }, [])
+
+  useEffect(() => {
+    if (!activeDocumentId) {
+      setActiveDocument(null)
+      setActiveTabId('')
+      return
+    }
+
+    let cancelled = false
+    setLoadingContent(true)
+    setError('')
+
+    fetchSopDocumentContent(activeDocumentId)
+      .then((payload) => {
+        if (cancelled) return
+        setActiveDocument(payload)
+        setActiveTabId(payload?.tabs?.[0]?.id || '')
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setActiveDocument(null)
+        setActiveTabId('')
+        setError(err.message || 'Gagal memuat isi SOP.')
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingContent(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [activeDocumentId])
+
+  const activeTab = useMemo(
+    () => activeDocument?.tabs?.find((tab) => tab.id === activeTabId) || activeDocument?.tabs?.[0] || null,
+    [activeDocument, activeTabId]
+  )
+  const activeDocMeta = useMemo(
+    () => documents.find((item) => item.id === activeDocumentId) || null,
+    [documents, activeDocumentId]
+  )
+  const filteredDocuments = useMemo(
+    () => documents.filter((doc) => getDocumentCategory(doc) === activeCategory),
+    [documents, activeCategory]
+  )
+  const hasDocumentTabs = useMemo(() => {
+    const tabs = activeDocument?.tabs || []
+    if (tabs.length > 1) return true
+    return tabs.some((tab) => Number(tab?.depth || 0) > 0)
+  }, [activeDocument])
+
+  useEffect(() => {
+    if (!filteredDocuments.length) {
+      setActiveDocumentId('')
+      return
+    }
+
+    if (!filteredDocuments.some((doc) => doc.id === activeDocumentId)) {
+      setActiveDocumentId(filteredDocuments[0].id)
+    }
+  }, [filteredDocuments, activeDocumentId])
 
   if (isFinanceRole(profile?.role)) return null
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-28">
-      <div className="border-b border-slate-100 bg-white px-5 py-5">
+    <div className="min-h-screen bg-[linear-gradient(180deg,_#eef4ff_0%,_#f8fafc_36%,_#f8fafc_100%)] pb-28 lg:h-screen lg:overflow-hidden lg:pb-0">
+      <div className="border-b border-slate-100 bg-white/92 px-5 py-5 backdrop-blur">
         <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">SOP Center</div>
         <div className="mt-1 text-xl font-extrabold text-slate-900">Panduan Operasional</div>
-        <div className="mt-2 text-sm text-slate-500">Buka semua dokumen SOP dalam satu halaman khusus.</div>
+        <div className="mt-2 text-sm text-slate-500">
+          Buka semua dokumen SOP dalam satu halaman khusus.
+        </div>
       </div>
 
-      <div className="grid gap-4 px-5 py-5 lg:grid-cols-[320px_1fr]">
-        <div className="space-y-3">
-          {sops.map((sop) => (
-            <button
-              key={sop.id}
-              type="button"
-              onClick={() => setActiveSop(sop)}
-              className={`w-full rounded-[1.5rem] border px-4 py-4 text-left shadow-sm transition-colors ${
-                activeSop?.id === sop.id ? 'border-blue-200 bg-blue-50' : 'border-slate-100 bg-white hover:bg-slate-50'
-              }`}
+      <div className="px-5 py-5 lg:h-[calc(100vh-109px)] lg:overflow-hidden">
+        {error && (
+          <div className="mb-4 rounded-[1.5rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            {error}
+          </div>
+        )}
+
+        <div className="space-y-4 lg:hidden">
+          <div className="sticky top-3 z-20 -mx-1 rounded-[2.2rem] bg-[linear-gradient(180deg,rgba(238,244,255,0.96)_0%,rgba(248,250,252,0.92)_100%)] px-1 pb-2 pt-1 backdrop-blur">
+            <div className="rounded-[2rem] border border-slate-100 bg-white p-4 shadow-sm">
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setActiveCategory('umum')}
+                className={`rounded-[1.1rem] px-3 py-2 text-xs font-bold transition ${
+                  activeCategory === 'umum' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-500'
+                }`}
+              >
+                SOP Umum
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveCategory('produk')}
+                className={`rounded-[1.1rem] px-3 py-2 text-xs font-bold transition ${
+                  activeCategory === 'produk' ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-600'
+                }`}
+              >
+                SOP Produk
+              </button>
+            </div>
+
+            <select
+              className="mt-3 w-full rounded-[1.25rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 outline-none"
+              value={activeDocumentId}
+              onChange={(e) => setActiveDocumentId(e.target.value)}
+              disabled={loadingDocs || !filteredDocuments.length}
             >
-              <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-blue-600 shadow-sm">
-                  <AppIcon name="checklist" size={18} />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-sm font-semibold text-slate-900">{sop.name}</div>
-                  <div className="mt-1 text-[11px] text-slate-400">
-                    {sop.modifiedTime ? new Date(sop.modifiedTime).toLocaleDateString('id-ID') : 'Dokumen SOP'}
+              {!filteredDocuments.length && <option value="">Belum ada SOP di kategori ini</option>}
+              {filteredDocuments.map((doc) => (
+                <option key={doc.id} value={doc.id}>
+                  {normalizeDocLabel(doc.name)}
+                </option>
+              ))}
+            </select>
+
+            {activeDocMeta?.modifiedTime && (
+              <div className="mt-2 text-xs text-slate-400">
+                Update terakhir {formatDocDate(activeDocMeta.modifiedTime)}
+              </div>
+            )}
+          </div>
+          </div>
+
+          {hasDocumentTabs && (
+            <div className="rounded-[2rem] border border-slate-100 bg-white p-4 shadow-sm">
+              <div className="mb-3 text-sm font-bold text-slate-900">Document Tab</div>
+              <select
+                className="w-full rounded-[1.25rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 outline-none"
+                value={activeTab?.id || ''}
+                onChange={(e) => setActiveTabId(e.target.value)}
+                disabled={loadingContent}
+              >
+                {activeDocument.tabs.map((tab) => (
+                  <option key={tab.id} value={tab.id}>
+                    {`${tab.depth > 0 ? `${'· '.repeat(tab.depth)}` : ''}${tab.title}`}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-white shadow-sm">
+            <div className="border-b border-slate-100 px-5 py-4">
+              <div className="text-lg font-extrabold text-slate-900">{activeDocument?.title || 'Panduan SOP'}</div>
+              <div className="mt-1 text-sm text-slate-500">
+                {hasDocumentTabs ? activeTab?.title || 'Pilih document tab' : 'Dokumen SOP'}
+              </div>
+            </div>
+
+            <div className="bg-[radial-gradient(circle_at_top,_rgba(96,165,250,0.10),_transparent_32%),linear-gradient(180deg,_#ffffff_0%,_#f8fafc_100%)] px-4 py-4">
+              {loadingContent ? (
+                <div className="flex min-h-[60vh] items-center justify-center text-sm text-slate-400">Memuat isi dokumen...</div>
+              ) : activeTab ? (
+                <div className="rounded-[1.75rem] border border-slate-200 bg-white px-5 py-5 shadow-[0_28px_80px_-40px_rgba(15,23,42,0.2)]">
+                  <div className="mb-6 border-b border-slate-100 pb-4">
+                    <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-blue-500">Live from Docs</div>
+                    <div className="mt-2 text-xl font-black text-slate-950">
+                      {hasDocumentTabs ? activeTab.title : activeDocument?.title}
+                    </div>
+                    {activeDocument?.summary && (
+                      <div className="mt-2 text-sm leading-6 text-slate-500">{activeDocument.summary}</div>
+                    )}
+                  </div>
+
+                  <div className="space-y-5">
+                    {activeTab.blocks.map((block, index) => renderBlock(block, index))}
                   </div>
                 </div>
-              </div>
-            </button>
-          ))}
+              ) : (
+                <div className="flex min-h-[60vh] items-center justify-center text-sm text-slate-400">Pilih dokumen SOP untuk mulai membaca.</div>
+              )}
+            </div>
+          </div>
         </div>
 
-        <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-white shadow-sm">
-          {activeSop ? (
-            <>
-              <div className="border-b border-slate-100 px-5 py-4">
-                <div className="text-sm font-semibold text-slate-900">{activeSop.name}</div>
+        <div className="hidden h-full gap-4 lg:grid lg:grid-cols-[280px_260px_minmax(0,1fr)]">
+          <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-[2rem] border border-slate-100 bg-white p-4 shadow-sm">
+            <div className="mb-3 flex items-center gap-2">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+                <AppIcon name="checklist" size={18} />
               </div>
-              <iframe
-                src={activeSop.previewUrl}
-                title={activeSop.name}
-                className="h-[72vh] w-full border-0"
-                sandbox="allow-scripts allow-same-origin"
-              />
-            </>
-          ) : (
-            <div className="flex h-[72vh] items-center justify-center text-sm text-slate-400">Belum ada dokumen SOP.</div>
-          )}
+              <div>
+                <div className="text-sm font-bold text-slate-900">Dokumen SOP</div>
+                <div className="text-xs text-slate-400">Scroll list ini terpisah dari isi dokumen.</div>
+              </div>
+            </div>
+
+            <div className="mb-3 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setActiveCategory('umum')}
+                className={`rounded-[1.1rem] px-3 py-2 text-xs font-bold transition ${
+                  activeCategory === 'umum' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-500'
+                }`}
+              >
+                SOP Umum
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveCategory('produk')}
+                className={`rounded-[1.1rem] px-3 py-2 text-xs font-bold transition ${
+                  activeCategory === 'produk' ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-600'
+                }`}
+              >
+                SOP Produk
+              </button>
+            </div>
+
+            {loadingDocs ? (
+              <div className="py-12 text-center text-sm text-slate-400">Memuat daftar dokumen...</div>
+            ) : (
+              <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+                {filteredDocuments.map((doc) => (
+                  <button
+                    key={doc.id}
+                    type="button"
+                    onClick={() => setActiveDocumentId(doc.id)}
+                    className={`w-full rounded-[1.4rem] px-4 py-3 text-left transition ${
+                      activeDocumentId === doc.id ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-200' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    <div className="text-sm font-semibold">{normalizeDocLabel(doc.name)}</div>
+                    <div className="mt-1 text-[11px] text-slate-400">
+                      {formatDocDate(doc.modifiedTime)}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-[2rem] border border-slate-100 bg-white p-4 shadow-sm">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-bold text-slate-900">Document Tabs</div>
+                <div className="text-xs text-slate-400">
+                  {hasDocumentTabs ? 'Section dokumen aktif' : 'Hanya tampil untuk SOP yang punya tabs'}
+                </div>
+              </div>
+              <AppIcon name="matrix" size={16} className="text-slate-300" />
+            </div>
+
+            {loadingContent ? (
+              <div className="py-12 text-center text-sm text-slate-400">Memuat tabs...</div>
+            ) : hasDocumentTabs ? (
+              <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+                {activeDocument.tabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveTabId(tab.id)}
+                    className={`w-full rounded-[1.35rem] px-4 py-3 text-left transition ${
+                      activeTab?.id === tab.id ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+                    }`}
+                    style={{ paddingLeft: `${16 + tab.depth * 14}px` }}
+                  >
+                    <div className="text-sm font-semibold">{tab.title}</div>
+                    <div className={`mt-1 text-[11px] ${activeTab?.id === tab.id ? 'text-slate-300' : 'text-slate-400'}`}>
+                      {tab.blocks?.length || 0} blok konten
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="py-12 text-center text-sm text-slate-400">Dokumen ini tidak memakai document tabs.</div>
+            )}
+          </div>
+
+          <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-[2rem] border border-slate-100 bg-white shadow-sm">
+            <div className="border-b border-slate-100 px-5 py-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div className="text-lg font-extrabold text-slate-900">{activeDocument?.title || 'Panduan SOP'}</div>
+                  <div className="mt-1 text-sm text-slate-500">
+                    {hasDocumentTabs ? activeTab?.title || 'Pilih document tab' : 'Dokumen SOP'}
+                  </div>
+                </div>
+                {activeDocMeta?.webViewLink && (
+                  <a
+                    href={activeDocMeta.webViewLink}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                  >
+                    <AppIcon name="spark" size={14} />
+                    Buka di Google Docs
+                  </a>
+                )}
+              </div>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top,_rgba(96,165,250,0.10),_transparent_32%),linear-gradient(180deg,_#ffffff_0%,_#f8fafc_100%)] px-5 py-5">
+              {loadingContent ? (
+                <div className="flex h-full items-center justify-center text-sm text-slate-400">Memuat isi dokumen...</div>
+              ) : activeTab ? (
+                <div className="mx-auto max-w-4xl rounded-[2rem] border border-slate-200 bg-white px-6 py-6 shadow-[0_28px_80px_-40px_rgba(15,23,42,0.2)]">
+                  <div className="mb-6 border-b border-slate-100 pb-4">
+                    <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-blue-500">Live from Docs</div>
+                    <div className="mt-2 text-2xl font-black text-slate-950">
+                      {hasDocumentTabs ? activeTab.title : activeDocument?.title}
+                    </div>
+                    {activeDocument?.summary && (
+                      <div className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">{activeDocument.summary}</div>
+                    )}
+                  </div>
+
+                  <div className="space-y-5">
+                    {activeTab.blocks.map((block, index) => renderBlock(block, index))}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex h-full items-center justify-center text-sm text-slate-400">Pilih dokumen SOP untuk mulai membaca.</div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 

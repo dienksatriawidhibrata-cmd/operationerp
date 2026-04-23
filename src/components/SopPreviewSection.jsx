@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { fetchSopFiles } from '../lib/googleApis'
+import { fetchSopDocuments } from '../lib/googleApis'
 import { AppIcon } from './ui/AppKit'
 
 export default function SopPreviewSection({ title = 'Panduan SOP', accent = 'blue' }) {
   const [sopCards, setSopCards] = useState([])
 
   useEffect(() => {
-    fetchSopFiles().then((rows) => setSopCards(rows || [])).catch(() => setSopCards([]))
+    fetchSopDocuments().then((rows) => setSopCards(rows || [])).catch(() => setSopCards([]))
   }, [])
 
   if (!sopCards.length) return null
