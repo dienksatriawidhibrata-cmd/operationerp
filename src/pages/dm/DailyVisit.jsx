@@ -15,6 +15,7 @@ import {
   SectionPanel,
   SubpageShell,
   ToneBadge,
+  LoadingButton,
 } from '../../components/ui/AppKit'
 
 export default function DailyVisit() {
@@ -346,9 +347,9 @@ export default function DailyVisit() {
             </SectionPanel>
 
             {!isReadOnly && (
-              <button onClick={handleSubmit} disabled={saving} className="btn-primary">
-                {saving ? 'Menyimpan...' : `Submit Audit (${totalScore}/${AUDIT_MAX_SCORE} poin)`}
-              </button>
+              <LoadingButton onClick={handleSubmit} loading={saving} className="btn-primary">
+                {`Submit Audit (${totalScore}/${AUDIT_MAX_SCORE} poin)`}
+              </LoadingButton>
             )}
           </>
         )}

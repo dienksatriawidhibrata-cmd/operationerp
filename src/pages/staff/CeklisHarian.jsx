@@ -15,6 +15,7 @@ import {
   SegmentedControl,
   SubpageShell,
   ToneBadge,
+  LoadingButton,
 } from '../../components/ui/AppKit'
 
 const SECTION_CONFIG = {
@@ -424,9 +425,9 @@ export default function CeklisHarian() {
                 Batal
               </button>
             )}
-            <button onClick={handleSubmit} disabled={saving} className="btn-primary flex-1">
-              {saving ? 'Menyimpan...' : isEditing ? 'Simpan Koreksi' : `Submit Ceklis ${activeShift === 'pagi' ? 'Pagi' : activeShift === 'middle' ? 'Middle' : 'Malam'}`}
-            </button>
+            <LoadingButton onClick={handleSubmit} loading={saving} className="btn-primary flex-1">
+              {isEditing ? 'Simpan Koreksi' : `Submit Ceklis ${activeShift === 'pagi' ? 'Pagi' : activeShift === 'middle' ? 'Middle' : 'Malam'}`}
+            </LoadingButton>
           </div>
         )}
       </div>

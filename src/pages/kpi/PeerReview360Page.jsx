@@ -6,6 +6,7 @@ import { STORE_ROLES } from '../../lib/access'
 import { getDefault360Items } from '../../lib/kpiDefaults'
 import {
   SubpageShell, SectionPanel, SegmentedControl, ToneBadge, EmptyPanel, AppIcon,
+  LoadingButton,
 } from '../../components/ui/AppKit'
 import { currentPeriodWIB, lastNPeriods, periodLabel, roleLabel } from '../../lib/utils'
 
@@ -172,10 +173,10 @@ function EvalForm({ evaluatee, items, existingSubmission, existingScores, period
         {error && <div className="rounded-xl bg-rose-50 border border-rose-200 px-4 py-3 text-sm text-rose-700">{error}</div>}
       </div>
       <div className="fixed bottom-0 inset-x-0 border-t border-slate-100 bg-white/90 backdrop-blur-xl px-4 py-4">
-        <button onClick={handleSubmit} disabled={saving || !allFilled}
+        <LoadingButton onClick={handleSubmit} disabled={!allFilled} loading={saving}
           className="w-full rounded-2xl bg-primary-600 py-3.5 text-sm font-semibold text-white shadow-sm hover:bg-primary-700 disabled:opacity-50">
-          {saving ? 'Menyimpan...' : existingSubmission ? 'Perbarui Penilaian' : 'Kirim Penilaian'}
-        </button>
+          {existingSubmission ? 'Perbarui Penilaian' : 'Kirim Penilaian'}
+        </LoadingButton>
         {!allFilled && <div className="mt-2 text-center text-xs text-slate-400">Isi semua {items.length} item untuk mengirim</div>}
       </div>
     </div>

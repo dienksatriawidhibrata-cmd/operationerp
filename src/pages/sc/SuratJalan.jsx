@@ -17,6 +17,7 @@ import Alert from '../../components/Alert'
 import { DMBottomNav, OpsBottomNav, SCBottomNav, StaffBottomNav } from '../../components/BottomNav'
 import {
   EmptyPanel, InlineStat, SectionPanel, SegmentedControl, SubpageShell, ToneBadge,
+  LoadingButton,
 } from '../../components/ui/AppKit'
 
 function genSJNumber() {
@@ -259,9 +260,9 @@ function NewSJForm() {
         </div>
       </SectionPanel>
 
-      <button onClick={handleIssue} disabled={saving || !order} className="btn-primary">
-        {saving ? 'Menerbitkan...' : `Terbitkan Surat Jalan (${items.length} item)`}
-      </button>
+      <LoadingButton onClick={handleIssue} loading={saving} loadingLabel="Menerbitkan..." disabled={!order} className="btn-primary">
+        {`Terbitkan Surat Jalan (${items.length} item)`}
+      </LoadingButton>
     </div>
   )
 }
@@ -511,9 +512,9 @@ function ReceiveSJForm({ sjId }) {
         >
           Kembali
         </button>
-        <button onClick={handleSubmit} disabled={saving} className="btn-primary">
-          {saving ? 'Menyimpan...' : sj?.status === 'delivered' ? 'Simpan Perubahan Penerimaan' : 'Simpan dan Tandai Diterima'}
-        </button>
+        <LoadingButton onClick={handleSubmit} loading={saving} className="btn-primary">
+          {sj?.status === 'delivered' ? 'Simpan Perubahan Penerimaan' : 'Simpan dan Tandai Diterima'}
+        </LoadingButton>
       </div>
     </div>
   )

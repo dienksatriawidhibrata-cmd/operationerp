@@ -5,6 +5,43 @@ import { supabase } from '../lib/supabase'
 import { AppIcon } from './ui/AppKit'
 import { isManagerRole, isOpsLikeRole, isStoreRole, isFinanceRole, canAccessTasks } from '../lib/access'
 
+function LogoutConfirmModal({ onConfirm, onCancel }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="logout-modal-title"
+    >
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onCancel} />
+      <div className="relative z-10 w-full max-w-sm rounded-t-[28px] bg-white px-5 pb-8 pt-5 shadow-xl sm:rounded-[28px] sm:pb-6">
+        <div className="mx-auto mb-1 h-1 w-10 rounded-full bg-slate-200 sm:hidden" />
+        <div className="mt-3 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50">
+            <AppIcon name="logout" size={22} className="text-rose-500" />
+          </div>
+          <h2 id="logout-modal-title" className="mt-3 text-base font-semibold text-slate-900">Keluar dari Aplikasi?</h2>
+          <p className="mt-1.5 text-sm text-slate-500">Kamu perlu login ulang untuk melanjutkan.</p>
+        </div>
+        <div className="mt-5 flex gap-2.5">
+          <button
+            onClick={onCancel}
+            className="flex-1 rounded-2xl border border-slate-200 bg-white py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            Batal
+          </button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 rounded-2xl bg-rose-500 py-3 text-sm font-semibold text-white hover:bg-rose-600"
+          >
+            Ya, Keluar
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function NavItem({ to, icon, label, active, badgeCount = 0 }) {
   return (
     <Link
@@ -44,16 +81,26 @@ function Dock({ children }) {
 
 function LogoutNavItem() {
   const { signOut } = useAuth()
+  const [confirming, setConfirming] = useState(false)
   return (
-    <button
-      onClick={signOut}
-      className="flex flex-shrink-0 flex-col items-center gap-0.5 rounded-[20px] px-1.5 py-2 text-slate-300 hover:text-rose-400 transition-all sm:gap-1 sm:px-2 sm:py-2.5"
-    >
-      <div className="flex h-8 w-8 items-center justify-center rounded-2xl sm:h-9 sm:w-9">
-        <AppIcon name="logout" size={17} />
-      </div>
-      <span className="truncate text-[10px] font-semibold tracking-[0.04em] sm:text-[11px] sm:tracking-[0.06em]">Keluar</span>
-    </button>
+    <>
+      <button
+        onClick={() => setConfirming(true)}
+        aria-label="Keluar dari aplikasi"
+        className="flex flex-shrink-0 flex-col items-center gap-0.5 rounded-[20px] px-1.5 py-2 text-slate-300 hover:text-rose-400 transition-all sm:gap-1 sm:px-2 sm:py-2.5"
+      >
+        <div className="flex h-8 w-8 items-center justify-center rounded-2xl sm:h-9 sm:w-9">
+          <AppIcon name="logout" size={17} />
+        </div>
+        <span className="truncate text-[10px] font-semibold tracking-[0.04em] sm:text-[11px] sm:tracking-[0.06em]">Keluar</span>
+      </button>
+      {confirming && (
+        <LogoutConfirmModal
+          onConfirm={signOut}
+          onCancel={() => setConfirming(false)}
+        />
+      )}
+    </>
   )
 }
 

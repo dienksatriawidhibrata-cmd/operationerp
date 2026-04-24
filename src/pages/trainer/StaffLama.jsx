@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { SmartBottomNav } from '../../components/BottomNav'
 import {
   AppIcon, SubpageShell, SectionPanel, SegmentedControl, ToneBadge, EmptyPanel, SoftButton,
+  LoadingButton,
 } from '../../components/ui/AppKit'
 import { todayWIB, downloadCsv } from '../../lib/utils'
 
@@ -611,12 +612,12 @@ export default function StaffLama() {
           </div>
 
           <div className="flex gap-3 pb-4">
-            <button
-              type="submit" disabled={saving}
-              className="btn-primary flex-1 flex items-center justify-center gap-2"
+            <LoadingButton
+              type="submit" loading={saving}
+              className="btn-primary flex-1"
             >
-              {saving ? 'Menyimpan...' : editingId ? 'Simpan Perubahan' : 'Simpan Evaluasi'}
-            </button>
+              {editingId ? 'Simpan Perubahan' : 'Simpan Evaluasi'}
+            </LoadingButton>
             <button
               type="button"
               onClick={editingId ? handleCancelEdit : () => setTab('matrix')}

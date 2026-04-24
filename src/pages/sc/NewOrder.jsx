@@ -8,6 +8,7 @@ import Alert from '../../components/Alert'
 import { SmartBottomNav } from '../../components/BottomNav'
 import {
   EmptyPanel, InlineStat, SectionPanel, SubpageShell, ToneBadge,
+  LoadingButton,
 } from '../../components/ui/AppKit'
 
 function genOrderNumber() {
@@ -299,13 +300,14 @@ export default function NewOrder() {
         )}
 
         {items.length > 0 && (
-          <button
+          <LoadingButton
             onClick={handleSubmit}
-            disabled={saving || !branchId}
+            loading={saving}
+            disabled={!branchId}
             className="btn-primary"
           >
-            {saving ? 'Menyimpan...' : `Buat Order & Kirim ke Picking (${items.length} item)`}
-          </button>
+            {`Buat Order & Kirim ke Picking (${items.length} item)`}
+          </LoadingButton>
         )}
       </div>
     </SubpageShell>

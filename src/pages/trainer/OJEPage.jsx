@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { SmartBottomNav } from '../../components/BottomNav'
 import {
   SubpageShell, SectionPanel, SegmentedControl, ToneBadge, EmptyPanel, AppIcon,
+  LoadingButton,
 } from '../../components/ui/AppKit'
 import { todayWIB, fmtDate, downloadCsv } from '../../lib/utils'
 
@@ -430,9 +431,9 @@ function OJEIndividualForm({ branches, onSaved }) {
               <div className={`text-base font-bold ${rating === 'Excellent' ? 'text-emerald-400' : rating === 'Good' ? 'text-amber-400' : 'text-rose-400'}`}>{rating || '—'}</div>
             </div>
           </div>
-          <button onClick={handleSave} disabled={saving} className="shrink-0 rounded-2xl bg-primary-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-primary-700 disabled:opacity-50">
-            {saving ? 'Menyimpan...' : 'Simpan'}
-          </button>
+          <LoadingButton onClick={handleSave} loading={saving} className="shrink-0 rounded-2xl bg-primary-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-primary-700 disabled:opacity-50">
+            Simpan
+          </LoadingButton>
         </div>
         <div className="mt-2 text-[10px] text-slate-500">
           Excellent &gt;80% · Good 60–79% · Fail &lt;60%
@@ -601,9 +602,9 @@ function OJEBatchForm({ branches, onSaved }) {
         <textarea className="input resize-none" rows={2} value={header.notes} onChange={(e) => setH('notes', e.target.value)} placeholder="Catatan sesi batch..." />
       </div>
 
-      <button onClick={handleSave} disabled={saving} className="btn-primary">
-        {saving ? 'Menyimpan...' : `Simpan Batch (${items.length} peserta)`}
-      </button>
+      <LoadingButton onClick={handleSave} loading={saving} className="btn-primary">
+        {`Simpan Batch (${items.length} peserta)`}
+      </LoadingButton>
     </div>
   )
 }

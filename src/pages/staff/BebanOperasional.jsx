@@ -12,6 +12,7 @@ import {
   SectionPanel,
   SubpageShell,
   ToneBadge,
+  LoadingButton,
 } from '../../components/ui/AppKit'
 
 export default function BebanOperasional() {
@@ -266,9 +267,9 @@ export default function BebanOperasional() {
               />
             </div>
 
-            <button onClick={handleSubmit} disabled={saving} className="btn-primary">
-              {saving ? 'Menyimpan...' : 'Simpan Pengeluaran'}
-            </button>
+            <LoadingButton onClick={handleSubmit} loading={saving} className="btn-primary">
+              Simpan Pengeluaran
+            </LoadingButton>
           </div>
         </SectionPanel>
 

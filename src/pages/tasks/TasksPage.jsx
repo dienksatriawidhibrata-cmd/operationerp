@@ -6,6 +6,7 @@ import { DMBottomNav, OpsBottomNav, StaffBottomNav, TrainerBottomNav } from '../
 import { isOpsLikeRole } from '../../lib/access'
 import {
   EmptyPanel, SectionPanel, SoftButton, SubpageShell, ToneBadge,
+  LoadingButton,
 } from '../../components/ui/AppKit'
 
 export default function TasksPage() {
@@ -171,13 +172,13 @@ export default function TasksPage() {
                 />
               </div>
             </div>
-            <button
+            <LoadingButton
               type="submit"
-              disabled={saving}
-              className="btn-primary flex items-center justify-center gap-2"
+              loading={saving}
+              className="btn-primary"
             >
-              {saving ? 'Menyimpan...' : 'Buat Tugas'}
-            </button>
+              Buat Tugas
+            </LoadingButton>
           </form>
         </SectionPanel>
       )}

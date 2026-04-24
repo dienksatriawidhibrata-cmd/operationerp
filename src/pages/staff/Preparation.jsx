@@ -9,6 +9,7 @@ import Alert from '../../components/Alert'
 import { StaffBottomNav } from '../../components/BottomNav'
 import {
   EmptyPanel, InlineStat, SectionPanel, SegmentedControl, SubpageShell,
+  LoadingButton,
 } from '../../components/ui/AppKit'
 
 const SECTIONS = [...new Set(PREPARATION_ITEMS.map((i) => i.section))]
@@ -319,9 +320,9 @@ export default function Preparation() {
                 Batal
               </button>
             )}
-            <button onClick={handleSubmit} disabled={saving} className="btn-primary flex-1">
-              {saving ? 'Menyimpan...' : isEditing ? 'Simpan Koreksi' : `Submit Preparation ${activeShift === 'pagi' ? 'Pagi' : activeShift === 'middle' ? 'Middle' : 'Malam'}`}
-            </button>
+            <LoadingButton onClick={handleSubmit} loading={saving} className="btn-primary flex-1">
+              {isEditing ? 'Simpan Koreksi' : `Submit Preparation ${activeShift === 'pagi' ? 'Pagi' : activeShift === 'middle' ? 'Middle' : 'Malam'}`}
+            </LoadingButton>
           </div>
         )}
       </div>

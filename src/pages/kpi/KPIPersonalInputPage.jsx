@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { SmartBottomNav } from '../../components/BottomNav'
 import {
   SubpageShell, SectionPanel, ToneBadge, EmptyPanel, AppIcon,
+  LoadingButton,
 } from '../../components/ui/AppKit'
 import { currentPeriodWIB, lastNPeriods, periodBounds, periodLabel, pctToScore, avg360ToScore, roleLabel } from '../../lib/utils'
 import {
@@ -444,13 +445,14 @@ function TargetKPIForm({ staff, period, branchId, items, existingScores, isVerif
 
       {!isVerified && (
         <div className="fixed inset-x-0 bottom-0 border-t border-slate-100 bg-white/90 px-4 py-4 backdrop-blur-xl">
-          <button
+          <LoadingButton
             onClick={handleSubmit}
-            disabled={saving || !allFilled || (needsAutoValues && !autoVals)}
+            loading={saving}
+            disabled={!allFilled || (needsAutoValues && !autoVals)}
             className="w-full rounded-2xl bg-primary-600 py-3.5 text-sm font-semibold text-white shadow-sm hover:bg-primary-700 disabled:opacity-50"
           >
-            {saving ? 'Menyimpan...' : existingScores.length ? 'Perbarui KPI' : 'Simpan KPI'}
-          </button>
+            {existingScores.length ? 'Perbarui KPI' : 'Simpan KPI'}
+          </LoadingButton>
           {!allFilled && <div className="mt-2 text-center text-xs text-slate-400">Isi semua {items.length} item untuk menyimpan</div>}
         </div>
       )}

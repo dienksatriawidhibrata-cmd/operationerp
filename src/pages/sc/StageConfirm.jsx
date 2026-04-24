@@ -11,6 +11,7 @@ import Alert from '../../components/Alert'
 import { SmartBottomNav } from '../../components/BottomNav'
 import {
   EmptyPanel, InlineStat, SectionPanel, SubpageShell, ToneBadge,
+  LoadingButton,
 } from '../../components/ui/AppKit'
 
 const STAGE_META = {
@@ -361,9 +362,9 @@ export default function StageConfirm({ stage }) {
             Kembali ke Daftar Order
           </button>
         ) : (
-          <button onClick={handleConfirm} disabled={saving} className="btn-primary">
-            {saving ? 'Menyimpan...' : `Konfirmasi ${meta.label} (${origItems.length} item)`}
-          </button>
+          <LoadingButton onClick={handleConfirm} loading={saving} className="btn-primary">
+            {`Konfirmasi ${meta.label} (${origItems.length} item)`}
+          </LoadingButton>
         )}
       </div>
     </SubpageShell>
