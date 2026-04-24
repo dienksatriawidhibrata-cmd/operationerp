@@ -1,142 +1,211 @@
-SUMMARY PROGRESS PROJECT
-Tanggal: 2026-04-23
-Status: fitur inti operasional sudah berjalan, leaderboard KPI sudah diperluas, dan modul SOP sekarang sudah punya halaman khusus yang bisa terhubung ke Google Docs/Docx
+SUMMARY PROGRESS PROJECT — BAGI KOPI OPS
+Tanggal update: 2026-04-24
+Production: https://operationerp.pages.dev (auto-deploy dari GitHub main, branch: main)
+Frontend lokal: http://localhost:5174 | Backend lokal: http://127.0.0.1:8000
 
-1. Progress utama yang sudah selesai
-- Monitoring visit manager untuk ops_manager sudah dirombak agar fokus ke aktivitas Area Manager dan District Manager.
-- Status visit manager hari ini sudah tampil di dashboard manager agar cepat terlihat siapa yang belum submit audit.
-- Preparation harian staff sudah diubah ke model per-item:
-  - input pakai qty + foto per item
-  - monitoring/read side sudah bisa membaca qty dan foto per item
-- Warehouse admin sudah bisa review penerimaan barang toko dan download CSV data penerimaan.
-- Draft checklist dan preparation sekarang tersimpan lokal di device/browser:
-  - saat staff pindah app lalu kembali lagi, isian tidak langsung hilang
-  - draft akan dibersihkan otomatis setelah submit sukses
+═══════════════════════════════════════════════════════════════
+STATUS KESELURUHAN
+═══════════════════════════════════════════════════════════════
+Semua fitur inti operasional aktif. KPI, leaderboard, SOP center,
+supply chain, backend FastAPI, role auditor, in-app reminder,
+email otomatis (kode siap, DNS propagating), halaman pengumuman,
+dan toast system sudah selesai dikode. Build bersih tanpa error.
 
-2. Perbaikan bug penting yang sudah dibereskan
-- Auth mobile sempat memunculkan layar "Sesi masih aktif" ketika staff upload foto checklist.
-  - penyebabnya event auth Supabase ikut terpanggil saat device kembali dari kamera/file picker
-  - perbaikan: validasi sesi tetap jalan di background tanpa memaksa loading layar penuh untuk user yang sama
-- Dashboard staff sempat putih setelah preview SOP dashboard dihapus.
-  - penyebabnya ada sisa modal SOP lama yang masih mereferensikan state lama
-  - perbaikan: blok lama dibersihkan dan build kembali normal
-- KPI checklist/preparation sebelumnya masih terbaca level toko, belum personal per staff submitter.
-  - sekarang checklist dan preparation untuk KPI personal sudah memakai submitted_by
+═══════════════════════════════════════════════════════════════
+1. DASHBOARD & FITUR OPERASIONAL
+═══════════════════════════════════════════════════════════════
+- Dashboard aktif per role: Staff, Head Store, District Manager,
+  Area Manager, Ops Manager, Finance, Supply Chain, Trainer, Auditor.
+- Ceklis harian 3 shift (pagi/middle/malam) dengan foto per item.
+- Preparation harian 3 shift dengan qty + foto.
+- Laporan harian toko: omset, setoran, opex — approval flow DM.
+- OPEX per toko: input, export CSV & XLSX, detail view + deep-link Finance.
+- Visit monitoring DM/Area: daily visit, audit toko (scoring 110 poin),
+  ringkasan status visit hari ini.
+- Surat Jalan supply chain: order → picking → QC → distribusi → penerimaan.
+- Approval setoran oleh DM/Area Manager.
+- Store Status real-time di /dm/stores (monitoring operasional per toko).
+- Pengumuman: input oleh ops_manager & support_spv di /ops/pengumuman,
+  tampil di dashboard semua staff.
 
-3. KPI dan leaderboard yang sudah ditambahkan
-- Auto KPI personal untuk staff toko sekarang menghitung checklist dan preparation per submitted_by.
-- Leaderboard operasional sekarang tersedia untuk:
-  - Staff
-  - Toko
-  - Head Store
-- Leaderboard sekarang tersedia di:
-  - Ops Manager
-  - Area Manager / District Manager
-- Tabel staff untuk Area Manager dan District Manager sudah otomatis terfilter berdasarkan area kerja mereka.
-- Leaderboard sudah punya:
-  - Top 10
-  - Bottom 10
-  - filter bulanan
-  - tooltip penjelasan cara hitung
-- Perhitungan Head Store sudah dibetulkan agar on-time dihitung terhadap total kewajiban periode, bukan hanya item yang sempat disubmit.
+═══════════════════════════════════════════════════════════════
+2. KPI DAN LEADERBOARD
+═══════════════════════════════════════════════════════════════
+- KPI store: skor gabungan checklist + preparation + laporan per periode.
+- KPI personal staff: dihitung per submitted_by.
+- KPI Head Store: on-time rate terhadap total kewajiban periode.
+- KPI 360: peer review antar staff, hasil bisa dilihat di /kpi/360.
+- Leaderboard: Top 10 / Bottom 10, filter bulanan, tooltip cara hitung.
+  Diakses oleh DM, Area Manager, Ops Manager.
+- /kpi/personal: input dan lihat KPI personal.
 
-4. SOP center yang sudah selesai
-- SOP sekarang punya halaman khusus:
-  - /sop
-- Kartu/preview SOP di dashboard sudah dihapus agar dashboard lebih ringkas.
-- Akses SOP dipindahkan menjadi tombol menu/dashboard di masing-masing role tanpa menghapus tombol lain yang sudah ada:
-  - Staff
-  - DM / Area
-  - Ops
-  - Supply Chain
-  - Trainer
-- Tampilan SOP mobile sudah dirapikan:
-  - selector SOP lebih compact
-  - card selector dibuat sticky/freeze saat sudah mencapai bagian atas layar
-- Tampilan SOP desktop sudah pakai scroll terpisah antara:
-  - daftar SOP
-  - isi dokumen
-- Struktur data SOP sekarang mendukung dua tipe:
-  - Google Docs native dengan Document Tabs
-  - file .docx tanpa tabs
-- Buku Besar SOP Produk dibaca sebagai Google Docs native dan memakai Document Tabs.
-- SOP umum lain dibaca sebagai dokumen biasa tanpa tabs.
+═══════════════════════════════════════════════════════════════
+3. SOP CENTER
+═══════════════════════════════════════════════════════════════
+- Halaman /sop aktif untuk semua role operasional (kecuali Finance).
+- Integrasi Google Docs native (Document Tabs) + file .docx.
+- Mobile: selector compact + sticky card.
+- Desktop: 3-panel — daftar dokumen | document tabs | isi dokumen.
+- Fallback sumber: Google Drive API → FastAPI backend → Apps Script.
+- Apps Script endpoint: listSops, getSopDoc.
+- Folder SOP aktif: 1GXkR3-A0XXkxJxkNlCv2FJXUO4NLqOSa
+- Status production: VERIFIED OK (2026-04-24).
 
-5. Integrasi Google Drive / Apps Script untuk SOP
-- Google Apps Script uploader sekarang juga mendukung endpoint SOP:
-  - action=listSops
-  - action=getSopDoc&id=...
-- listSops sekarang:
-  - membaca folder SOP yang ditentukan lewat GOOGLE_SOP_FOLDER_ID
-  - scan subfolder secara rekursif
-  - mengembalikan Google Docs native dan file .docx
-- getSopDoc sekarang:
-  - membaca Google Docs native dengan tabs
-  - membaca file .docx dengan parsing isi dokumen dasar (heading, paragraf, list, table)
-- Folder SOP yang aktif saat ini:
-  - 1GXkR3-A0XXkxJxkNlCv2FJXUO4NLqOSa
-- Hasil validasi terbaru:
-  - Apps Script listSops sudah mengembalikan 28 dokumen
+═══════════════════════════════════════════════════════════════
+4. BACKEND FASTAPI
+═══════════════════════════════════════════════════════════════
+- Folder: backend/
+- Stack: FastAPI + supabase-py + pydantic-settings + google-api-python-client
+- Auth: semua router dilindungi JWT via require_auth (supabase.auth.get_user)
+- Endpoint aktif:
+    GET /health
+    GET /api/branches
+    GET /api/manager-visits/summary
+    GET /api/store-compliance/summary
+    GET /api/warehouse/receipts
+    GET /api/warehouse/receipts.csv
+    GET /api/sop/docs
+    GET /api/sop/docs/{document_id}
+- File penting:
+    backend/app/main.py
+    backend/app/config.py
+    backend/app/dependencies.py  ← JWT auth
+    backend/app/routers/
 
-6. Backend Python yang sudah ditambahkan
-- Sudah dibuat starter backend FastAPI terpisah di folder:
-  - backend/
-- Stack backend:
-  - FastAPI
-  - supabase-py
-  - pydantic-settings
-  - google-api-python-client
-  - google-auth
-- Endpoint backend yang sekarang ada:
-  - /health
-  - /api/branches
-  - /api/manager-visits/summary
-  - /api/store-compliance/summary
-  - /api/warehouse/receipts
-  - /api/warehouse/receipts.csv
-  - /api/sop/docs
-  - /api/sop/docs/{document_id}
-- File penting backend:
-  - backend/app/main.py
-  - backend/app/config.py
-  - backend/app/routers/manager_visits.py
-  - backend/app/routers/store_compliance.py
-  - backend/app/routers/warehouse_receipts.py
-  - backend/app/routers/sop_docs.py
+═══════════════════════════════════════════════════════════════
+5. ROLE AUDITOR
+═══════════════════════════════════════════════════════════════
+- Role: auditor — read-only, hanya akses /dm/stores.
+- Login: email + VITE_STAFF_PASS (shared password).
+- Akun: dicky.iman18@gmail.com
+- Migration: supabase/migrations/018_auditor_role.sql
+- Setup script: supabase/auditor_dicky_setup.sql
+- AuditorBottomNav: Store Status + SOP.
+- Status Supabase setup: SUDAH DILAKUKAN (2026-04-24).
 
-7. Commit GitHub penting yang sudah pernah masuk sebelumnya
-- 1813a5b - Keep auth stable during mobile photo uploads
-- 67010bc - Add scoped leaderboards and SOP hub
+═══════════════════════════════════════════════════════════════
+6. IN-APP REMINDER DEADLINE
+═══════════════════════════════════════════════════════════════
+- Komponen: src/components/ReminderBanner.jsx
+- Dipasang di Home staff — muncul jika ada item overdue.
+- Hanya tampil untuk store-level role dengan branch terkonfigurasi.
+- Jadwal deadline dan item yang dicek:
+    ≥ 08:00 WIB  → Ceklis Pagi, Preparation Pagi
+    ≥ 14:00 WIB  → Ceklis Middle, Preparation Middle
+    ≥ 14:00 WIB  → Laporan Harian kemarin, Setoran kemarin (Head Store only)
+    ≥ 22:00 WIB  → Ceklis Malam
+- Setiap item bisa diklik langsung ke halaman yang relevan.
+- Status setoran ditambahkan ke fetchStatus di Home.jsx
+  (query: daily_deposits status IN submitted/approved untuk tanggal kemarin).
+
+═══════════════════════════════════════════════════════════════
+7. EMAIL OTOMATIS DEADLINE
+═══════════════════════════════════════════════════════════════
+- Edge Function: supabase/functions/send-deadline-alerts/index.ts
+- Migration pg_cron: supabase/migrations/019_cron_email_alerts.sql
+- Penerima: DM, Area Manager, Ops Manager — per wilayah masing-masing.
+- Jadwal (UTC → WIB):
+    01:15 UTC = 08:15 WIB  → Ceklis Pagi + Preparation Pagi
+    07:15 UTC = 14:15 WIB  → Ceklis Middle + Prep Middle + Setoran + Laporan Harian
+    15:15 UTC = 22:15 WIB  → Ceklis Malam
+- Email via Resend API. HTML email listing toko overdue per DM.
+- Logic matching: DM → managed_districts, AM → managed_areas, Ops → semua.
+
+STATUS SETUP EMAIL (per 2026-04-24):
+  a. [DONE] Edge Function di-deploy via Supabase Dashboard Editor.
+  b. [DONE] Secrets di-set: RESEND_API_KEY, RESEND_FROM_EMAIL, CRON_SECRET.
+  c. [DONE] Domain didaftarkan di Resend — DNS propagating (tunggu verifikasi).
+  d. [BELUM] Jalankan di SQL Editor setelah DNS verified:
+       ALTER DATABASE postgres SET app.supabase_url = 'https://[PROJECT_REF].supabase.co';
+       ALTER DATABASE postgres SET app.cron_secret  = '[CRON_SECRET]';
+  e. [BELUM] Jalankan migration 019_cron_email_alerts.sql di SQL Editor.
+
+═══════════════════════════════════════════════════════════════
+8. PENGUMUMAN
+═══════════════════════════════════════════════════════════════
+- Halaman: /ops/pengumuman (ops_manager & support_spv).
+- Fitur: buat, aktifkan/nonaktifkan, hapus pengumuman.
+- Pengumuman aktif tampil di dashboard Staff Home.
+- Akses dari OpsHub: quick actions grid + kartu daftar link.
+- Migration: supabase/migrations/020_announcements.sql (SUDAH DIJALANKAN).
+- Tabel: announcements (id, title, body, is_active, published_at, created_by).
+- RLS: semua authenticated bisa baca, hanya ops_manager/support_spv bisa tulis.
+
+═══════════════════════════════════════════════════════════════
+9. UI/UX DAN INFRASTRUKTUR
+═══════════════════════════════════════════════════════════════
+- Tombol hapus foto di mobile selalu terlihat (bukan hover-only).
+- Logout confirmation modal DIHAPUS dari BottomNav — logout hanya ada
+  di header kanan atas semua dashboard. FinanceHub sudah ditambahkan.
+- BottomNav: tombol Keluar diganti tombol SOP (ikon buku) di semua role.
+  (Staff, DM, SC, Trainer, Finance, Auditor).
+- PhotoUpload: prop capture — default "environment" (kamera langsung),
+  capture={false} menampilkan dua tombol Kamera + Galeri.
+  Aktif di: form Setoran (LaporanHarian) dan form OPEX (BebanOperasional).
+- Toast system global: ToastContext + useToast() — SUDAH dipasang di:
+  CeklisHarian, Preparation, BebanOperasional, LaporanHarian, ApprovalSetoran.
+  Sukses → toast hijau, error submit → toast merah, validasi → inline Alert.
+- Draft checklist & preparation tersimpan lokal, tidak hilang saat pindah app.
+- Auth mobile stabil saat upload foto dari kamera.
+- ErrorBoundary global di App.jsx (fallback UI + tombol Muat Ulang).
+- LoadingButton component — spinner di semua tombol submit.
+- Unit tests: 33 test di src/__tests__/utils.test.js (vitest, node).
+- XLSX export: OPEX dan warehouse receipts.
+- OPEX detail view dengan URL params + deep-link dari Finance Hub.
+
+═══════════════════════════════════════════════════════════════
+10. COMMIT GITHUB PENTING
+═══════════════════════════════════════════════════════════════
+- ba9055c - Add announcements CRUD, toast feedback, gallery upload for OPEX
+- d25fbb6 - Fix: restore AppIcon import in BottomNav (crash fix)
+- f109889 - Revamp nav: move logout to header, replace BottomNav Keluar with SOP
+- bcfea71 - Add auditor role with read-only access to Store Status page
+- 95619d3 - Improve mobile UX: photo delete, logout confirm, loading spinners
+- 8d5b239 - Add error boundary, toast system, smoke tests, and backend auth
+- a613e5e - Add OPEX detail view with URL params, XLSX export, and finance deep-link
+- e578633 - Add live SOP center and dashboard access
 - 9c5e723 - Preserve staff drafts across app switching
-- 479dc9f - Add Python backend and Gemini coding helper
+- 67010bc - Add scoped leaderboards and SOP hub
 
-8. Kondisi lokal saat ini
-- Frontend Vite berjalan di:
-  - http://localhost:5174
-- Backend FastAPI bisa dijalankan lokal di:
-  - http://127.0.0.1:8000
-- Build frontend terakhir sudah lolos setelah perapihan dashboard dan SOP.
-- Apps Script sudah perlu memakai versi terbaru upload.gs agar parsing .docx SOP berjalan sempurna.
+═══════════════════════════════════════════════════════════════
+11. MIGRATIONS SUPABASE (urutan)
+═══════════════════════════════════════════════════════════════
+001_schema.sql               — schema utama
+002_daily_visits_unique.sql  — unique constraint daily visits
+002_supply_chain.sql         — tabel supply chain
+003_supply_chain_scope_read.sql
+004_kpi_reports.sql
+005_support_roles.sql
+006_staff_roles.sql
+007_store_roles_access.sql
+008_sc_race_condition_and_tables.sql
+009_receive_qty_on_surat_jalan.sql
+010_oje_tables.sql
+011_daily_preparation.sql
+012_daily_checklists_middle_shift.sql
+013_kpi_personal.sql
+014_kpi_personal_manager_workflow.sql
+015_seed_manager_kpi_items.sql
+016_seed_staff_generic_kpi_items.sql
+017_profiles_kpi_visibility.sql
+018_auditor_role.sql
+019_cron_email_alerts.sql    — pg_cron untuk email (BELUM dijalankan)
+020_announcements.sql        — tabel pengumuman + RLS (SUDAH dijalankan)
 
-9. File utama yang berubah pada fase SOP/dashboard terbaru
-- google-apps-script/upload.gs
-- src/lib/googleApis.js
-- src/pages/SopPage.jsx
-- src/pages/staff/Home.jsx
-- src/pages/dm/Dashboard.jsx
-- src/pages/ops/Hub.jsx
-- src/pages/sc/Dashboard.jsx
-- src/pages/trainer/Dashboard.jsx
-- backend/app/routers/sop_docs.py
-- backend/app/main.py
-- backend/app/config.py
-- backend/.env.example
-- backend/README.md
+═══════════════════════════════════════════════════════════════
+12. YANG MASUK AKAL DIKERJAKAN BERIKUTNYA
+═══════════════════════════════════════════════════════════════
+PRIORITAS TINGGI:
+- Selesaikan setup email otomatis: jalankan step d & e di atas
+  setelah DNS Resend verified.
 
-10. Catatan berikutnya yang paling masuk akal
-- Deploy frontend terbaru ke hosting production
-- Redeploy Google Apps Script dengan isi upload.gs terbaru
-- Verifikasi ulang halaman /sop di production untuk:
-  - Buku Besar SOP Produk
-  - minimal 1 SOP umum .docx
-- Jika hasil SOP production sudah stabil, lanjut rapikan ikon/label menu SOP di tiap dashboard agar lebih konsisten visualnya
+BUTUH SPEC / KEPUTUSAN:
+- Actionable notifications: aksi apa yang bisa dilakukan dari notifikasi?
+- Badge Training system: badge apa, kriteria, display di mana?
+- Kanban antar divisi: kolom apa, siapa drag, data dari mana?
+- Auto Scan Nota: OCR via Google Vision / OpenAI Vision?
+- KPI → Google Spreadsheet sync: butuh Sheet ID.
+- Panduan per role: butuh konten per role.
+- Role Support redefinition: tugas/tanggung jawab baru di sistem.
+- PIC Audit Setoran: siapa PIC, cara assign, flow-nya.
+- OJT full module: halaman OJT lengkap belum dibuat.
