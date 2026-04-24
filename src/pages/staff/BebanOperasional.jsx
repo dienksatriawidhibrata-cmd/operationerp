@@ -5,6 +5,7 @@ import { EXPENSE_CODES } from '../../lib/constants'
 import { fmtRp, todayWIB } from '../../lib/utils'
 import Alert from '../../components/Alert'
 import PhotoUpload from '../../components/PhotoUpload'
+import { useToast } from '../../contexts/ToastContext'
 import { StaffBottomNav } from '../../components/BottomNav'
 import {
   EmptyPanel,
@@ -17,6 +18,7 @@ import {
 
 export default function BebanOperasional() {
   const { profile } = useAuth()
+  const { toastSuccess, toastError } = useToast()
   const today = todayWIB()
   const branchId = profile?.branch_id
 
@@ -30,7 +32,6 @@ export default function BebanOperasional() {
   const [detail, setDetail] = useState('')
   const [fotoBukti, setFotoBukti] = useState([])
   const [saving, setSaving] = useState(false)
-  const [done, setDone] = useState(false)
   const [error, setError] = useState('')
 
   const [history, setHistory] = useState([])
@@ -106,16 +107,15 @@ export default function BebanOperasional() {
 
     const { error: submitErr } = await supabase.from('operational_expenses').insert(payload)
     if (submitErr) {
-      setError('Gagal: ' + submitErr.message)
+      toastError('Gagal menyimpan: ' + submitErr.message)
     } else {
-      setDone(true)
+      toastSuccess('Pengeluaran berhasil disimpan.')
       setSelected(null)
       setQuery('')
       setQty('')
       setHarga('')
       setDetail('')
       setFotoBukti([])
-      setTimeout(() => setDone(false), 3000)
       fetchHistory()
     }
     setSaving(false)
@@ -142,7 +142,6 @@ export default function BebanOperasional() {
       </SectionPanel>
 
       <div className="mt-6 space-y-6">
-        {done && <Alert variant="ok">Pengeluaran berhasil disimpan.</Alert>}
         {error && <Alert variant="error">{error}</Alert>}
 
         <SectionPanel
@@ -264,6 +263,7 @@ export default function BebanOperasional() {
                 onChange={setFotoBukti}
                 label="Upload Foto Nota"
                 max={3}
+                capture={false}
               />
             </div>
 

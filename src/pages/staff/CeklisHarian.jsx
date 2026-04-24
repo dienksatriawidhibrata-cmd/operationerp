@@ -8,6 +8,7 @@ import PhotoUpload from '../../components/PhotoUpload'
 import PhotoViewer from '../../components/PhotoViewer'
 import Alert from '../../components/Alert'
 import { StaffBottomNav } from '../../components/BottomNav'
+import { useToast } from '../../contexts/ToastContext'
 import {
   EmptyPanel,
   InlineStat,
@@ -86,6 +87,7 @@ function clearChecklistDraft(branchId, tanggal, shift) {
 
 export default function CeklisHarian() {
   const { profile } = useAuth()
+  const { toastSuccess, toastError } = useToast()
   const today = todayWIB()
   const [activeShift, setActiveShift] = useState('pagi')
   const [existing, setExisting] = useState({ pagi: null, middle: null, malam: null })
@@ -95,7 +97,6 @@ export default function CeklisHarian() {
   const [oosList, setOosList] = useState([])
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
-  const [done, setDone] = useState(false)
   const [error, setError] = useState('')
   const [isEditing, setIsEditing] = useState(false)
 
@@ -212,10 +213,10 @@ export default function CeklisHarian() {
       : await supabase.from('daily_checklists').insert(payload)
 
     if (submitErr) {
-      setError('Gagal menyimpan: ' + submitErr.message)
+      toastError('Gagal menyimpan: ' + submitErr.message)
     } else {
       clearChecklistDraft(branchId, today, activeShift)
-      setDone(true)
+      toastSuccess('Ceklis berhasil disimpan.')
       setIsEditing(false)
       await fetchExisting()
     }
@@ -261,7 +262,7 @@ export default function CeklisHarian() {
       </SectionPanel>
 
       <div className="mt-6 space-y-6">
-        {existing[activeShift] && !isEditing && !done && (
+        {existing[activeShift] && !isEditing && (
           <div className="flex items-center justify-between gap-4 rounded-[22px] border border-emerald-200 bg-emerald-50 px-4 py-3.5">
             <span className="text-sm text-emerald-800">
               Ceklis {activeShift} sudah disubmit.
@@ -278,7 +279,6 @@ export default function CeklisHarian() {
         {isEditing && (
           <Alert variant="warn">Mode koreksi aktif. Data lama akan ditimpa saat kamu submit ulang.</Alert>
         )}
-        {done && <Alert variant="ok">Ceklis berhasil disimpan.</Alert>}
         {error && <Alert variant="error">{error}</Alert>}
         {!isReadOnly && !isEditing && (
           <Alert variant="info">

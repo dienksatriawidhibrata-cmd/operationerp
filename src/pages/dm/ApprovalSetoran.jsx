@@ -3,8 +3,8 @@ import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { fmtRp, fmtDateShort } from '../../lib/utils'
 import PhotoViewer from '../../components/PhotoViewer'
-import Alert from '../../components/Alert'
 import { DMBottomNav, OpsBottomNav } from '../../components/BottomNav'
+import { useToast } from '../../contexts/ToastContext'
 import { isOpsLikeRole } from '../../lib/access'
 import {
   AppIcon,
@@ -35,13 +35,14 @@ async function fetchUncoveredDistricts(profile) {
 
 export default function ApprovalSetoran() {
   const { profile } = useAuth()
+  const { toastSuccess, toastError } = useToast()
   const [tab, setTab] = useState('submitted')
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState(null)
   const [rejReason, setRejReason] = useState('')
   const [actioning, setActioning] = useState(false)
-  const [msg, setMsg] = useState(null)
+  const [fetchError, setFetchError] = useState('')
 
   useEffect(() => {
     fetchSetoran()
@@ -69,8 +70,9 @@ export default function ApprovalSetoran() {
 
     const { data, error: fetchErr } = await query
     if (fetchErr) {
-      setMsg({ type: 'error', text: 'Gagal memuat data: ' + fetchErr.message })
+      setFetchError('Gagal memuat data: ' + fetchErr.message)
     } else {
+      setFetchError('')
       setItems(data || [])
     }
     setLoading(false)
@@ -89,9 +91,9 @@ export default function ApprovalSetoran() {
       .eq('id', item.id)
 
     if (error) {
-      setMsg({ type: 'error', text: 'Gagal: ' + error.message })
+      toastError('Gagal approve: ' + error.message)
     } else {
-      setMsg({ type: 'ok', text: 'Setoran berhasil di-approve.' })
+      toastSuccess('Setoran berhasil di-approve.')
       setSelected(null)
       fetchSetoran()
     }
@@ -100,7 +102,7 @@ export default function ApprovalSetoran() {
 
   const reject = async (item) => {
     if (!rejReason.trim()) {
-      setMsg({ type: 'error', text: 'Alasan penolakan wajib diisi.' })
+      toastError('Alasan penolakan wajib diisi.')
       return
     }
 
@@ -116,9 +118,9 @@ export default function ApprovalSetoran() {
       .eq('id', item.id)
 
     if (error) {
-      setMsg({ type: 'error', text: 'Gagal: ' + error.message })
+      toastError('Gagal reject: ' + error.message)
     } else {
-      setMsg({ type: 'ok', text: 'Setoran berhasil di-reject.' })
+      toastSuccess('Setoran berhasil di-reject.')
       setSelected(null)
       setRejReason('')
       fetchSetoran()
@@ -183,7 +185,7 @@ export default function ApprovalSetoran() {
       </SectionPanel>
 
       <div className="mt-6 space-y-6">
-        {msg && <Alert variant={msg.type === 'ok' ? 'ok' : 'error'}>{msg.text}</Alert>}
+        {fetchError && <Alert variant="error">{fetchError}</Alert>}
 
         <SectionPanel
           eyebrow="Review List"

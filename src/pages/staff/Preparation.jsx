@@ -7,6 +7,7 @@ import PhotoUpload from '../../components/PhotoUpload'
 import PhotoViewer from '../../components/PhotoViewer'
 import Alert from '../../components/Alert'
 import { StaffBottomNav } from '../../components/BottomNav'
+import { useToast } from '../../contexts/ToastContext'
 import {
   EmptyPanel, InlineStat, SectionPanel, SegmentedControl, SubpageShell,
   LoadingButton,
@@ -92,6 +93,7 @@ function buildPreparationAnswers(qtyMap = {}, photoMap = {}) {
 
 export default function Preparation() {
   const { profile } = useAuth()
+  const { toastSuccess, toastError } = useToast()
   const today = todayWIB()
   const branchId = profile?.branch_id
 
@@ -101,7 +103,6 @@ export default function Preparation() {
   const [photoMap, setPhotoMap] = useState({})
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
-  const [done, setDone] = useState(false)
   const [error, setError] = useState('')
   const [isEditing, setIsEditing] = useState(false)
 
@@ -123,7 +124,6 @@ export default function Preparation() {
       setNotes(draft?.notes || '')
     }
     setError('')
-    setDone(false)
     setIsEditing(false)
   }, [existing, activeShift, branchId, today])
 
@@ -186,10 +186,10 @@ export default function Preparation() {
       : await supabase.from('daily_preparation').insert(payload)
 
     if (submitErr) {
-      setError('Gagal menyimpan: ' + submitErr.message)
+      toastError('Gagal menyimpan: ' + submitErr.message)
     } else {
       clearPreparationDraft(branchId, today, activeShift)
-      setDone(true)
+      toastSuccess('Preparation berhasil disimpan.')
       setIsEditing(false)
       await fetchExisting()
     }
@@ -230,7 +230,7 @@ export default function Preparation() {
       </SectionPanel>
 
       <div className="mt-6 space-y-6">
-        {existing[activeShift] && !isEditing && !done && (
+        {existing[activeShift] && !isEditing && (
           <div className="flex items-center justify-between gap-4 rounded-[22px] border border-emerald-200 bg-emerald-50 px-4 py-3.5">
             <span className="text-sm text-emerald-800">Preparation {activeShift} sudah disubmit.</span>
             <button
@@ -242,7 +242,6 @@ export default function Preparation() {
           </div>
         )}
         {isEditing && <Alert variant="warn">Mode koreksi aktif.</Alert>}
-        {done && <Alert variant="ok">Preparation berhasil disimpan.</Alert>}
         {error && <Alert variant="error">{error}</Alert>}
 
         {SECTIONS.map((section) => (

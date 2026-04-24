@@ -50,6 +50,7 @@ const SCPicking      = lazy(() => import('./pages/sc/PickingPage'))
 const SCQC           = lazy(() => import('./pages/sc/QCPage'))
 const SCDistribution = lazy(() => import('./pages/sc/DistributionPage'))
 const SCSuratJalan   = lazy(() => import('./pages/sc/SuratJalan'))
+const AnnouncementsPage  = lazy(() => import('./pages/ops/Announcements'))
 const StaffManagement    = lazy(() => import('./pages/support/StaffManagement'))
 const Preparation        = lazy(() => import('./pages/staff/Preparation'))
 const KPIPersonalPage    = lazy(() => import('./pages/kpi/KPIPersonalPage'))
@@ -332,6 +333,12 @@ export default function App() {
       <Route path="/support/staff" element={
         <RequireAuth roles={['ops_manager', ...SUPPORT_ROLES]}>
           <StaffManagement />
+        </RequireAuth>
+      } />
+
+      <Route path="/ops/pengumuman" element={
+        <RequireAuth roles={['ops_manager', 'support_spv']}>
+          <AnnouncementsPage />
         </RequireAuth>
       } />
 

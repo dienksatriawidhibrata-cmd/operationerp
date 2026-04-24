@@ -362,6 +362,7 @@ export default function OpsHub() {
     { to: '/kpi/personal/input', icon: 'checklist', label: 'Input\nKPI', bg: 'bg-sky-50 border-sky-100 text-sky-600' },
     { to: '/tasks', icon: 'checklist', label: 'Manajemen\nTugas', bg: 'bg-emerald-50 border-emerald-100 text-emerald-600' },
     { to: '/sop', icon: 'checklist', label: 'Panduan\nSOP', bg: 'bg-indigo-50 border-indigo-100 text-indigo-600' },
+    { to: '/ops/pengumuman', icon: 'bell', label: 'Pengumuman', bg: 'bg-amber-50 border-amber-100 text-amber-600' },
   ]
 
   const reportLinks = [
@@ -372,6 +373,7 @@ export default function OpsHub() {
     { to: '/trainer/oje', icon: 'checklist', label: 'OJE', sub: 'On Job Evaluation', bg: 'bg-teal-50 border-teal-100', color: 'text-teal-600' },
     { to: '/ops/visit-monitor', icon: 'map', label: 'Audit Log Visit', sub: 'Skor & foto kunjungan', bg: 'bg-violet-50 border-violet-100', color: 'text-violet-600' },
     { to: '/support/staff', icon: 'users', label: 'Manajemen Staf', sub: 'Akun & akses pengguna', bg: 'bg-slate-50 border-slate-200', color: 'text-slate-600' },
+    { to: '/ops/pengumuman', icon: 'bell', label: 'Pengumuman', sub: 'Buat & kelola pengumuman staff', bg: 'bg-amber-50 border-amber-100', color: 'text-amber-600' },
   ]
 
   return (

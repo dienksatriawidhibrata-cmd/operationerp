@@ -6,6 +6,7 @@ import Alert from '../../components/Alert'
 import PhotoUpload from '../../components/PhotoUpload'
 import PhotoViewer from '../../components/PhotoViewer'
 import { StaffBottomNav } from '../../components/BottomNav'
+import { useToast } from '../../contexts/ToastContext'
 import {
   InlineStat,
   SectionPanel,
@@ -15,6 +16,7 @@ import {
 
 export default function LaporanHarian() {
   const { profile } = useAuth()
+  const { toastSuccess, toastError } = useToast()
   const yesterday = yesterdayWIB()
   const branchId = profile?.branch_id
 
@@ -24,7 +26,6 @@ export default function LaporanHarian() {
   const [jumlahKunjungan, setJumlahKunjungan] = useState('')
   const [catatan, setCatatan] = useState('')
   const [savingLaporan, setSavingLaporan] = useState(false)
-  const [doneLaporan, setDoneLaporan] = useState(false)
   const [isEditingLaporan, setIsEditingLaporan] = useState(false)
 
   const [setoran, setSetoran] = useState(null)
@@ -33,7 +34,6 @@ export default function LaporanHarian() {
   const [alasan, setAlasan] = useState('')
   const [fotoBukti, setFotoBukti] = useState([])
   const [savingSetoran, setSavingSetoran] = useState(false)
-  const [doneSetoran, setDoneSetoran] = useState(false)
 
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
@@ -105,9 +105,9 @@ export default function LaporanHarian() {
       : await supabase.from('daily_reports').insert(payload)
 
     if (submitErr) {
-      setError('Gagal: ' + submitErr.message)
+      toastError('Gagal menyimpan laporan: ' + submitErr.message)
     } else {
-      setDoneLaporan(true)
+      toastSuccess('Laporan berhasil disimpan.')
       setIsEditingLaporan(false)
       fetchData()
     }
@@ -151,9 +151,9 @@ export default function LaporanHarian() {
       : await supabase.from('daily_deposits').insert(payload)
 
     if (submitErr) {
-      setError('Gagal: ' + submitErr.message)
+      toastError('Gagal submit setoran: ' + submitErr.message)
     } else {
-      setDoneSetoran(true)
+      toastSuccess('Setoran berhasil disubmit dan menunggu approval DM.')
       fetchData()
     }
     setSavingSetoran(false)
@@ -212,8 +212,6 @@ export default function LaporanHarian() {
             Laporan belum disubmit. Deadline hari ini jam <strong>14.00 WIB</strong>. Sisa: <strong>{sisaWaktuLaporan(yesterday)}</strong>
           </Alert>
         )}
-        {doneLaporan && <Alert variant="ok">Laporan berhasil disimpan.</Alert>}
-        {doneSetoran && <Alert variant="ok">Setoran berhasil disubmit dan menunggu approval DM.</Alert>}
         {error && <Alert variant="error">{error}</Alert>}
 
         <SectionPanel
