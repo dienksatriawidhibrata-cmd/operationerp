@@ -3,7 +3,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { CHECKLIST_ITEMS, PREPARATION_ITEMS } from '../../lib/constants'
 import { todayWIB } from '../../lib/utils'
-import { DMBottomNav, OpsBottomNav } from '../../components/BottomNav'
+import { AuditorBottomNav, DMBottomNav, OpsBottomNav } from '../../components/BottomNav'
 import { isOpsLikeRole } from '../../lib/access'
 import PhotoViewer from '../../components/PhotoViewer'
 import { EmptyPanel, SubpageShell, ToneBadge } from '../../components/ui/AppKit'
@@ -431,7 +431,9 @@ export default function StoreStatus() {
     return null
   }
 
-  const footer = isOpsManager ? <OpsBottomNav /> : <DMBottomNav />
+  const footer = profile?.role === 'auditor'
+    ? <AuditorBottomNav />
+    : isOpsManager ? <OpsBottomNav /> : <DMBottomNav />
 
   const StoreList = ({ onSelect }) => (
     <div className="flex flex-1 flex-col space-y-1 overflow-y-auto min-h-0">

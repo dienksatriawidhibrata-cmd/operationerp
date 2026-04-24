@@ -1,4 +1,5 @@
 export const STORE_ROLES = ['staff', 'barista', 'kitchen', 'waitress', 'asst_head_store', 'head_store']
+export const AUDITOR_ROLES = ['auditor']
 export const MANAGER_ROLES = ['district_manager', 'area_manager', 'ops_manager']
 export const SUPPORT_ROLES = ['support_spv', 'support_admin']
 export const FINANCE_ROLES = ['finance_supervisor']

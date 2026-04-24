@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { AppCanvas } from '../components/ui/AppKit'
 
 const STAFF_PASS = import.meta.env.VITE_STAFF_PASS
-const STAFF_EMAIL_ONLY_ROLES = ['staff', 'barista', 'kitchen', 'waitress', 'asst_head_store']
+const STAFF_EMAIL_ONLY_ROLES = ['staff', 'barista', 'kitchen', 'waitress', 'asst_head_store', 'auditor']
 
 export default function Login() {
   const { signIn, user, profile, loading, profileError } = useAuth()
@@ -21,7 +21,8 @@ export default function Login() {
 
     if (profile) {
       const role = profile.role
-      if (['head_store', ...STAFF_EMAIL_ONLY_ROLES].includes(role)) navigate('/staff', { replace: true })
+      if (role === 'auditor') navigate('/dm/stores', { replace: true })
+      else if (['head_store', ...STAFF_EMAIL_ONLY_ROLES].includes(role)) navigate('/staff', { replace: true })
       else if (role === 'ops_manager' || ['support_spv', 'support_admin'].includes(role)) navigate('/ops', { replace: true })
       else if (['district_manager', 'area_manager'].includes(role)) navigate('/dm', { replace: true })
       else if (role === 'finance_supervisor') navigate('/finance', { replace: true })

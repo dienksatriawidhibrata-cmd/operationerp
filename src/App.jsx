@@ -2,6 +2,7 @@ import React, { Suspense, lazy } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext'
 import {
+  AUDITOR_ROLES,
   FINANCE_ROLES,
   KPI_ALLOWED_ROLES,
   KPI_PERSONAL_VIEW_ROLES,
@@ -66,6 +67,7 @@ function RootRedirect() {
 
   const role = profile.role
   if (STORE_ROLES.includes(role)) return <Navigate to="/staff" replace />
+  if (AUDITOR_ROLES.includes(role)) return <Navigate to="/dm/stores" replace />
   if (['district_manager', 'area_manager'].includes(role)) return <Navigate to="/dm" replace />
   if (role === 'ops_manager' || SUPPORT_ROLES.includes(role)) return <Navigate to="/ops" replace />
   if (role === 'trainer') return <Navigate to="/trainer" replace />
@@ -252,7 +254,7 @@ export default function App() {
         </RequireAuth>
       } />
       <Route path="/dm/stores" element={
-        <RequireAuth roles={ALL_MANAGER}>
+        <RequireAuth roles={[...ALL_MANAGER, ...AUDITOR_ROLES]}>
           <StoreStatus />
         </RequireAuth>
       } />

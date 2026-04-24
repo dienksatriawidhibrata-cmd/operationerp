@@ -99,6 +99,7 @@ export function roleLabel(role) {
     support_spv: 'Support Supervisor',
     support_admin: 'Support Admin',
     trainer: 'Trainer',
+    auditor: 'Auditor',
   }
   return map[role] || role
 }

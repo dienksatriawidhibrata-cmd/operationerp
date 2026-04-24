@@ -323,6 +323,16 @@ export function OpsBottomNav() {
   )
 }
 
+export function AuditorBottomNav() {
+  const { pathname } = useLocation()
+  return (
+    <Dock>
+      <NavItem to="/dm/stores" icon="store" label="Status Toko" active={pathname.startsWith('/dm/stores')} />
+      <LogoutNavItem />
+    </Dock>
+  )
+}
+
 export function SmartBottomNav() {
   const { profile } = useAuth()
   const role = profile?.role
@@ -331,5 +341,6 @@ export function SmartBottomNav() {
   if (isStoreRole(role))         return <StaffBottomNav />
   if (role === 'trainer')        return <TrainerBottomNav />
   if (isFinanceRole(role))       return <FinanceBottomNav />
+  if (role === 'auditor')        return <AuditorBottomNav />
   return <SCBottomNav />
 }
