@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { roleLabel, todayWIB, yesterdayWIB } from '../../lib/utils'
 import { SmartBottomNav } from '../../components/BottomNav'
 import {
+  AppIcon,
   EmptyPanel,
   HeroCard,
   InlineStat,
@@ -92,7 +93,7 @@ export default function FinanceHub({
   pageSubtitle,
   showAuditAction = true,
 }) {
-  const { profile } = useAuth()
+  const { profile, signOut } = useAuth()
   const [branches, setBranches] = useState([])
   const [records, setRecords] = useState({ deposits: [], expenses: [], reports: [] })
   const [loading, setLoading] = useState(true)
@@ -300,6 +301,15 @@ export default function FinanceHub({
       eyebrow={pageEyebrow || roleLabel(profile?.role || 'finance_supervisor')}
       showBack={false}
       footer={<SmartBottomNav />}
+      action={
+        <button
+          onClick={signOut}
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-50 text-slate-500 transition-colors hover:bg-rose-50 hover:text-rose-600"
+          aria-label="Keluar"
+        >
+          <AppIcon name="logout" size={18} />
+        </button>
+      }
     >
       <HeroCard
         eyebrow="Laporan Harian"

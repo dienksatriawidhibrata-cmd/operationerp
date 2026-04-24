@@ -395,6 +395,7 @@ export default function LaporanHarian() {
                   onChange={setFotoBukti}
                   label="Upload Foto Slip / Struk Setoran"
                   max={5}
+                  capture={false}
                 />
               ) : (
                 <PhotoViewer urls={fotoBukti} emptyText="Tidak ada foto" />
