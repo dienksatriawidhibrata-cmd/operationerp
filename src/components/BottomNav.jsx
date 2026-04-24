@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
+import { AppIcon } from './ui/AppKit'
 import { isManagerRole, isOpsLikeRole, isStoreRole, isFinanceRole, canAccessTasks } from '../lib/access'
 
 function NavItem({ to, icon, label, active, badgeCount = 0 }) {
