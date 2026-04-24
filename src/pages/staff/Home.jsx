@@ -6,6 +6,7 @@ import { StaffBottomNav } from '../../components/BottomNav'
 import { canViewKPI, canViewSupplyChain, isStoreRole } from '../../lib/access'
 import { AppIcon } from '../../components/ui/AppKit'
 import { fmtRp, todayWIB, yesterdayWIB, sisaWaktuLaporan } from '../../lib/utils'
+import ReminderBanner from '../../components/ReminderBanner'
 
 export default function StaffHome() {
   const { profile, signOut } = useAuth()
@@ -55,7 +56,7 @@ export default function StaffHome() {
   const fetchStatus = async () => {
     const branchId = profile.branch_id
 
-    const [ceklisPagi, ceklisMiddle, ceklisMalam, laporan, prepPagi, prepMiddle, prepMalam, opexToday] = await Promise.all([
+    const [ceklisPagi, ceklisMiddle, ceklisMalam, laporan, prepPagi, prepMiddle, prepMalam, opexToday, setoran] = await Promise.all([
       supabase.from('daily_checklists')
         .select('id, is_late, submitted_at')
         .eq('branch_id', branchId).eq('tanggal', today).eq('shift', 'pagi')
@@ -94,6 +95,13 @@ export default function StaffHome() {
       supabase.from('operational_expenses')
         .select('total')
         .eq('branch_id', branchId).eq('tanggal', today),
+
+      supabase.from('daily_deposits')
+        .select('id')
+        .eq('branch_id', branchId)
+        .eq('tanggal', yesterday)
+        .in('status', ['submitted', 'approved'])
+        .maybeSingle(),
     ])
 
     const totalOpex = (opexToday.data || []).reduce((sum, row) => sum + Number(row.total), 0)
@@ -106,6 +114,7 @@ export default function StaffHome() {
       prepPagi: prepPagi.data,
       prepMiddle: prepMiddle.data,
       prepMalam: prepMalam.data,
+      setoran: setoran.data,
       totalOpex,
     })
     setLoading(false)
@@ -175,6 +184,10 @@ export default function StaffHome() {
           <div className="mb-4 p-4 rounded-3xl bg-rose-50 border border-rose-100">
             <p className="text-sm text-rose-700 font-semibold">Akun belum dikonfigurasi ke cabang manapun. Hubungi ops manager.</p>
           </div>
+        )}
+
+        {isStoreLevel && profile?.branch_id && (
+          <ReminderBanner status={status} loading={loading} isHeadStore={isHeadStore} />
         )}
 
         {isHeadStore && (
