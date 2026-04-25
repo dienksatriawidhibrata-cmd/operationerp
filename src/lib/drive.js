@@ -1,11 +1,11 @@
 /**
  * Upload file ke Google Drive via Google Apps Script web app.
- * Apps Script menerima base64, simpan ke Drive, return URL.
+ * Apps Script berjalan sebagai pemilik script (akses Drive langsung).
  */
 
 import { supabase } from './supabase'
 
-const BACKEND_BASE = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000'
+const APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL
 const MAX_UPLOAD_BYTES = 200 * 1024
 const MAX_DIMENSION = 1600
 const MIN_DIMENSION = 480
@@ -156,40 +156,34 @@ export function buildPreviewUrl(urlOrFileId, size = 'w400') {
 }
 
 /**
- * Upload satu file ke Drive.
- * @param {File} file - File object dari input atau camera
- * @param {string} folder - subfolder label (e.g. 'ceklis', 'setoran', 'visit')
- * @returns {Promise<{url: string, fileId: string}>}
+ * Upload satu file ke Drive via Apps Script.
+ * @param {File} file
+ * @param {string} folder - subfolder di dalam root folder Drive
+ * @returns {Promise<{url: string, fileId: string, originalSize: number, uploadedSize: number}>}
  */
 export async function uploadToDrive(file, folder = 'general') {
-  const compressed = await compressImage(file)
+  if (!APPS_SCRIPT_URL) throw new Error('VITE_APPS_SCRIPT_URL belum dikonfigurasi.')
+
   const { data } = await supabase.auth.getSession()
-  const accessToken = data?.session?.access_token
-  if (!accessToken) {
-    throw new Error('Sesi login tidak ditemukan.')
-  }
+  if (!data?.session) throw new Error('Sesi login tidak ditemukan.')
+
+  const compressed = await compressImage(file)
 
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), 45_000)
-  const formData = new FormData()
-  formData.append('folder', folder)
-  formData.append(
-    'file',
-    new File(
-      [Uint8Array.from(atob(compressed.base64), (char) => char.charCodeAt(0))],
-      compressed.fileName,
-      { type: compressed.mimeType }
-    )
-  )
 
   let res
   try {
-    res = await fetch(`${BACKEND_BASE}/api/uploads/drive`, {
+    // Kirim sebagai text/plain agar tidak trigger CORS preflight
+    res = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: formData,
+      body: JSON.stringify({
+        action: 'uploadFile',
+        base64: compressed.base64,
+        mimeType: compressed.mimeType,
+        fileName: compressed.fileName,
+        folder,
+      }),
       signal: controller.signal,
     })
   } catch (err) {
@@ -208,10 +202,12 @@ export async function uploadToDrive(file, folder = 'general') {
     // Ignore JSON parsing failures.
   }
 
-  if (!res.ok) throw new Error(json?.detail || json?.error || 'Upload gagal')
+  if (!res.ok || json?.ok === false) {
+    throw new Error(json?.error || 'Upload gagal')
+  }
 
   return {
-    url: json?.url || `https://drive.google.com/uc?id=${json?.fileId}&export=view`,
+    url: json.url || `https://drive.google.com/uc?id=${json.fileId}&export=view`,
     fileId: json.fileId,
     originalSize: file.size,
     uploadedSize: compressed.size,

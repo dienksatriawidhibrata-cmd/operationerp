@@ -1,0 +1,135 @@
+// ============================================================
+//  BagiKopi Ops — Google Apps Script
+//  Akun: dienksatriawidhibrata@bagikopi.id
+//
+//  doGet  → SOP: listSops, getSopDoc
+//  doPost → Upload foto ke Google Drive
+//
+//  Cara deploy:
+//  1. Buka script.google.com, buka project ini
+//  2. Salin seluruh isi file ini, ganti semua kode yang ada
+//  3. Klik Deploy → Manage deployments → Edit (ikon pensil)
+//  4. Ubah "Version" ke "New version"
+//  5. Pastikan: Execute as = Me, Who has access = Anyone
+//  6. Klik Deploy — URL tidak berubah
+// ============================================================
+
+var SOP_FOLDER_ID    = '1GXkR3-A0XXkxJxkNlCv2FJXUO4NLqOSa';
+var UPLOAD_FOLDER_ID = '1zsX4nKXk4xCzrwAgIlO135Zix8H13G_e';
+
+// ── Entry points ─────────────────────────────────────────────
+
+function doGet(e) {
+  var action = (e.parameter && e.parameter.action) || '';
+  try {
+    if (action === 'listSops')   return listSops();
+    if (action === 'getSopDoc')  return getSopDoc(e.parameter.documentId);
+    return jsonResponse({ ok: false, error: 'Unknown action: ' + action });
+  } catch (err) {
+    return jsonResponse({ ok: false, error: err.toString() });
+  }
+}
+
+function doPost(e) {
+  try {
+    var payload = JSON.parse(e.postData.contents);
+    if (payload.action === 'uploadFile') return uploadFile(payload);
+    return jsonResponse({ ok: false, error: 'Unknown action: ' + payload.action });
+  } catch (err) {
+    return jsonResponse({ ok: false, error: err.toString() });
+  }
+}
+
+// ── SOP ──────────────────────────────────────────────────────
+
+function listSops() {
+  var folder = DriveApp.getFolderById(SOP_FOLDER_ID);
+  var files  = folder.getFilesByType(MimeType.GOOGLE_DOCS);
+  var items  = [];
+
+  while (files.hasNext()) {
+    var f = files.next();
+    items.push({
+      id:           f.getId(),
+      name:         f.getName(),
+      modifiedTime: f.getLastUpdated().toISOString(),
+      webViewLink:  f.getUrl()
+    });
+  }
+
+  items.sort(function(a, b) { return a.name.localeCompare(b.name); });
+  return jsonResponse({ ok: true, count: items.length, items: items });
+}
+
+function getSopDoc(documentId) {
+  if (!documentId) return jsonResponse({ ok: false, error: 'documentId diperlukan' });
+
+  var doc        = DocumentApp.openById(documentId);
+  var paragraphs = doc.getBody().getParagraphs();
+  var blocks     = [];
+
+  for (var i = 0; i < paragraphs.length; i++) {
+    var para = paragraphs[i];
+    var text = para.getText().trim();
+    if (!text) continue;
+
+    var heading = para.getHeading();
+    var type    = 'paragraph';
+    var style   = 'NORMAL_TEXT';
+
+    if      (heading === DocumentApp.ParagraphHeading.HEADING1) { type = 'heading'; style = 'HEADING_1'; }
+    else if (heading === DocumentApp.ParagraphHeading.HEADING2) { type = 'heading'; style = 'HEADING_2'; }
+    else if (heading === DocumentApp.ParagraphHeading.HEADING3) { type = 'heading'; style = 'HEADING_3'; }
+
+    blocks.push({ type: type, style: style, text: text });
+  }
+
+  return jsonResponse({
+    ok:    true,
+    id:    documentId,
+    title: doc.getName(),
+    tabs:  [{ id: 'main', title: doc.getName(), depth: 0, blocks: blocks }]
+  });
+}
+
+// ── Upload foto ───────────────────────────────────────────────
+
+function uploadFile(payload) {
+  var rootFolder = DriveApp.getFolderById(UPLOAD_FOLDER_ID);
+  var folder     = _getOrCreateFolder(rootFolder, payload.folder || 'general');
+
+  var decoded = Utilities.base64Decode(payload.base64);
+  var blob    = Utilities.newBlob(decoded, payload.mimeType, payload.fileName);
+  var file    = folder.createFile(blob);
+
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+  var fileId = file.getId();
+  return jsonResponse({
+    ok:     true,
+    fileId: fileId,
+    url:    'https://drive.google.com/uc?id=' + fileId + '&export=view'
+  });
+}
+
+// ── Helper ────────────────────────────────────────────────────
+
+function _getOrCreateFolder(parent, folderPath) {
+  var parts   = folderPath.split('/');
+  var current = parent;
+
+  for (var i = 0; i < parts.length; i++) {
+    var part = parts[i].trim();
+    if (!part) continue;
+    var iter = current.getFoldersByName(part);
+    current  = iter.hasNext() ? iter.next() : current.createFolder(part);
+  }
+
+  return current;
+}
+
+function jsonResponse(data) {
+  return ContentService
+    .createTextOutput(JSON.stringify(data))
+    .setMimeType(ContentService.MimeType.JSON);
+}
