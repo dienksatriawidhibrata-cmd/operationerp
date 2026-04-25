@@ -5,23 +5,42 @@
 //  doGet  → SOP: listSops, getSopDoc
 //  doPost → Upload foto ke Google Drive
 //
-//  ── Cara deploy ──────────────────────────────────────────────
-//  1. Buka script.google.com, buka project ini
-//  2. Salin seluruh isi file ini, ganti semua kode yang ada
-//  3. Klik Save (Ctrl+S)
-//  4. Run → pilih "authorizeScript" → ikuti popup izin → Allow
-//     (jika ada "Google hasn't verified this app" → klik Advanced
-//      → Go to [nama project] (unsafe) → Allow)
-//  5. Deploy → Manage deployments → Edit → New version → Deploy
+//  ── Cara deploy (URUTAN WAJIB) ───────────────────────────────
+//  1. Paste kode ini, ganti semua → Save (Ctrl+S)
+//  2. Run → authorizeScript  (pastikan log: "OK")
+//  3. Run → testUpload       (pastikan log: "File created OK")
+//  4. BARU DEPLOY:
+//     Deploy → Manage deployments → Edit → New version → Deploy
+//     Jika muncul popup izin → Allow semua
 // ============================================================
 
 var UPLOAD_FOLDER_ID = '1zsX4nKXk4xCzrwAgIlO135Zix8H13G_e';
 var SOP_FOLDER_ID    = '1GXkR3-A0XXkxJxkNlCv2FJXUO4NLqOSa';
 
-// Jalankan sekali untuk authorize DriveApp & DocumentApp
+// Step 1: authorize
 function authorizeScript() {
   DriveApp.getFolderById(UPLOAD_FOLDER_ID);
-  Logger.log('OK - folder upload accessible');
+  Logger.log('OK - folder accessible');
+}
+
+// Step 2: test upload sebelum deploy
+function testUpload() {
+  try {
+    var folder = DriveApp.getFolderById(UPLOAD_FOLDER_ID);
+    Logger.log('getFolderById OK: ' + folder.getName());
+
+    var blob = Utilities.newBlob('test', 'text/plain', 'test_bagikopi.txt');
+    var file = folder.createFile(blob);
+    Logger.log('createFile OK: ' + file.getId());
+
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    Logger.log('setSharing OK');
+
+    file.setTrashed(true);
+    Logger.log('Cleanup OK - testUpload PASSED');
+  } catch (err) {
+    Logger.log('FAILED at: ' + err.toString());
+  }
 }
 
 // ── Entry points ─────────────────────────────────────────────
