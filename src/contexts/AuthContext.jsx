@@ -6,7 +6,6 @@ const PROFILE_TIMEOUT_MS = 20000
 const PROFILE_CACHE_KEY = 'bagikopi_ops_profile_cache'
 const SESSION_TIMEOUT_MS = 8000
 const AUTH_STORAGE_KEY = 'bagikopi-ops-auth'
-const BACKEND_BASE = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000'
 
 function clearCachedSessionUser() {
   if (typeof window === 'undefined') return
@@ -214,45 +213,13 @@ export function AuthProvider({ children }) {
   }
 
   const signInStaff = async (email) => {
-    let res
-    try {
-      res = await fetch(`${BACKEND_BASE}/api/auth/staff-login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim() }),
-      })
-    } catch {
-      return { error: { message: 'Tidak dapat terhubung ke server. Pastikan backend sedang berjalan.' } }
+    const staffPass = import.meta.env.VITE_STAFF_PASS
+    if (!staffPass) {
+      return { error: { message: 'Konfigurasi login staff belum lengkap. Hubungi admin.' } }
     }
-
-    let payload = null
-    try {
-      payload = await res.json()
-    } catch {
-      // Ignore JSON parsing failures.
-    }
-
-    if (!res.ok) {
-      return {
-        error: {
-          message: payload?.detail || 'Login staff gagal diproses.',
-        },
-      }
-    }
-
-    const accessToken = payload?.access_token
-    const refreshToken = payload?.refresh_token
-    if (!accessToken || !refreshToken) {
-      return {
-        error: {
-          message: 'Session login staff tidak lengkap.',
-        },
-      }
-    }
-
-    return await supabase.auth.setSession({
-      access_token: accessToken,
-      refresh_token: refreshToken,
+    return await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password: staffPass,
     })
   }
 
