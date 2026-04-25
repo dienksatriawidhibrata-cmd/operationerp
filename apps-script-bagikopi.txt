@@ -3,29 +3,25 @@
 //  Akun: dienksatriawidhibrata@bagikopi.id
 //
 //  doGet  → SOP: listSops, getSopDoc
-//  doPost → Upload foto ke Google Drive (folder id di bawah)
+//  doPost → Upload foto ke Google Drive
 //
-//  ── Cara deploy & authorize ──────────────────────────────────
+//  ── Cara deploy ──────────────────────────────────────────────
 //  1. Buka script.google.com, buka project ini
 //  2. Salin seluruh isi file ini, ganti semua kode yang ada
 //  3. Klik Save (Ctrl+S)
-//  4. Di menu atas, klik Run → pilih fungsi "authorizeScript"
-//     → Akan muncul popup "Authorization required"
-//     → Klik "Review permissions" → pilih akun bagikopi.id
-//     → Jika muncul "Google hasn't verified this app",
-//       klik "Advanced" → "Go to [nama project] (unsafe)" → Allow
-//  5. Setelah authorize selesai, klik Deploy → Manage deployments
-//     → Edit (ikon pensil) → Version: New version → Deploy
-//     (URL tidak berubah)
+//  4. Run → pilih "authorizeScript" → ikuti popup izin → Allow
+//     (jika ada "Google hasn't verified this app" → klik Advanced
+//      → Go to [nama project] (unsafe) → Allow)
+//  5. Deploy → Manage deployments → Edit → New version → Deploy
 // ============================================================
 
-var SOP_FOLDER_ID    = '1GXkR3-A0XXkxJxkNlCv2FJXUO4NLqOSa';
 var UPLOAD_FOLDER_ID = '1zsX4nKXk4xCzrwAgIlO135Zix8H13G_e';
+var SOP_FOLDER_ID    = '1GXkR3-A0XXkxJxkNlCv2FJXUO4NLqOSa';
 
-// Jalankan fungsi ini sekali untuk trigger authorization
+// Jalankan sekali untuk authorize DriveApp & DocumentApp
 function authorizeScript() {
-  DriveApp.getRootFolder();
-  Logger.log('Authorization OK');
+  DriveApp.getFolderById(UPLOAD_FOLDER_ID);
+  Logger.log('OK - folder upload accessible');
 }
 
 // ── Entry points ─────────────────────────────────────────────
@@ -44,10 +40,21 @@ function doGet(e) {
 function doPost(e) {
   try {
     var payload = JSON.parse(e.postData.contents);
-    if (payload.action === 'uploadFile') return uploadFile(payload);
-    return jsonResponse({ ok: false, error: 'Unknown action: ' + payload.action });
+    var decoded = Utilities.base64Decode(payload.data);
+    var blob    = Utilities.newBlob(decoded, payload.mimeType, payload.fileName);
+
+    var folder  = DriveApp.getFolderById(UPLOAD_FOLDER_ID);
+    var file    = folder.createFile(blob);
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+    var fileId = file.getId();
+    return jsonResponse({
+      success: true,
+      fileId:  fileId,
+      url:     'https://drive.google.com/uc?id=' + fileId + '&export=view'
+    });
   } catch (err) {
-    return jsonResponse({ ok: false, error: err.toString() });
+    return jsonResponse({ success: false, error: err.toString() });
   }
 }
 
@@ -103,41 +110,7 @@ function getSopDoc(documentId) {
   });
 }
 
-// ── Upload foto ───────────────────────────────────────────────
-
-function uploadFile(payload) {
-  var rootFolder = DriveApp.getFolderById(UPLOAD_FOLDER_ID);
-  var folder     = _getOrCreateFolder(rootFolder, payload.folder || 'general');
-
-  var decoded = Utilities.base64Decode(payload.base64);
-  var blob    = Utilities.newBlob(decoded, payload.mimeType, payload.fileName);
-  var file    = folder.createFile(blob);
-
-  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-
-  var fileId = file.getId();
-  return jsonResponse({
-    ok:     true,
-    fileId: fileId,
-    url:    'https://drive.google.com/uc?id=' + fileId + '&export=view'
-  });
-}
-
 // ── Helper ────────────────────────────────────────────────────
-
-function _getOrCreateFolder(parent, folderPath) {
-  var parts   = folderPath.split('/');
-  var current = parent;
-
-  for (var i = 0; i < parts.length; i++) {
-    var part = parts[i].trim();
-    if (!part) continue;
-    var iter = current.getFoldersByName(part);
-    current  = iter.hasNext() ? iter.next() : current.createFolder(part);
-  }
-
-  return current;
-}
 
 function jsonResponse(data) {
   return ContentService

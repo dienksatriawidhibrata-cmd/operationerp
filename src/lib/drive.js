@@ -1,6 +1,6 @@
 /**
  * Upload file ke Google Drive via Google Apps Script web app.
- * Apps Script berjalan sebagai pemilik script (akses Drive langsung).
+ * Apps Script menerima base64, simpan ke Drive, return URL.
  */
 
 import { supabase } from './supabase'
@@ -158,7 +158,7 @@ export function buildPreviewUrl(urlOrFileId, size = 'w400') {
 /**
  * Upload satu file ke Drive via Apps Script.
  * @param {File} file
- * @param {string} folder - subfolder di dalam root folder Drive
+ * @param {string} folder - label subfolder (e.g. 'ceklis', 'setoran')
  * @returns {Promise<{url: string, fileId: string, originalSize: number, uploadedSize: number}>}
  */
 export async function uploadToDrive(file, folder = 'general') {
@@ -168,20 +168,21 @@ export async function uploadToDrive(file, folder = 'general') {
   if (!data?.session) throw new Error('Sesi login tidak ditemukan.')
 
   const compressed = await compressImage(file)
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+  const fileName = `${folder}_${timestamp}_${compressed.fileName}`
 
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), 45_000)
 
   let res
   try {
-    // Kirim sebagai text/plain agar tidak trigger CORS preflight
     res = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({
-        action: 'uploadFile',
-        base64: compressed.base64,
+        fileName,
         mimeType: compressed.mimeType,
-        fileName: compressed.fileName,
+        data: compressed.base64,
         folder,
       }),
       signal: controller.signal,
@@ -202,7 +203,7 @@ export async function uploadToDrive(file, folder = 'general') {
     // Ignore JSON parsing failures.
   }
 
-  if (!res.ok || json?.ok === false) {
+  if (!res.ok || json?.success === false) {
     throw new Error(json?.error || 'Upload gagal')
   }
 
