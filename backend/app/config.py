@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     app_name: str = Field(default="Bagi Kopi Ops API", alias="APP_NAME")
     app_env: str = Field(default="development", alias="APP_ENV")
     app_host: str = Field(default="127.0.0.1", alias="APP_HOST")
-    app_port: int = Field(default=8000, alias="APP_PORT")
+    app_port: int = Field(default=8000, validation_alias=AliasChoices("APP_PORT", "PORT"))
     app_cors_origins: str = Field(default="http://localhost:5173,http://localhost:5174", alias="APP_CORS_ORIGINS")
 
     supabase_url: str = Field(default_factory=lambda: os.getenv("SUPABASE_URL") or os.getenv("VITE_SUPABASE_URL") or "", alias="SUPABASE_URL")
