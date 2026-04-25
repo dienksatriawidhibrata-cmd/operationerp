@@ -16,12 +16,14 @@
 // Buat folder di Google Drive, klik kanan → Get Link
 // Ambil bagian ID-nya: drive.google.com/drive/folders/FOLDER_ID_INI
 const ROOT_FOLDER_ID = '1zsX4nKXk4xCzrwAgIlO135Zix8H13G_e';
+const APP_SHARED_TOKEN = PropertiesService.getScriptProperties().getProperty('APP_SHARED_TOKEN') || '';
 
 // ── HANDLER ───────────────────────────────────────────────
 
 function doPost(e) {
   try {
     const payload  = JSON.parse(e.postData.contents);
+    assertAuthorized_(payload && payload.token);
     const folder   = getOrCreateFolder(payload.folder || 'general');
     const fileName = generateFileName(payload.fileName || 'foto.jpg');
     const mimeType = payload.mimeType || 'image/jpeg';
@@ -61,6 +63,8 @@ function doPost(e) {
 
 // GET juga didukung untuk test
 function doGet(e) {
+  assertAuthorized_(e && e.parameter ? e.parameter.token : '');
+
   if (e && e.parameter && e.parameter.action === 'listSops') {
     return jsonResponse(listSopDocs_());
   }
@@ -80,6 +84,12 @@ function doGet(e) {
   }
 
   return jsonResponse({ status: 'ok', message: 'Bagi Kopi Drive Uploader' });
+}
+
+function assertAuthorized_(token) {
+  if (APP_SHARED_TOKEN && token !== APP_SHARED_TOKEN) {
+    throw new Error('Unauthorized');
+  }
 }
 
 // ── HELPERS ───────────────────────────────────────────────

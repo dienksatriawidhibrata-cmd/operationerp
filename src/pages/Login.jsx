@@ -3,11 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { AppCanvas } from '../components/ui/AppKit'
 
-const STAFF_PASS = import.meta.env.VITE_STAFF_PASS
 const STAFF_EMAIL_ONLY_ROLES = ['staff', 'barista', 'kitchen', 'waitress', 'asst_head_store', 'auditor']
 
 export default function Login() {
-  const { signIn, user, profile, loading, profileError } = useAuth()
+  const { signIn, signInStaff, user, profile, loading, profileError } = useAuth()
   const navigate = useNavigate()
 
   const [mode, setMode] = useState('staff')
@@ -42,18 +41,13 @@ export default function Login() {
     setError('')
     setSubmitting(true)
 
-    if (mode === 'staff' && !STAFF_PASS) {
-      setError('VITE_STAFF_PASS belum diatur di environment.')
-      setSubmitting(false)
-      return
-    }
-
-    const pass = mode === 'staff' ? STAFF_PASS : password
-    const { error: err } = await signIn(email.trim(), pass)
+    const { error: err } = mode === 'staff'
+      ? await signInStaff(email.trim())
+      : await signIn(email.trim(), password)
     if (err) {
       setError(
         mode === 'staff'
-          ? 'Email tidak ditemukan atau akun staff belum memakai password bersama.'
+          ? (err.message || 'Email tidak ditemukan atau akun staff tidak aktif.')
           : 'Email atau password salah.'
       )
       setSubmitting(false)

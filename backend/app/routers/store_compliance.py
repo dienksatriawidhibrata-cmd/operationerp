@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, Query
 
 from ..dependencies import get_supabase, require_auth
-from ..utils import jakarta_today, jakarta_yesterday, parse_iso_date
+from ..utils import jakarta_today, jakarta_yesterday, parse_iso_date, scope_branches
 
-router = APIRouter(tags=["store-compliance"], dependencies=[Depends(require_auth)])
+router = APIRouter(tags=["store-compliance"])
 
 
 def _bool_map(rows: list[dict], branch_id: str, shift: str) -> bool:
@@ -14,6 +14,7 @@ def _bool_map(rows: list[dict], branch_id: str, shift: str) -> bool:
 def get_store_compliance_summary(
     date: str | None = Query(default=None, description="Tanggal ceklis format YYYY-MM-DD"),
     report_date: str | None = Query(default=None, description="Tanggal laporan/setoran format YYYY-MM-DD"),
+    current_user: dict = Depends(require_auth),
 ) -> dict:
     target_date = parse_iso_date(date, jakarta_today())
     target_report_date = parse_iso_date(report_date, jakarta_yesterday())
@@ -26,8 +27,27 @@ def get_store_compliance_summary(
         .order("name")
         .execute()
     )
-    branches = branches_res.data or []
+    branches = scope_branches(branches_res.data or [], current_user)
     branch_ids = [branch["id"] for branch in branches]
+
+    if not branch_ids:
+        return {
+            "date": target_date.isoformat(),
+            "report_date": target_report_date.isoformat(),
+            "total_stores": 0,
+            "summary": {
+                "checklist_pagi": 0,
+                "checklist_middle": 0,
+                "checklist_malam": 0,
+                "prep_pagi": 0,
+                "prep_middle": 0,
+                "prep_malam": 0,
+                "daily_report": 0,
+                "deposit_submitted_or_better": 0,
+                "deposit_approved": 0,
+            },
+            "stores": [],
+        }
 
     checklists_res = (
         supabase.table("daily_checklists")

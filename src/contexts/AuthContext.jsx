@@ -6,6 +6,7 @@ const PROFILE_TIMEOUT_MS = 20000
 const PROFILE_CACHE_KEY = 'bagikopi_ops_profile_cache'
 const SESSION_TIMEOUT_MS = 8000
 const AUTH_STORAGE_KEY = 'bagikopi-ops-auth'
+const BACKEND_BASE = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000'
 
 function clearCachedSessionUser() {
   if (typeof window === 'undefined') return
@@ -75,7 +76,27 @@ export function AuthProvider({ children }) {
     profileRef.current = profile
   }, [profile])
 
-  const fetchProfile = async (userId) => {
+  const fetchProfile = async (userId, accessToken = null) => {
+    // When accessToken is provided (e.g. right after setSession while its lock is held),
+    // use a raw fetch to avoid calling getSession() which would contend the same lock.
+    if (accessToken) {
+      const url = new URL(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/profiles`)
+      url.searchParams.set('id', `eq.${userId}`)
+      url.searchParams.set('select', 'id,full_name,email,role,branch_id,managed_districts,managed_areas,is_active,branch:branches(id,name,store_id,district,area)')
+      const res = await fetch(url.toString(), {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          'Accept': 'application/vnd.pgrst.object+json',
+        },
+      })
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}))
+        throw new Error(errBody.message || `HTTP ${res.status}`)
+      }
+      return (await res.json()) || null
+    }
+
     const { data, error } = await supabase
       .from('profiles')
       .select('id, full_name, email, role, branch_id, managed_districts, managed_areas, is_active, branch:branches(id, name, store_id, district, area)')
@@ -86,9 +107,9 @@ export function AuthProvider({ children }) {
     return data
   }
 
-  const fetchProfileWithTimeout = async (userId) => {
+  const fetchProfileWithTimeout = async (userId, accessToken = null) => {
     return await Promise.race([
-      fetchProfile(userId),
+      fetchProfile(userId, accessToken),
       new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Timeout mengambil data profil.')), PROFILE_TIMEOUT_MS)
       })
@@ -120,7 +141,7 @@ export function AuthProvider({ children }) {
     currentUserIdRef.current = fetchingForUserId
 
     try {
-      const profileData = await fetchProfileWithTimeout(fetchingForUserId)
+      const profileData = await fetchProfileWithTimeout(fetchingForUserId, session?.access_token ?? null)
       // Guard: auth state might have changed while we were awaiting
       if (currentUserIdRef.current !== fetchingForUserId) return
       setProfile(profileData || null)
@@ -192,6 +213,49 @@ export function AuthProvider({ children }) {
     return await supabase.auth.signInWithPassword({ email, password })
   }
 
+  const signInStaff = async (email) => {
+    let res
+    try {
+      res = await fetch(`${BACKEND_BASE}/api/auth/staff-login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim() }),
+      })
+    } catch {
+      return { error: { message: 'Tidak dapat terhubung ke server. Pastikan backend sedang berjalan.' } }
+    }
+
+    let payload = null
+    try {
+      payload = await res.json()
+    } catch {
+      // Ignore JSON parsing failures.
+    }
+
+    if (!res.ok) {
+      return {
+        error: {
+          message: payload?.detail || 'Login staff gagal diproses.',
+        },
+      }
+    }
+
+    const accessToken = payload?.access_token
+    const refreshToken = payload?.refresh_token
+    if (!accessToken || !refreshToken) {
+      return {
+        error: {
+          message: 'Session login staff tidak lengkap.',
+        },
+      }
+    }
+
+    return await supabase.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    })
+  }
+
   const signOut = async () => {
     await supabase.auth.signOut()
     setUser(null)
@@ -201,7 +265,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, profileError, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, profile, loading, profileError, signIn, signInStaff, signOut }}>
       {children}
     </AuthContext.Provider>
   )

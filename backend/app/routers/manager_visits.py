@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from ..dependencies import get_supabase, require_auth
 from ..utils import jakarta_today, parse_iso_date, score_percent
 
-router = APIRouter(tags=["manager-visits"], dependencies=[Depends(require_auth)])
+router = APIRouter(tags=["manager-visits"])
 
 
 def _can_manager_access_branch(manager: dict, branch: dict) -> bool:
@@ -15,9 +15,16 @@ def _can_manager_access_branch(manager: dict, branch: dict) -> bool:
 
 
 @router.get("/manager-visits/summary")
-def get_manager_visit_summary(date: str | None = Query(default=None, description="Tanggal visit format YYYY-MM-DD")) -> dict:
+def get_manager_visit_summary(
+    date: str | None = Query(default=None, description="Tanggal visit format YYYY-MM-DD"),
+    current_user: dict = Depends(require_auth),
+) -> dict:
     target_date = parse_iso_date(date, jakarta_today()).isoformat()
     supabase = get_supabase()
+    viewer_role = current_user.get("role")
+
+    if viewer_role not in {"ops_manager", "support_spv", "support_admin", "district_manager", "area_manager"}:
+        raise HTTPException(status_code=403, detail="Role ini tidak diizinkan melihat ringkasan visit manager.")
 
     managers_res = (
         supabase.table("profiles")
@@ -45,6 +52,9 @@ def get_manager_visit_summary(date: str | None = Query(default=None, description
     managers = managers_res.data or []
     branches = branches_res.data or []
     visits = visits_res.data or []
+
+    if viewer_role in {"district_manager", "area_manager"}:
+        managers = [manager for manager in managers if manager["id"] == current_user["id"]]
 
     items = []
     for manager in managers:

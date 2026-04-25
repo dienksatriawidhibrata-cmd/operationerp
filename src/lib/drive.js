@@ -3,7 +3,9 @@
  * Apps Script menerima base64, simpan ke Drive, return URL.
  */
 
-const SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL
+import { supabase } from './supabase'
+
+const BACKEND_BASE = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000'
 const MAX_UPLOAD_BYTES = 200 * 1024
 const MAX_DIMENSION = 1600
 const MIN_DIMENSION = 480
@@ -161,23 +163,33 @@ export function buildPreviewUrl(urlOrFileId, size = 'w400') {
  */
 export async function uploadToDrive(file, folder = 'general') {
   const compressed = await compressImage(file)
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-  const fileName = `${folder}/${timestamp}_${compressed.fileName}`
+  const { data } = await supabase.auth.getSession()
+  const accessToken = data?.session?.access_token
+  if (!accessToken) {
+    throw new Error('Sesi login tidak ditemukan.')
+  }
 
   const controller = new AbortController()
-  const timeoutId  = setTimeout(() => controller.abort(), 45_000) // 45s max
+  const timeoutId = setTimeout(() => controller.abort(), 45_000)
+  const formData = new FormData()
+  formData.append('folder', folder)
+  formData.append(
+    'file',
+    new File(
+      [Uint8Array.from(atob(compressed.base64), (char) => char.charCodeAt(0))],
+      compressed.fileName,
+      { type: compressed.mimeType }
+    )
+  )
 
   let res
   try {
-    res = await fetch(SCRIPT_URL, {
+    res = await fetch(`${BACKEND_BASE}/api/uploads/drive`, {
       method: 'POST',
-      headers: { 'Content-Type': 'text/plain' }, // Apps Script quirk
-      body: JSON.stringify({
-        fileName,
-        mimeType: compressed.mimeType,
-        data: compressed.base64,
-        folder,
-      }),
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: formData,
       signal: controller.signal,
     })
   } catch (err) {
@@ -189,12 +201,17 @@ export async function uploadToDrive(file, folder = 'general') {
     clearTimeout(timeoutId)
   }
 
-  const json = await res.json()
+  let json = null
+  try {
+    json = await res.json()
+  } catch {
+    // Ignore JSON parsing failures.
+  }
 
-  if (!json.success) throw new Error(json.error || 'Upload gagal')
+  if (!res.ok) throw new Error(json?.detail || json?.error || 'Upload gagal')
 
   return {
-    url: json.url || `https://drive.google.com/uc?id=${json.fileId}&export=view`,
+    url: json?.url || `https://drive.google.com/uc?id=${json?.fileId}&export=view`,
     fileId: json.fileId,
     originalSize: file.size,
     uploadedSize: compressed.size,

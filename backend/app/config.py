@@ -1,7 +1,7 @@
 from functools import lru_cache
 import os
 
-from pydantic import Field
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -14,9 +14,12 @@ class Settings(BaseSettings):
 
     supabase_url: str = Field(default_factory=lambda: os.getenv("SUPABASE_URL") or os.getenv("VITE_SUPABASE_URL") or "", alias="SUPABASE_URL")
     supabase_key: str = Field(default_factory=lambda: os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY") or "", alias="SUPABASE_KEY")
+    supabase_anon_key: str = Field(default="", alias="SUPABASE_ANON_KEY", validation_alias=AliasChoices("SUPABASE_ANON_KEY", "VITE_SUPABASE_ANON_KEY"))
+    staff_shared_password: str | None = Field(default=None, alias="STAFF_SHARED_PASSWORD")
     google_service_account_json: str | None = Field(default=None, alias="GOOGLE_SERVICE_ACCOUNT_JSON")
     google_service_account_file: str | None = Field(default=None, alias="GOOGLE_SERVICE_ACCOUNT_FILE")
     google_sop_folder_id: str | None = Field(default=None, alias="GOOGLE_SOP_FOLDER_ID")
+    google_upload_root_folder_id: str | None = Field(default=None, alias="GOOGLE_UPLOAD_ROOT_FOLDER_ID")
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -31,6 +34,10 @@ class Settings(BaseSettings):
     @property
     def resolved_google_sop_folder_id(self) -> str | None:
         return self.google_sop_folder_id or os.getenv("VITE_GOOGLE_SOP_FOLDER_ID")
+
+    @property
+    def resolved_google_upload_root_folder_id(self) -> str | None:
+        return self.google_upload_root_folder_id
 
 
 @lru_cache

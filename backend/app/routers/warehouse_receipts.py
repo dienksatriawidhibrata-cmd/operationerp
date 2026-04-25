@@ -4,8 +4,9 @@ from fastapi import APIRouter, Depends, Query
 from fastapi.responses import PlainTextResponse
 
 from ..dependencies import get_supabase, require_auth
+from ..utils import profile_can_access_branch
 
-router = APIRouter(tags=["warehouse-receipts"], dependencies=[Depends(require_auth)])
+router = APIRouter(tags=["warehouse-receipts"])
 
 
 def _csv_cell(value) -> str:
@@ -24,7 +25,7 @@ def _matches_range(value: str | None, date_from: str | None, date_to: str | None
     return True
 
 
-def _load_receipts(status: str | None, date_from: str | None, date_to: str | None) -> list[dict]:
+def _load_receipts(status: str | None, date_from: str | None, date_to: str | None, current_user: dict) -> list[dict]:
     supabase = get_supabase()
 
     sj_query = (
@@ -80,6 +81,9 @@ def _load_receipts(status: str | None, date_from: str | None, date_to: str | Non
 
     results = []
     for sj in surat_jalan:
+        branch = branches.get(sj["branch_id"])
+        if not profile_can_access_branch(current_user, branch):
+            continue
         receipt_items = items.get(sj["id"], [])
         discrepancy_count = len(
             [item for item in receipt_items if float(item.get("qty_received") or item.get("qty_kirim") or 0) != float(item.get("qty_kirim") or 0)]
@@ -87,7 +91,7 @@ def _load_receipts(status: str | None, date_from: str | None, date_to: str | Non
         results.append(
             {
                 **sj,
-                "branch": branches.get(sj["branch_id"]),
+                "branch": branch,
                 "order": orders.get(sj.get("order_id")),
                 "item_count": len(receipt_items),
                 "discrepancy_count": discrepancy_count,
@@ -103,8 +107,9 @@ def get_warehouse_receipts(
     status: str | None = Query(default="delivered"),
     date_from: str | None = Query(default=None, description="Filter tanggal awal YYYY-MM-DD"),
     date_to: str | None = Query(default=None, description="Filter tanggal akhir YYYY-MM-DD"),
+    current_user: dict = Depends(require_auth),
 ) -> dict:
-    items = _load_receipts(status, date_from, date_to)
+    items = _load_receipts(status, date_from, date_to, current_user)
     return {
         "generated_at": datetime.utcnow().isoformat() + "Z",
         "count": len(items),
@@ -117,8 +122,9 @@ def download_warehouse_receipts_csv(
     status: str | None = Query(default="delivered"),
     date_from: str | None = Query(default=None),
     date_to: str | None = Query(default=None),
+    current_user: dict = Depends(require_auth),
 ) -> str:
-    items = _load_receipts(status, date_from, date_to)
+    items = _load_receipts(status, date_from, date_to, current_user)
     rows = [
         [
             "SJ Number",

@@ -8,8 +8,9 @@ from googleapiclient.discovery import build
 
 from ..config import get_settings
 from ..dependencies import require_auth
+from ..utils import can_access_sop
 
-router = APIRouter(tags=["sop"], dependencies=[Depends(require_auth)])
+router = APIRouter(tags=["sop"])
 
 DOCS_SCOPES = [
     "https://www.googleapis.com/auth/documents.readonly",
@@ -143,7 +144,10 @@ def get_drive_service():
 
 
 @router.get("/sop/docs")
-def list_sop_docs() -> dict[str, Any]:
+def list_sop_docs(current_user: dict = Depends(require_auth)) -> dict[str, Any]:
+    if not can_access_sop(current_user):
+        raise HTTPException(status_code=403, detail="Role ini tidak diizinkan mengakses SOP.")
+
     settings = get_settings()
     folder_id = settings.resolved_google_sop_folder_id
     if not folder_id:
@@ -180,7 +184,10 @@ def list_sop_docs() -> dict[str, Any]:
 
 
 @router.get("/sop/docs/{document_id}")
-def get_sop_doc(document_id: str) -> dict[str, Any]:
+def get_sop_doc(document_id: str, current_user: dict = Depends(require_auth)) -> dict[str, Any]:
+    if not can_access_sop(current_user):
+        raise HTTPException(status_code=403, detail="Role ini tidak diizinkan mengakses SOP.")
+
     docs = get_docs_service()
 
     try:
