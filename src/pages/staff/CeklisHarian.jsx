@@ -125,7 +125,6 @@ export default function CeklisHarian() {
   }, [existing, activeShift, branchId, today])
 
   useEffect(() => {
-    setDone(false)
     setError('')
     setIsEditing(false)
   }, [activeShift])
