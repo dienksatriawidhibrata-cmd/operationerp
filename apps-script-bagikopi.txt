@@ -3,39 +3,30 @@
 //  Akun: dienksatriawidhibrata@bagikopi.id
 //
 //  doGet  → SOP: listSops, getSopDoc
-//  doPost → Upload foto ke Google Drive
+//  doPost → Upload foto ke Google Drive (folder id di bawah)
 //
-//  TIDAK menggunakan DriveApp (diganti UrlFetchApp + Drive REST API)
-//  supaya tidak kena blokir admin Workspace.
-//
-//  ── Cara deploy ─────────────────────────────────────────────
+//  ── Cara deploy & authorize ──────────────────────────────────
 //  1. Buka script.google.com, buka project ini
 //  2. Salin seluruh isi file ini, ganti semua kode yang ada
-//  3. Klik ikon roda gigi (Project Settings)
-//     → centang "Show appsscript.json manifest file in editor"
-//  4. Buka file appsscript.json, ganti isinya dengan:
-//
-//     {
-//       "timeZone": "Asia/Jakarta",
-//       "dependencies": {},
-//       "exceptionLogging": "STACKDRIVER",
-//       "runtimeVersion": "V8",
-//       "oauthScopes": [
-//         "https://www.googleapis.com/auth/drive",
-//         "https://www.googleapis.com/auth/documents.readonly",
-//         "https://www.googleapis.com/auth/script.external_request"
-//       ]
-//     }
-//
-//  5. Klik Deploy → Manage deployments → Edit (ikon pensil)
-//     → Version: New version
-//     → Execute as: Me
-//     → Who has access: Anyone
-//     → Klik Deploy (URL tidak berubah)
+//  3. Klik Save (Ctrl+S)
+//  4. Di menu atas, klik Run → pilih fungsi "authorizeScript"
+//     → Akan muncul popup "Authorization required"
+//     → Klik "Review permissions" → pilih akun bagikopi.id
+//     → Jika muncul "Google hasn't verified this app",
+//       klik "Advanced" → "Go to [nama project] (unsafe)" → Allow
+//  5. Setelah authorize selesai, klik Deploy → Manage deployments
+//     → Edit (ikon pensil) → Version: New version → Deploy
+//     (URL tidak berubah)
 // ============================================================
 
 var SOP_FOLDER_ID    = '1GXkR3-A0XXkxJxkNlCv2FJXUO4NLqOSa';
 var UPLOAD_FOLDER_ID = '1zsX4nKXk4xCzrwAgIlO135Zix8H13G_e';
+
+// Jalankan fungsi ini sekali untuk trigger authorization
+function authorizeScript() {
+  DriveApp.getRootFolder();
+  Logger.log('Authorization OK');
+}
 
 // ── Entry points ─────────────────────────────────────────────
 
@@ -63,175 +54,90 @@ function doPost(e) {
 // ── SOP ──────────────────────────────────────────────────────
 
 function listSops() {
-  var token = ScriptApp.getOAuthToken();
-  var q = '"' + SOP_FOLDER_ID + '" in parents'
-        + ' and trashed = false'
-        + ' and mimeType = "application/vnd.google-apps.document"';
+  var folder = DriveApp.getFolderById(SOP_FOLDER_ID);
+  var files  = folder.getFilesByType(MimeType.GOOGLE_DOCS);
+  var items  = [];
 
-  var res = UrlFetchApp.fetch(
-    'https://www.googleapis.com/drive/v3/files'
-      + '?q=' + encodeURIComponent(q)
-      + '&fields=files(id,name,modifiedTime,webViewLink)'
-      + '&orderBy=name&pageSize=100',
-    { headers: { Authorization: 'Bearer ' + token }, muteHttpExceptions: true }
-  );
+  while (files.hasNext()) {
+    var f = files.next();
+    items.push({
+      id:           f.getId(),
+      name:         f.getName(),
+      modifiedTime: f.getLastUpdated().toISOString(),
+      webViewLink:  f.getUrl()
+    });
+  }
 
-  var data = JSON.parse(res.getContentText());
-  if (data.error) throw new Error(data.error.message);
-
-  return jsonResponse({ ok: true, count: data.files.length, items: data.files });
+  items.sort(function(a, b) { return a.name.localeCompare(b.name); });
+  return jsonResponse({ ok: true, count: items.length, items: items });
 }
 
 function getSopDoc(documentId) {
   if (!documentId) return jsonResponse({ ok: false, error: 'documentId diperlukan' });
 
-  var token = ScriptApp.getOAuthToken();
-  var res = UrlFetchApp.fetch(
-    'https://docs.googleapis.com/v1/documents/' + documentId + '?includeTabsContent=true',
-    { headers: { Authorization: 'Bearer ' + token }, muteHttpExceptions: true }
-  );
+  var doc        = DocumentApp.openById(documentId);
+  var paragraphs = doc.getBody().getParagraphs();
+  var blocks     = [];
 
-  var doc = JSON.parse(res.getContentText());
-  if (doc.error) throw new Error(doc.error.message);
+  for (var i = 0; i < paragraphs.length; i++) {
+    var para = paragraphs[i];
+    var text = para.getText().trim();
+    if (!text) continue;
 
-  var blocks = _extractBlocks(doc.body ? doc.body.content || [] : []);
+    var heading = para.getHeading();
+    var type    = 'paragraph';
+    var style   = 'NORMAL_TEXT';
+
+    if      (heading === DocumentApp.ParagraphHeading.HEADING1) { type = 'heading'; style = 'HEADING_1'; }
+    else if (heading === DocumentApp.ParagraphHeading.HEADING2) { type = 'heading'; style = 'HEADING_2'; }
+    else if (heading === DocumentApp.ParagraphHeading.HEADING3) { type = 'heading'; style = 'HEADING_3'; }
+
+    blocks.push({ type: type, style: style, text: text });
+  }
 
   return jsonResponse({
     ok:    true,
     id:    documentId,
-    title: doc.title || 'SOP',
-    tabs:  [{ id: 'main', title: doc.title || 'SOP', depth: 0, blocks: blocks }]
+    title: doc.getName(),
+    tabs:  [{ id: 'main', title: doc.getName(), depth: 0, blocks: blocks }]
   });
 }
 
 // ── Upload foto ───────────────────────────────────────────────
 
 function uploadFile(payload) {
-  var token    = ScriptApp.getOAuthToken();
-  var folderId = _ensureFolderPath(UPLOAD_FOLDER_ID, payload.folder || 'general', token);
+  var rootFolder = DriveApp.getFolderById(UPLOAD_FOLDER_ID);
+  var folder     = _getOrCreateFolder(rootFolder, payload.folder || 'general');
 
-  // Multipart upload ke Drive REST API
-  var boundary = 'bk_bound_' + Date.now();
-  var metadata = JSON.stringify({ name: payload.fileName, parents: [folderId] });
-  var body = '--' + boundary + '\r\n'
-           + 'Content-Type: application/json; charset=UTF-8\r\n\r\n'
-           + metadata + '\r\n'
-           + '--' + boundary + '\r\n'
-           + 'Content-Type: ' + payload.mimeType + '\r\n'
-           + 'Content-Transfer-Encoding: base64\r\n\r\n'
-           + payload.base64 + '\r\n'
-           + '--' + boundary + '--';
+  var decoded = Utilities.base64Decode(payload.base64);
+  var blob    = Utilities.newBlob(decoded, payload.mimeType, payload.fileName);
+  var file    = folder.createFile(blob);
 
-  var uploadRes = UrlFetchApp.fetch(
-    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
-    {
-      method: 'POST',
-      headers: {
-        Authorization: 'Bearer ' + token,
-        'Content-Type': 'multipart/related; boundary=' + boundary
-      },
-      payload: body,
-      muteHttpExceptions: true
-    }
-  );
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
 
-  var fileData = JSON.parse(uploadRes.getContentText());
-  if (!fileData.id) throw new Error('Upload gagal: ' + uploadRes.getContentText());
-
-  // Set public (anyone with link can view)
-  UrlFetchApp.fetch(
-    'https://www.googleapis.com/drive/v3/files/' + fileData.id + '/permissions',
-    {
-      method: 'POST',
-      headers: {
-        Authorization: 'Bearer ' + token,
-        'Content-Type': 'application/json'
-      },
-      payload: JSON.stringify({ type: 'anyone', role: 'reader' }),
-      muteHttpExceptions: true
-    }
-  );
-
+  var fileId = file.getId();
   return jsonResponse({
     ok:     true,
-    fileId: fileData.id,
-    url:    'https://drive.google.com/uc?id=' + fileData.id + '&export=view'
+    fileId: fileId,
+    url:    'https://drive.google.com/uc?id=' + fileId + '&export=view'
   });
 }
 
-// ── Helper: folder ────────────────────────────────────────────
+// ── Helper ────────────────────────────────────────────────────
 
-function _ensureFolderPath(rootId, folderPath, token) {
-  var parts = folderPath.split('/').map(function(p) { return p.trim(); }).filter(Boolean);
-  var currentId = rootId;
+function _getOrCreateFolder(parent, folderPath) {
+  var parts   = folderPath.split('/');
+  var current = parent;
 
   for (var i = 0; i < parts.length; i++) {
-    var name = parts[i].replace(/"/g, '\\"');
-    var q = '"' + currentId + '" in parents'
-          + ' and name = "' + name + '"'
-          + ' and mimeType = "application/vnd.google-apps.folder"'
-          + ' and trashed = false';
-
-    var searchRes = UrlFetchApp.fetch(
-      'https://www.googleapis.com/drive/v3/files'
-        + '?q=' + encodeURIComponent(q)
-        + '&fields=files(id)&pageSize=1',
-      { headers: { Authorization: 'Bearer ' + token }, muteHttpExceptions: true }
-    );
-
-    var searchData = JSON.parse(searchRes.getContentText());
-    if (searchData.files && searchData.files.length > 0) {
-      currentId = searchData.files[0].id;
-    } else {
-      var createRes = UrlFetchApp.fetch(
-        'https://www.googleapis.com/drive/v3/files?fields=id',
-        {
-          method: 'POST',
-          headers: {
-            Authorization: 'Bearer ' + token,
-            'Content-Type': 'application/json'
-          },
-          payload: JSON.stringify({
-            name: parts[i],
-            mimeType: 'application/vnd.google-apps.folder',
-            parents: [currentId]
-          }),
-          muteHttpExceptions: true
-        }
-      );
-      var folderData = JSON.parse(createRes.getContentText());
-      if (!folderData.id) throw new Error('Gagal buat folder: ' + createRes.getContentText());
-      currentId = folderData.id;
-    }
+    var part = parts[i].trim();
+    if (!part) continue;
+    var iter = current.getFoldersByName(part);
+    current  = iter.hasNext() ? iter.next() : current.createFolder(part);
   }
 
-  return currentId;
+  return current;
 }
-
-// ── Helper: Docs parser ───────────────────────────────────────
-
-function _extractBlocks(content) {
-  var blocks = [];
-  for (var i = 0; i < content.length; i++) {
-    var item = content[i];
-    if (item.paragraph) {
-      var text = _extractText(item.paragraph.elements || []).replace(/\n$/, '').trim();
-      if (!text) continue;
-      var namedStyle = (item.paragraph.paragraphStyle || {}).namedStyleType || 'NORMAL_TEXT';
-      var type = namedStyle.indexOf('HEADING') === 0 ? 'heading' : (item.paragraph.bullet ? 'list_item' : 'paragraph');
-      blocks.push({ type: type, style: namedStyle, text: text });
-    }
-  }
-  return blocks;
-}
-
-function _extractText(elements) {
-  return elements.map(function(el) {
-    return (el.textRun && el.textRun.content) ? el.textRun.content : '';
-  }).join('');
-}
-
-// ── Helper: response ──────────────────────────────────────────
 
 function jsonResponse(data) {
   return ContentService
