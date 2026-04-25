@@ -1,7 +1,7 @@
 SUMMARY PROGRESS PROJECT — BAGI KOPI OPS
-Tanggal update: 2026-04-24
+Tanggal update: 2026-04-25
 Production: https://operationerp.pages.dev (auto-deploy dari GitHub main, branch: main)
-Frontend lokal: http://localhost:5174 | Backend lokal: http://127.0.0.1:8000
+Frontend lokal: http://localhost:5173 | Backend lokal: http://127.0.0.1:8000
 
 ═══════════════════════════════════════════════════════════════
 STATUS KESELURUHAN
@@ -10,6 +10,10 @@ Semua fitur inti operasional aktif. KPI, leaderboard, SOP center,
 supply chain, backend FastAPI, role auditor, in-app reminder,
 email otomatis (kode siap, DNS propagating), halaman pengumuman,
 dan toast system sudah selesai dikode. Build bersih tanpa error.
+
+Staff login (email-only) sudah diimplementasikan dan di-deploy ke Cloudflare Pages.
+352 akun staff diupdate ke shared password. Env var VITE_STAFF_PASS sudah
+dikonfigurasi di Cloudflare Pages dan redeploy sudah di-trigger (2026-04-25).
 
 ═══════════════════════════════════════════════════════════════
 1. DASHBOARD & FITUR OPERASIONAL
@@ -58,22 +62,56 @@ dan toast system sudah selesai dikode. Build bersih tanpa error.
 - Stack: FastAPI + supabase-py + pydantic-settings + google-api-python-client
 - Auth: semua router dilindungi JWT via require_auth (supabase.auth.get_user)
 - Endpoint aktif:
-    GET /health
-    GET /api/branches
-    GET /api/manager-visits/summary
-    GET /api/store-compliance/summary
-    GET /api/warehouse/receipts
-    GET /api/warehouse/receipts.csv
-    GET /api/sop/docs
-    GET /api/sop/docs/{document_id}
+    GET  /health
+    GET  /api/branches
+    GET  /api/manager-visits/summary
+    GET  /api/store-compliance/summary
+    GET  /api/warehouse/receipts
+    GET  /api/warehouse/receipts.csv
+    GET  /api/sop/docs
+    GET  /api/sop/docs/{document_id}
+    POST /api/auth/staff-login         ← dibuat tapi TIDAK DIPAKAI (lihat §5)
+    POST /api/uploads/*                ← router uploads (baru)
 - File penting:
     backend/app/main.py
-    backend/app/config.py
-    backend/app/dependencies.py  ← JWT auth
+    backend/app/config.py              ← membaca PORT (Railway) atau APP_PORT
+    backend/app/dependencies.py        ← JWT auth
     backend/app/routers/
+    backend/Procfile                   ← Railway deployment config
+    backend/.python-version            ← Python 3.12
 
 ═══════════════════════════════════════════════════════════════
-5. ROLE AUDITOR
+5. STAFF LOGIN (EMAIL-ONLY)
+═══════════════════════════════════════════════════════════════
+PENDEKATAN: Frontend-only — signInStaff() di AuthContext.jsx memanggil
+  supabase.auth.signInWithPassword({ email, password: VITE_STAFF_PASS })
+  langsung dari browser. TIDAK melalui backend.
+
+SHARED PASSWORD: 1PassBagiKopiOps!!!
+  - Disimpan di .env (VITE_STAFF_PASS) dan Cloudflare Pages env vars.
+  - Semua akun staff di-sync via scripts/update-staff-shared-password.mjs
+  - 352 akun berhasil diupdate (0 gagal), role target:
+    staff, barista, kitchen, waitress, asst_head_store, head_store, auditor.
+
+PERBAIKAN AUTH CONTEXT (2026-04-25):
+  - fetchProfile() menerima accessToken — jika ada, pakai raw fetch() dengan
+    header Authorization langsung ke Supabase REST API, BUKAN supabase.js client.
+    Alasan: supabase.auth.setSession() / onAuthStateChange memegang navigator.lock;
+    memanggil supabase.from() di dalam callback akan deadlock (lock contention).
+  - Guard: jika VITE_STAFF_PASS tidak di-set, tampil error ramah tanpa call ke Supabase.
+
+SETUP CLOUDFLARE PAGES (2026-04-25):
+  - VITE_STAFF_PASS = 1PassBagiKopiOps!!! sudah ditambahkan di env vars.
+  - Redeploy di-trigger via empty commit (9fdcdc0). Tunggu build selesai.
+
+SCRIPT PASSWORD SYNC:
+  - File: scripts/update-staff-shared-password.mjs
+  - Cara pakai: node scripts/update-staff-shared-password.mjs
+  - Butuh: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (atau SUPABASE_KEY),
+           STAFF_SHARED_PASSWORD (atau VITE_STAFF_PASS) di .env
+
+═══════════════════════════════════════════════════════════════
+6. ROLE AUDITOR
 ═══════════════════════════════════════════════════════════════
 - Role: auditor — read-only, hanya akses /dm/stores.
 - Login: email + VITE_STAFF_PASS (shared password).
@@ -84,7 +122,7 @@ dan toast system sudah selesai dikode. Build bersih tanpa error.
 - Status Supabase setup: SUDAH DILAKUKAN (2026-04-24).
 
 ═══════════════════════════════════════════════════════════════
-6. IN-APP REMINDER DEADLINE
+7. IN-APP REMINDER DEADLINE
 ═══════════════════════════════════════════════════════════════
 - Komponen: src/components/ReminderBanner.jsx
 - Dipasang di Home staff — muncul jika ada item overdue.
@@ -99,7 +137,7 @@ dan toast system sudah selesai dikode. Build bersih tanpa error.
   (query: daily_deposits status IN submitted/approved untuk tanggal kemarin).
 
 ═══════════════════════════════════════════════════════════════
-7. EMAIL OTOMATIS DEADLINE
+8. EMAIL OTOMATIS DEADLINE
 ═══════════════════════════════════════════════════════════════
 - Edge Function: supabase/functions/send-deadline-alerts/index.ts
 - Migration pg_cron: supabase/migrations/019_cron_email_alerts.sql
@@ -111,7 +149,7 @@ dan toast system sudah selesai dikode. Build bersih tanpa error.
 - Email via Resend API. HTML email listing toko overdue per DM.
 - Logic matching: DM → managed_districts, AM → managed_areas, Ops → semua.
 
-STATUS SETUP EMAIL (per 2026-04-24):
+STATUS SETUP EMAIL (per 2026-04-25):
   a. [DONE] Edge Function di-deploy via Supabase Dashboard Editor.
   b. [DONE] Secrets di-set: RESEND_API_KEY, RESEND_FROM_EMAIL, CRON_SECRET.
   c. [DONE] Domain didaftarkan di Resend — DNS propagating (tunggu verifikasi).
@@ -121,7 +159,7 @@ STATUS SETUP EMAIL (per 2026-04-24):
   e. [BELUM] Jalankan migration 019_cron_email_alerts.sql di SQL Editor.
 
 ═══════════════════════════════════════════════════════════════
-8. PENGUMUMAN
+9. PENGUMUMAN
 ═══════════════════════════════════════════════════════════════
 - Halaman: /ops/pengumuman (ops_manager & support_spv).
 - Fitur: buat, aktifkan/nonaktifkan, hapus pengumuman.
@@ -132,21 +170,33 @@ STATUS SETUP EMAIL (per 2026-04-24):
 - RLS: semua authenticated bisa baca, hanya ops_manager/support_spv bisa tulis.
 
 ═══════════════════════════════════════════════════════════════
-9. UI/UX DAN INFRASTRUKTUR
+10. SECURITY HARDENING (BELUM DITERAPKAN)
+═══════════════════════════════════════════════════════════════
+- File: supabase/migrations/021_security_hardening.sql
+- Isi:
+    my_is_active()         — SECURITY DEFINER, cek is_active tanpa lock RLS
+    can_access_branch()    — cek akses branch untuk store-level user
+    guard_profile_mutation() — trigger: cegah user ubah role/branch sendiri
+    active_session_only    — RESTRICTIVE policy di tabel operasional
+      (TIDAK dipasang di tabel profiles)
+- STATUS: [BELUM] — belum dijalankan di Supabase SQL Editor.
+
+═══════════════════════════════════════════════════════════════
+11. UI/UX DAN INFRASTRUKTUR
 ═══════════════════════════════════════════════════════════════
 - Tombol hapus foto di mobile selalu terlihat (bukan hover-only).
 - Logout confirmation modal DIHAPUS dari BottomNav — logout hanya ada
-  di header kanan atas semua dashboard. FinanceHub sudah ditambahkan.
+  di header kanan atas semua dashboard.
 - BottomNav: tombol Keluar diganti tombol SOP (ikon buku) di semua role.
   (Staff, DM, SC, Trainer, Finance, Auditor).
 - PhotoUpload: prop capture — default "environment" (kamera langsung),
   capture={false} menampilkan dua tombol Kamera + Galeri.
   Aktif di: form Setoran (LaporanHarian) dan form OPEX (BebanOperasional).
-- Toast system global: ToastContext + useToast() — SUDAH dipasang di:
+- Toast system global: ToastContext + useToast() — dipasang di:
   CeklisHarian, Preparation, BebanOperasional, LaporanHarian, ApprovalSetoran.
   Sukses → toast hijau, error submit → toast merah, validasi → inline Alert.
 - Draft checklist & preparation tersimpan lokal, tidak hilang saat pindah app.
-- Auth mobile stabil saat upload foto dari kamera.
+- Auth mobile stabil saat upload foto dari kamera (lock contention fix).
 - ErrorBoundary global di App.jsx (fallback UI + tombol Muat Ulang).
 - LoadingButton component — spinner di semua tombol submit.
 - Unit tests: 33 test di src/__tests__/utils.test.js (vitest, node).
@@ -154,21 +204,21 @@ STATUS SETUP EMAIL (per 2026-04-24):
 - OPEX detail view dengan URL params + deep-link dari Finance Hub.
 
 ═══════════════════════════════════════════════════════════════
-10. COMMIT GITHUB PENTING
+12. COMMIT GITHUB PENTING
 ═══════════════════════════════════════════════════════════════
-- ba9055c - Add announcements CRUD, toast feedback, gallery upload for OPEX
+- 9fdcdc0 - chore: trigger redeploy with VITE_STAFF_PASS env var
+- 8a3dca9 - revert: staff login kembali ke frontend-only (VITE_STAFF_PASS)
+- 48fe37d - chore: Railway deployment config for backend
+- 800d32c - feat: staff login via backend + security hardening
+- 6ae073e - Fix: remove orphan setDone call in CeklisHarian useEffect
+- ae36e7e - Wire ReminderBanner into Staff Home and add setoran status fetch
+- ba9055c - Add announcements CRUD, toast feedback, and gallery upload for OPEX
 - d25fbb6 - Fix: restore AppIcon import in BottomNav (crash fix)
 - f109889 - Revamp nav: move logout to header, replace BottomNav Keluar with SOP
 - bcfea71 - Add auditor role with read-only access to Store Status page
-- 95619d3 - Improve mobile UX: photo delete, logout confirm, loading spinners
-- 8d5b239 - Add error boundary, toast system, smoke tests, and backend auth
-- a613e5e - Add OPEX detail view with URL params, XLSX export, and finance deep-link
-- e578633 - Add live SOP center and dashboard access
-- 9c5e723 - Preserve staff drafts across app switching
-- 67010bc - Add scoped leaderboards and SOP hub
 
 ═══════════════════════════════════════════════════════════════
-11. MIGRATIONS SUPABASE (urutan)
+13. MIGRATIONS SUPABASE (urutan)
 ═══════════════════════════════════════════════════════════════
 001_schema.sql               — schema utama
 002_daily_visits_unique.sql  — unique constraint daily visits
@@ -188,15 +238,18 @@ STATUS SETUP EMAIL (per 2026-04-24):
 015_seed_manager_kpi_items.sql
 016_seed_staff_generic_kpi_items.sql
 017_profiles_kpi_visibility.sql
-018_auditor_role.sql
+018_auditor_role.sql         — SUDAH dijalankan
 019_cron_email_alerts.sql    — pg_cron untuk email (BELUM dijalankan)
 020_announcements.sql        — tabel pengumuman + RLS (SUDAH dijalankan)
+021_security_hardening.sql   — RLS restrictive + trigger (BELUM dijalankan)
 
 ═══════════════════════════════════════════════════════════════
-12. YANG MASUK AKAL DIKERJAKAN BERIKUTNYA
+14. YANG MASUK AKAL DIKERJAKAN BERIKUTNYA
 ═══════════════════════════════════════════════════════════════
 PRIORITAS TINGGI:
-- Selesaikan setup email otomatis: jalankan step d & e di atas
+- [VERIFY] Cek login staff di production setelah Cloudflare Pages redeploy selesai.
+- [BELUM] Jalankan 021_security_hardening.sql di Supabase SQL Editor.
+- [BELUM] Selesaikan setup email otomatis: jalankan step d & e di atas
   setelah DNS Resend verified.
 
 BUTUH SPEC / KEPUTUSAN:
