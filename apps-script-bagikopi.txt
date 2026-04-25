@@ -5,25 +5,26 @@
 //  doGet  → SOP: listSops, getSopDoc
 //  doPost → Upload foto ke Google Drive
 //
+//  File yang di-upload akan accessible via direct link karena
+//  folder UPLOAD_FOLDER_ID sudah di-set "Anyone with link" dari
+//  Drive UI — tidak perlu setSharing per file.
+//
 //  ── Cara deploy (URUTAN WAJIB) ───────────────────────────────
 //  1. Paste kode ini, ganti semua → Save (Ctrl+S)
 //  2. Run → authorizeScript  (pastikan log: "OK")
-//  3. Run → testUpload       (pastikan log: "File created OK")
-//  4. BARU DEPLOY:
-//     Deploy → Manage deployments → Edit → New version → Deploy
+//  3. Run → testUpload       (pastikan log: "testUpload PASSED")
+//  4. Deploy → Manage deployments → Edit → New version → Deploy
 //     Jika muncul popup izin → Allow semua
 // ============================================================
 
 var UPLOAD_FOLDER_ID = '1zsX4nKXk4xCzrwAgIlO135Zix8H13G_e';
 var SOP_FOLDER_ID    = '1GXkR3-A0XXkxJxkNlCv2FJXUO4NLqOSa';
 
-// Step 1: authorize
 function authorizeScript() {
   DriveApp.getFolderById(UPLOAD_FOLDER_ID);
   Logger.log('OK - folder accessible');
 }
 
-// Step 2: test upload sebelum deploy
 function testUpload() {
   try {
     var folder = DriveApp.getFolderById(UPLOAD_FOLDER_ID);
@@ -33,13 +34,10 @@ function testUpload() {
     var file = folder.createFile(blob);
     Logger.log('createFile OK: ' + file.getId());
 
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    Logger.log('setSharing OK');
-
     file.setTrashed(true);
-    Logger.log('Cleanup OK - testUpload PASSED');
+    Logger.log('testUpload PASSED');
   } catch (err) {
-    Logger.log('FAILED at: ' + err.toString());
+    Logger.log('FAILED: ' + err.toString());
   }
 }
 
@@ -62,9 +60,9 @@ function doPost(e) {
     var decoded = Utilities.base64Decode(payload.data);
     var blob    = Utilities.newBlob(decoded, payload.mimeType, payload.fileName);
 
-    var folder  = DriveApp.getFolderById(UPLOAD_FOLDER_ID);
-    var file    = folder.createFile(blob);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    var folder = DriveApp.getFolderById(UPLOAD_FOLDER_ID);
+    var file   = folder.createFile(blob);
+    // Tidak perlu setSharing — folder sudah "Anyone with link" dari Drive UI
 
     var fileId = file.getId();
     return jsonResponse({
