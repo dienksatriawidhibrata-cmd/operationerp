@@ -52,7 +52,7 @@ export default function KPIHub() {
       try {
         const [storeRes, personalRes, review360Res] = await Promise.all([
           supabase
-            .from('kpi_reports')
+            .from('kpi_monthly_reports')
             .select('branch_id,total_score,branch:branches(name)')
             .eq('bulan', `${period}-01`),
           supabase

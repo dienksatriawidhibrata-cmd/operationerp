@@ -2,7 +2,8 @@ import { supabase } from './supabase'
 
 const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY
 const KPI_SHEET_ID = import.meta.env.VITE_GOOGLE_KPI_SHEET_ID
-const BACKEND_BASE = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000'
+const BACKEND_BASE = import.meta.env.VITE_BACKEND_URL || ''
+const APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL
 
 const SHEETS_BASE = 'https://sheets.googleapis.com/v4/spreadsheets'
 
@@ -70,15 +71,45 @@ async function fetchBackendJson(path) {
   return await res.json()
 }
 
-// SOP selalu lewat backend agar akses tetap mengikuti auth aplikasi.
+async function fetchAppsScriptJson(params) {
+  const scriptUrl = requireEnv('VITE_APPS_SCRIPT_URL', APPS_SCRIPT_URL)
+  const query = new URLSearchParams(params)
+  const res = await fetch(`${scriptUrl}?${query}`)
+  if (!res.ok) {
+    throw new Error('Gagal memuat data SOP dari Apps Script')
+  }
+  const payload = await res.json()
+  if (payload && payload.ok === false) {
+    throw new Error(payload.error || 'Gagal memuat data SOP dari Apps Script')
+  }
+  return payload
+}
+
+// SOP: utamakan Apps Script (selalu tersedia tanpa backend).
+// Kalau VITE_BACKEND_URL di-set & backend running, coba backend dulu.
 export async function fetchSopDocuments() {
-  const payload = await fetchBackendJson('/api/sop/docs')
+  if (BACKEND_BASE) {
+    try {
+      const payload = await fetchBackendJson('/api/sop/docs')
+      return payload.items || []
+    } catch {
+      // Fallback ke Apps Script
+    }
+  }
+  const payload = await fetchAppsScriptJson({ action: 'listSops' })
   return payload.items || []
 }
 
 export async function fetchSopDocumentContent(documentId) {
   if (!documentId) throw new Error('Document ID tidak valid.')
-  return await fetchBackendJson(`/api/sop/docs/${documentId}`)
+  if (BACKEND_BASE) {
+    try {
+      return await fetchBackendJson(`/api/sop/docs/${documentId}`)
+    } catch {
+      // Fallback ke Apps Script
+    }
+  }
+  return await fetchAppsScriptJson({ action: 'getSopDoc', documentId })
 }
 
 // KPI framework (targets & weights) from "KPI" tab

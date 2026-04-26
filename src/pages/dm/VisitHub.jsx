@@ -181,7 +181,7 @@ export default function VisitHub() {
         supabase.from('daily_preparation').select('branch_id,shift').in('branch_id', ids).eq('tanggal', todayWIB()),
         supabase.from('daily_reports').select('branch_id,id').in('branch_id', ids).eq('tanggal', reportDate),
         supabase.from('daily_visits').select('branch_id,tanggal').in('branch_id', ids).order('tanggal', { ascending: false }),
-        supabase.from('kpi_reports').select('branch_id,total_score').in('branch_id', ids).eq('bulan', currentMonth),
+        supabase.from('kpi_monthly_reports').select('branch_id,total_score').in('branch_id', ids).eq('bulan', currentMonth),
       ])
 
       const checklistMap = {}

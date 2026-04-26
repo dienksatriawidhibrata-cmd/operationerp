@@ -4,7 +4,7 @@ import { resolve, dirname } from 'path'
 import { fileURLToPath } from 'url'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const TARGET_ROLES = ['staff', 'barista', 'kitchen', 'waitress', 'asst_head_store', 'head_store', 'auditor']
+const TARGET_ROLES = ['staff', 'barista', 'kitchen', 'waitress', 'asst_head_store', 'auditor']
 
 function loadEnv(path) {
   try {
