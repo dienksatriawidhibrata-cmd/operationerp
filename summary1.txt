@@ -1,5 +1,5 @@
 SUMMARY PROGRESS PROJECT — BAGI KOPI OPS
-Tanggal update: 2026-04-26 22:30 WIB
+Tanggal update: 2026-04-27 WIB
 Production: https://operationerp.pages.dev (auto-deploy dari GitHub main)
 Frontend lokal: http://localhost:5173 | Backend lokal: http://127.0.0.1:8000 (opsional)
 
@@ -13,26 +13,37 @@ Frontend berjalan penuh tanpa backend — SOP & upload foto via
 Apps Script, KPI via Supabase langsung. Backend FastAPI ada di
 folder backend/ tapi tidak di-deploy ke cloud (opsional, lokal only).
 
+Data Explorer (§17) sudah live di dashboard ops_manager:
+8 kategori analitik query langsung ke Supabase, tanpa dependensi
+API eksternal.
+
 ═══════════════════════════════════════════════════════════════
 CHANGE LOG TERBARU
 ═══════════════════════════════════════════════════════════════
-2026-04-26 — (belum push — sesi ini)
-  [FEAT] Ask-the-Data AI Agent untuk ops_manager (§17)
-  - 022_sales_analytics.sql: tabel pos_sales_monthly + pos_complaints + RLS
-  - scripts/sync-pos-to-supabase.py: sync SQLite → Supabase (UPSERT-safe)
-  - supabase/functions/ask-the-data/index.ts: Edge Function Claude tool use
-    · 11 tools: deposit, checklist, opex, report, visit, understaffing,
-      staff activity, PO mismatch, promotion, sales trend, complaint summary
-    · Auth check: hanya ops_manager yang bisa akses
-  - src/components/AskTheData.jsx: chat widget (open/close, suggested Q, riwayat)
+2026-04-27 — 15ffa86
+  [FEAT] Data Explorer widget di dashboard ops_manager
+  - src/components/AskTheData.jsx: 8 kategori analitik dengan tabel
+    · Status Setoran Toko, Skip Rate Ceklis & Prep, Beban Opex
+    · Kepatuhan Laporan HS, Visit DM & AM, Aktivitas Staff
+    · Sales POS per Outlet, Ringkasan Komplain
+  - Period selector bulanan (12 bulan ke belakang)
+  - Query langsung ke Supabase — tanpa AI API, tanpa Edge Function
   - src/pages/ops/Hub.jsx: widget dipasang di atas quote block
 
-2026-04-26 21:55 WIB — b02f06f (push ke-1 sesi ini)
+2026-04-27 — c57ae46
+  [FEAT] Data infrastruktur untuk analitik
+  - 022_sales_analytics.sql: tabel pos_sales_monthly + pos_complaints + RLS
+    (SUDAH dijalankan di Supabase SQL Editor)
+  - scripts/sync-pos-to-supabase.py: sync SQLite → Supabase
+    (SUDAH dijalankan: 1.022 rows sales + 3.887 rows komplain)
+  - supabase/functions/ask-the-data/index.ts: Edge Function (deploy, standby)
+    · Auth check ops_manager, Gemini REST API, 9 tools
+    · Tidak aktif dipakai — Data Explorer lebih dipilih untuk saat ini
+
+2026-04-26 — b02f06f
   [FIX] KPI embed error: ambiguous FK profiles di KPIHub
   - kpi_personal_scores: staff:profiles → staff:profiles!staff_id
   - kpi_360_submissions:  evaluatee:profiles → evaluatee:profiles!evaluatee_id
-  - Root cause: tabel punya 3 FK ke profiles (staff_id, scored_by, verified_by)
-    sehingga Supabase tidak bisa auto-resolve embedding
   [UPDATE] apps-script-bagikopi.txt
   - Tambah fungsi testSopDoc() untuk verifikasi DocumentApp scope
   - authorizeScript() sekarang juga test akses SOP_FOLDER_ID
@@ -40,26 +51,8 @@ CHANGE LOG TERBARU
     → klik Allow scope DocumentApp → buat New version deployment
 
 2026-04-27 — d30bb18
-  [FEAT] SOP dipecah jadi 2 halaman terpisah
-  - /sop → SOP Umum
-  - /sop/produk → SOP Buku Besar Produk
-  - Category switcher jadi <Link> navigasi (bukan tab switcher)
-  - Header & subtitle menyesuaikan kategori aktif
-  - Tombol "Coba lagi" di error state
+  [FEAT] SOP dipecah jadi 2 halaman: /sop dan /sop/produk
   [FIX] KPIHub auto-detect periode terbaru
-  - Kalau bulan berjalan belum ada data di kpi_monthly_reports,
-    otomatis switch ke bulan terakhir yang ada data
-
-2026-04-26 — 3607887
-  [FIX] BACKEND_BASE default '' → SOP fallback ke Apps Script
-  [FIX] kpi_reports → kpi_monthly_reports di KPIHub + VisitHub
-
-2026-04-26 — 8371cd3
-  [FEAT] Setoran Ops Dashboard: hapus Pillar Performance,
-  ganti dengan summary card + halaman detail /ops/setoran
-
-2026-04-26 — 6ddbfef
-  [FIX UX] Staff Home StatusItem unified, dead UI dihapus
 
 ═══════════════════════════════════════════════════════════════
 1. DASHBOARD & FITUR OPERASIONAL
@@ -85,6 +78,7 @@ Fitur utama:
     submitted             → Pending (oranye)
     rejected              → Ditolak (rose)
     no record / draft     → Belum (abu)
+- Data Explorer di /ops: 8 tabel analitik untuk ops_manager
 
 ═══════════════════════════════════════════════════════════════
 2. KPI DAN LEADERBOARD
@@ -151,8 +145,7 @@ LOGIN STAFF — tab "Staff" (email saja, tanpa password):
   Roles: staff, barista, kitchen, waitress, asst_head_store, auditor
   Mekanisme: signInStaff() → supabase.auth.signInWithPassword
              ({ email, password: VITE_STAFF_PASS }) langsung dari browser
-  SHARED PASSWORD: 1PassBagiKopiOps!!!
-  Tersimpan di: .env (VITE_STAFF_PASS) + Cloudflare Pages env vars
+  SHARED PASSWORD: tersimpan di .env (VITE_STAFF_PASS) + Cloudflare Pages env vars
   Sync script: node scripts/update-staff-shared-password.mjs
   Target roles: staff, barista, kitchen, waitress, asst_head_store, auditor
                (HEAD_STORE TIDAK TERMASUK)
@@ -248,7 +241,7 @@ Status setup (per 2026-04-27):
 019_cron_email_alerts.sql       — pg_cron email (BELUM dijalankan)
 020_announcements.sql           — SUDAH dijalankan
 021_security_hardening.sql      — RLS restrictive + trigger (BELUM dijalankan)
-022_sales_analytics.sql         — tabel POS sales + complaints untuk AI agent (BELUM dibuat)
+022_sales_analytics.sql         — pos_sales_monthly + pos_complaints (SUDAH dijalankan)
 
 ═══════════════════════════════════════════════════════════════
 13. SCRIPTS PENTING
@@ -264,17 +257,17 @@ scripts/reset-head-store-passwords.mjs
 scripts/bulk-upload-staff.mjs
   → Upload data staff dari CSV ke tabel profiles
 
+scripts/sync-pos-to-supabase.py
+  → Sync data SQLite (2026-bagikopi-sales-complain/bagikopi.db) ke Supabase
+  → Hasil: 1.022 rows sales + 3.887 rows komplain (SUDAH dijalankan)
+  → Aman dijalankan ulang (UPSERT)
+  → Butuh: SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY di .env
+  → pip install httpx python-dotenv && python scripts/sync-pos-to-supabase.py
+
 apps-script-bagikopi.txt
   → Kode lengkap Apps Script siap copy-paste ke editor
   → Isi: doGet (listSops, getSopDoc), doPost (upload foto), authorizeScript, testUpload,
-         testSopDoc (verifikasi DocumentApp scope — BARU)
-
-scripts/sync-pos-to-supabase.py  ← BELUM DIBUAT
-  → Sync data SQLite (2026-bagikopi-sales-complain/bagikopi.db) ke Supabase
-  → Agregasi sales_agg → pos_sales_monthly (~1,400 rows)
-  → Upload complaints individual → pos_complaints (3,887 rows)
-  → Pakai UPSERT, aman dijalankan berulang
-  → Butuh: SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY di .env
+         testSopDoc (verifikasi DocumentApp scope)
 
 ═══════════════════════════════════════════════════════════════
 14. ENV VARS
@@ -293,6 +286,9 @@ Diperlukan di .env dan Cloudflare Pages:
 Hanya untuk scripts lokal (JANGAN ke Cloudflare):
   SUPABASE_SERVICE_ROLE_KEY
 
+Supabase Secrets (di-set via CLI, tidak perlu di .env):
+  GEMINI_API_KEY  → untuk Edge Function ask-the-data (standby, tidak aktif dipakai)
+
 ═══════════════════════════════════════════════════════════════
 15. YANG MASIH PERLU DIKERJAKAN
 ═══════════════════════════════════════════════════════════════
@@ -300,7 +296,6 @@ PRIORITAS TINGGI:
   [TODO]  Reset password head_store via script, sampaikan ke masing-masing
   [BELUM] Jalankan 021_security_hardening.sql di Supabase SQL Editor
   [BELUM] Selesaikan setup email: jalankan step SQL + migration 019 (§9)
-  [NEXT]  Build Ask-the-Data AI Agent untuk ops_manager — lihat §17 untuk detail lengkap
 
 BUTUH SPEC / KEPUTUSAN:
   - Actionable notifications: aksi apa yang bisa dilakukan dari notifikasi?
@@ -323,142 +318,49 @@ AUDIT UX YANG BELUM TUNTAS:
 
 TECH DEBT:
   - Backend /api/auth/staff-login tidak dipakai → hapus kalau backend mau dipertahankan
-  - Gemini.txt di root (ada API key) — jangan commit, pindah ke .env atau hapus
-  - vite-dev.err.log, vite-dev.log — tambahkan ke .gitignore
 
 ═══════════════════════════════════════════════════════════════
-17. AI AGENT — ASK-THE-DATA (OPS MANAGER)
+17. DATA EXPLORER — OPS MANAGER (§17)
 ═══════════════════════════════════════════════════════════════
-Status: PLANNING — belum ada kode yang ditulis.
-Target sesi berikutnya: mulai implementasi dari langkah 1 (migration + sync script).
+Status: LIVE di production (operationerp.pages.dev, login ops_manager)
+Komponen: src/components/AskTheData.jsx
+Dipasang: src/pages/ops/Hub.jsx — section "AI Analyst" sebelum quote block
 
-KONSEP:
-  Widget chat di dashboard ops_manager. User ketik pertanyaan bebas
-  dalam bahasa Indonesia. Claude (tool use) memilih tool yang tepat,
-  query Supabase, dan jawab dalam bahasa natural.
+ARSITEKTUR AKTIF:
+  Frontend query langsung ke Supabase — tanpa Edge Function, tanpa AI API.
+  8 kategori analitik, period selector bulanan, hasil tabel.
 
-ARSITEKTUR:
-  Frontend (chat widget di /ops) → Supabase Edge Function (agent endpoint)
-  → Claude API with tool use → query Supabase → jawaban natural language
-  Data sales & komplain: import dari SQLite ke Supabase (Opsi A — disetujui)
-  Keamanan: tabel baru ADDITIVE ONLY, zero ALTER ke tabel existing,
-            RLS SELECT khusus ops_manager, tidak ada write dari frontend.
+8 KATEGORI YANG TERSEDIA:
+  1. Status Setoran Toko     → daily_deposits per toko per bulan
+  2. Skip Rate Ceklis & Prep → daily_checklists + daily_preparation
+  3. Beban Opex per Toko     → operational_expenses
+  4. Kepatuhan Laporan HS    → daily_reports + daily_deposits
+  5. Visit DM & AM           → daily_visits
+  6. Aktivitas Staff         → daily_checklists per staff
+  7. Sales POS per Outlet    → pos_sales_monthly
+  8. Ringkasan Komplain      → pos_complaints
 
-DATA SOURCE:
-  Project sales/komplain: C:\Users\dksat\Project\2026-bagikopi-sales-complain\
-  Stack: FastAPI + SQLite (bagikopi.db)
-  Tabel SQLite:
-    sales_agg   — 448,704 rows, per outlet/bulan/item/kategori/payment
-                  kolom: outlet, year, month, category, item, sales_type,
-                         payment_method, total_quantity, total_gross,
-                         total_discounts, total_net, total_tax, txn_count
-    complaints  — 3,887 rows, individual complaint records
-                  kolom: id, complaint_date, year, month, app, outlet, area,
-                         complaint_text, priority, topic, follow_up
-    outlets     — 39 rows: name, area
-  Data range: sales 2023-2026, complaints 2005-2026
-  Sales dari POS sistem → bisa dielaborasi lebih lanjut ke depannya
+DATA SOURCE POS:
+  Project: C:\Users\dksat\Project\2026-bagikopi-sales-complain\bagikopi.db
+  Sync script: scripts/sync-pos-to-supabase.py (jalankan ulang jika ada data baru)
+  Hasil sync: 1.022 rows sales bulanan + 3.887 rows komplain (per 2026-04-27)
+  30/39 outlet ter-match ke branches (9 outlet lama/tutup tidak di-match)
 
-TABEL SUPABASE BARU (022_sales_analytics.sql — BELUM DIBUAT):
-  pos_sales_monthly
-    outlet_name TEXT, branch_id UUID REFERENCES branches,
-    year INT, month INT,
-    net_sales NUMERIC, gross_sales NUMERIC, discounts NUMERIC,
-    transactions INT, synced_at TIMESTAMPTZ
-    UNIQUE (outlet_name, year, month)
-    → Agregat dari sales_agg: ~1,400 rows (bukan 448K)
-    → RLS: SELECT untuk ops_manager saja
-
-  pos_complaints
-    outlet_name TEXT, branch_id UUID REFERENCES branches,
-    complaint_date DATE, year INT, month INT,
-    app TEXT, topic TEXT, priority TEXT,
-    complaint_text TEXT, follow_up TEXT, synced_at TIMESTAMPTZ
-    → Individual records: 3,887 rows
-    → RLS: SELECT untuk ops_manager saja
-
-TOOLS YANG AKAN DIBANGUN (Claude tool use):
-  Fase 1 — dari Supabase (data ops sudah ada):
-    get_deposit_status(period, branch_id?)
-      → daily_deposits: toko belum/terlambat setoran
-    get_checklist_skip_rate(period, branch_id?)
-      → daily_checklists + daily_preparation: skip rate per toko
-    get_opex_by_branch(period, branch_id?)
-      → operational_expenses: beban opex per toko
-    get_report_compliance(period, branch_id?)
-      → daily_reports + daily_deposits: head store skip laporan
-    get_visit_compliance(period, manager_id?)
-      → daily_visits: rajin/lambat DM & AM mengisi visit
-    get_understaffing_report(period, branch_id?)
-      → daily_reports.jumlah_staff vs COUNT(profiles) per branch
-    get_staff_activity_score(period, branch_id?)
-      → daily_checklists + daily_preparation: staff paling rajin
-    get_po_delivery_mismatch(period?)
-      → supply chain tabel: mismatch PO vs pengiriman
-    get_promotion_candidates(period?)
-      → kpi_personal_scores + kpi_360_scores: kandidat promosi
-
-  Fase 2 — dari pos_sales_monthly + pos_complaints (setelah sync):
-    get_sales_trend(outlet_name?, period_from?, period_to?)
-      → pos_sales_monthly: trend net sales per outlet
-    get_complaint_summary(outlet_name?, period?, topic?)
-      → pos_complaints: ringkasan komplain per outlet/topik
-    get_correlation_report(outlet_name?, period_from?, period_to?)
-      → gabungkan: sales trend + complaints + checklist + visits
-        korelasi penurunan/kenaikan sales vs operasional
-
-10 PERTANYAAN TARGET OPS MANAGER (prioritas):
-  1. Toko mana yang belum setoran dan paling sering terlambat?
-     → get_deposit_status (Fase 1)
-  2. Toko mana yang paling sering skip ceklis dan preparation?
-     → get_checklist_skip_rate (Fase 1)
-  3. Toko mana yang beban opex-nya paling besar?
-     → get_opex_by_branch (Fase 1)
-  4. Siapa head store yang paling sering skip laporan harian?
-     → get_report_compliance (Fase 1)
-  5. DM dan AM mana yang paling rajin/lambat mengisi visit?
-     → get_visit_compliance (Fase 1)
-  6. Korelasi sales mingguan vs komplain, ceklis, kunjungan DM/AM?
-     → get_correlation_report (Fase 2, butuh sync dulu)
-  7. Toko mana yang paling sering understaffing?
-     → get_understaffing_report (Fase 1, pakai daily_reports.jumlah_staff)
-  8. Siapa staff yang sangat rajin mengisi ceklis dan prep?
-     → get_staff_activity_score (Fase 1)
-  9. Barang apa yang paling sering tidak sesuai PO vs pengiriman?
-     → get_po_delivery_mismatch (Fase 1)
-  10. Siapa staff yang perlu dipromosikan dengan segera?
-      → get_promotion_candidates (Fase 1)
-
-LANGKAH IMPLEMENTASI:
-  [DONE] 1. Tulis 022_sales_analytics.sql (tabel + RLS)
-  [TODO] 2. Jalankan di Supabase SQL Editor
-  [DONE] 3. Tulis scripts/sync-pos-to-supabase.py
-  [TODO] 4. Jalankan sync script: pip install httpx python-dotenv; python scripts/sync-pos-to-supabase.py
-  [DONE] 5. Buat Supabase Edge Function: supabase/functions/ask-the-data/index.ts
-  [DONE] 6. Buat komponen chat widget: src/components/AskTheData.jsx
-  [DONE] 7. Pasang widget di src/pages/ops/Hub.jsx
-  [TODO] 8. Deploy Edge Function: supabase functions deploy ask-the-data
-  [TODO] 9. Set secret: supabase secrets set GEMINI_API_KEY=AIzaSy...
-            (key ada di Gemini.txt — pakai yang sudah ada, gratis 1500 req/hari)
-  [TODO] 10. Test 10 pertanyaan target
-
-ENV VARS TAMBAHAN YANG DIPERLUKAN:
-  GEMINI_API_KEY  → untuk Edge Function (simpan di Supabase secrets)
-                    Key ada di Gemini.txt (jangan commit file itu)
-  (tidak perlu tambah VITE_* baru — Edge Function dipanggil via Supabase client)
+EDGE FUNCTION (standby):
+  supabase/functions/ask-the-data/index.ts — sudah deploy, tidak aktif dipakai
+  Bisa diaktifkan kembali jika sudah ada AI API key yang valid
+  Secret: GEMINI_API_KEY sudah di-set di Supabase secrets
 
 ═══════════════════════════════════════════════════════════════
 16. COMMIT GITHUB TERBARU
 ═══════════════════════════════════════════════════════════════
+15ffa86  refactor(ai): ganti AI chat ke Data Explorer tabel langsung
+47e8edb  fix(ai): ganti Gemini SDK ke REST API langsung di Edge Function
+c57ae46  feat(ai): Ask-the-Data AI Agent untuk ops_manager
+de4c098  docs: update summary1.txt — planning Ask-the-Data AI agent
 856ced6  docs: update summary1.txt — sesi 2026-04-26 21:55 WIB
 b02f06f  fix(kpi): resolve ambiguous profiles FK + apps-script testSopDoc
-6d6a342  docs: rewrite summary1.txt — ringkas, akurat, up-to-date 2026-04-27
-33ed4fb  docs: rewrite summary1.txt — sesi 2026-04-27
 d30bb18  feat: split SOP jadi 2 halaman + KPIHub auto-detect periode terbaru
-adc70bf  docs: rewrite summary1.txt — sesi 2026-04-26
-6ddbfef  fix(ux): unifikasi status indikator Staff Home + bersihin dead UI elements
-8371cd3  feat: setoran summary card di ops dashboard + halaman /ops/setoran
 3607887  fix: SOP fallback ke Apps Script + KPIHub pakai nama tabel yang benar
-21ff366  fix: hapus setSharing dari apps script (andalkan folder permission)
-8442213  fix: foto upload via Apps Script, hapus backend uploads router
-8a3dca9  revert: staff login kembali ke frontend-only (VITE_STAFF_PASS)
+8371cd3  feat: setoran summary card di ops dashboard + halaman /ops/setoran
+6ddbfef  fix(ux): unifikasi status indikator Staff Home + bersihin dead UI elements

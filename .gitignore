@@ -1,8 +1,13 @@
-node_modules/ 
-.env 
+node_modules/
+.env
 backend/.env
 dist/
 staff_import.csv
 .venv/
 __pycache__/
 *.pyc
+Gemini.txt
+vite-dev.log
+vite-dev.err.log
+supabase/.temp/
+*.db
