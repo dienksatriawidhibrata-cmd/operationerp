@@ -1,5 +1,5 @@
 SUMMARY PROGRESS PROJECT — BAGI KOPI OPS
-Tanggal update: 2026-04-26
+Tanggal update: 2026-04-27
 Production: https://operationerp.pages.dev (auto-deploy dari GitHub main, branch: main)
 Frontend lokal: http://localhost:5173 | Backend lokal: http://127.0.0.1:8000 (opsional)
 
@@ -18,6 +18,32 @@ Apps Script, KPI lewat Google Sheets API langsung.
 Setoran ops dashboard direvamp: Pillar Performance dihapus, diganti
 1 summary card setoran dengan halaman detail penuh /ops/setoran
 (date selector, search, filter status, list per-toko).
+
+═══════════════════════════════════════════════════════════════
+CHANGE LOG SESI 2026-04-27
+═══════════════════════════════════════════════════════════════
+[FIX] KPIHub tidak menampilkan data (periode berjalan kosong)
+- Penyebab: KPIHub default ke periode berjalan (Apr 2026) yang belum ada
+  data di kpi_monthly_reports. Tabel hanya ada data Jan-Mar 2026.
+- Fix: Tambah useEffect yang query max(bulan) di kpi_monthly_reports.
+  Kalau periode berjalan lebih baru dari data terakhir, otomatis switch
+  ke periode terakhir yang punya data.
+- File: src/pages/kpi/KPIHub.jsx
+
+[FEAT] SOP Center dipecah jadi 2 halaman terpisah
+- Sebelumnya: 1 halaman /sop dengan tab switcher umum/produk.
+- Sesudah:
+    /sop        → SOP Umum (panduan operasional harian)
+    /sop/produk → SOP Buku Besar Produk (resep, standar sajian)
+- Alasan: beban halaman lebih ringan, setiap halaman hanya load
+  dokumen dari kategorinya masing-masing.
+- SopPage.jsx kini menerima prop category='umum'|'produk'.
+  Category switcher di mobile & desktop ganti jadi <Link> navigasi.
+- Header & subtitle menyesuaikan kategori aktif.
+- Tambah tombol "Coba lagi" di error state untuk debugging SOP.
+- App.jsx: tambah route /sop/produk.
+- BottomNav tidak perlu diubah (pathname.startsWith('/sop') sudah cover kedua halaman).
+- Commit: d30bb18
 
 ═══════════════════════════════════════════════════════════════
 CHANGE LOG SESI 2026-04-26
@@ -115,7 +141,9 @@ CHANGE LOG SESI 2026-04-26
 ═══════════════════════════════════════════════════════════════
 3. SOP CENTER
 ═══════════════════════════════════════════════════════════════
-- Halaman /sop aktif untuk semua role operasional (kecuali Finance).
+- /sop → SOP Umum (panduan operasional harian)
+- /sop/produk → SOP Buku Besar Produk (resep, standar sajian)
+- Aktif untuk semua role operasional (kecuali Finance).
 - Integrasi Google Docs native (Document Tabs) + file .docx.
 - Mobile: selector compact + sticky card.
 - Desktop: 3-panel — daftar dokumen | document tabs | isi dokumen.
@@ -123,7 +151,8 @@ CHANGE LOG SESI 2026-04-26
 - Backend FastAPI opsional sebagai source pertama kalau VITE_BACKEND_URL diset.
 - Folder SOP aktif: 1GXkR3-A0XXkxJxkNlCv2FJXUO4NLqOSa
 - Akun Apps Script: dienksatriawidhibrata@bagikopi.id
-- Status production: VERIFIED OK (2026-04-26)
+- Error state: tampilkan pesan error + tombol "Coba lagi"
+- Status: Split 2026-04-27 (commit d30bb18)
 
 ═══════════════════════════════════════════════════════════════
 4. UPLOAD FOTO
@@ -271,6 +300,9 @@ STATUS SETUP EMAIL (per 2026-04-26):
 ═══════════════════════════════════════════════════════════════
 13. COMMIT GITHUB PENTING (urut terbaru)
 ═══════════════════════════════════════════════════════════════
+2026-04-27
+- d30bb18 - feat: split SOP jadi 2 halaman + KPIHub auto-detect periode terbaru
+
 2026-04-26
 - 6ddbfef - fix(ux): unifikasi status indikator Staff Home + bersihin dead UI elements
 - 8371cd3 - feat: setoran summary card di ops dashboard + halaman /ops/setoran
