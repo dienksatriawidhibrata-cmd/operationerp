@@ -16,8 +16,16 @@ folder backend/ tapi tidak di-deploy ke cloud (opsional, lokal only).
 ═══════════════════════════════════════════════════════════════
 CHANGE LOG TERBARU
 ═══════════════════════════════════════════════════════════════
-2026-04-26 22:30 WIB — (belum push — planning sesi ini)
-  [PLAN] Ask-the-Data AI Agent untuk ops_manager — lihat §17
+2026-04-26 — (belum push — sesi ini)
+  [FEAT] Ask-the-Data AI Agent untuk ops_manager (§17)
+  - 022_sales_analytics.sql: tabel pos_sales_monthly + pos_complaints + RLS
+  - scripts/sync-pos-to-supabase.py: sync SQLite → Supabase (UPSERT-safe)
+  - supabase/functions/ask-the-data/index.ts: Edge Function Claude tool use
+    · 11 tools: deposit, checklist, opex, report, visit, understaffing,
+      staff activity, PO mismatch, promotion, sales trend, complaint summary
+    · Auth check: hanya ops_manager yang bisa akses
+  - src/components/AskTheData.jsx: chat widget (open/close, suggested Q, riwayat)
+  - src/pages/ops/Hub.jsx: widget dipasang di atas quote block
 
 2026-04-26 21:55 WIB — b02f06f (push ke-1 sesi ini)
   [FIX] KPI embed error: ambiguous FK profiles di KPIHub
@@ -421,19 +429,22 @@ TOOLS YANG AKAN DIBANGUN (Claude tool use):
   10. Siapa staff yang perlu dipromosikan dengan segera?
       → get_promotion_candidates (Fase 1)
 
-LANGKAH IMPLEMENTASI (urutan sesi berikutnya):
-  [ ] 1. Tulis 022_sales_analytics.sql (tabel + RLS)
-  [ ] 2. Jalankan di Supabase SQL Editor
-  [ ] 3. Tulis scripts/sync-pos-to-supabase.py
-  [ ] 4. Jalankan sync script, verifikasi data masuk
-  [ ] 5. Buat Supabase Edge Function: supabase/functions/ask-the-data/index.ts
-          → Claude API tool use, query Supabase, return jawaban
-  [ ] 6. Buat komponen chat widget: src/components/AskTheData.jsx
-  [ ] 7. Pasang widget di src/pages/ops/Hub.jsx (ops_manager dashboard)
-  [ ] 8. Test 10 pertanyaan target
+LANGKAH IMPLEMENTASI:
+  [DONE] 1. Tulis 022_sales_analytics.sql (tabel + RLS)
+  [TODO] 2. Jalankan di Supabase SQL Editor
+  [DONE] 3. Tulis scripts/sync-pos-to-supabase.py
+  [TODO] 4. Jalankan sync script: pip install httpx python-dotenv; python scripts/sync-pos-to-supabase.py
+  [DONE] 5. Buat Supabase Edge Function: supabase/functions/ask-the-data/index.ts
+  [DONE] 6. Buat komponen chat widget: src/components/AskTheData.jsx
+  [DONE] 7. Pasang widget di src/pages/ops/Hub.jsx
+  [TODO] 8. Deploy Edge Function: supabase functions deploy ask-the-data
+  [TODO] 9. Set secret: supabase secrets set GEMINI_API_KEY=AIzaSy...
+            (key ada di Gemini.txt — pakai yang sudah ada, gratis 1500 req/hari)
+  [TODO] 10. Test 10 pertanyaan target
 
 ENV VARS TAMBAHAN YANG DIPERLUKAN:
-  ANTHROPIC_API_KEY  → untuk Edge Function (simpan di Supabase secrets)
+  GEMINI_API_KEY  → untuk Edge Function (simpan di Supabase secrets)
+                    Key ada di Gemini.txt (jangan commit file itu)
   (tidak perlu tambah VITE_* baru — Edge Function dipanggil via Supabase client)
 
 ═══════════════════════════════════════════════════════════════
