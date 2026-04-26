@@ -1,26 +1,84 @@
 SUMMARY PROGRESS PROJECT — BAGI KOPI OPS
-Tanggal update: 2026-04-25
+Tanggal update: 2026-04-26
 Production: https://operationerp.pages.dev (auto-deploy dari GitHub main, branch: main)
-Frontend lokal: http://localhost:5173 | Backend lokal: http://127.0.0.1:8000
+Frontend lokal: http://localhost:5173 | Backend lokal: http://127.0.0.1:8000 (opsional)
 
 ═══════════════════════════════════════════════════════════════
 STATUS KESELURUHAN
 ═══════════════════════════════════════════════════════════════
 Semua fitur inti operasional aktif. KPI, leaderboard, SOP center,
-supply chain, backend FastAPI, role auditor, in-app reminder,
-email otomatis (kode siap, DNS propagating), halaman pengumuman,
-dan toast system sudah selesai dikode. Build bersih tanpa error.
+supply chain, role auditor, in-app reminder, email otomatis (kode
+siap, DNS propagating), halaman pengumuman, dan toast system sudah
+selesai. Build bersih tanpa error.
 
-Staff login (email-only) sudah di-deploy ke Cloudflare Pages.
-352 akun staff (kecuali head_store) di-sync ke shared password.
-VITE_STAFF_PASS sudah dikonfigurasi di Cloudflare Pages dan
-redeploy sudah di-trigger (2026-04-25).
+Backend FastAPI sekarang OPSIONAL — frontend bisa berjalan penuh
+di production tanpa backend running. SOP & upload foto sudah lewat
+Apps Script, KPI lewat Google Sheets API langsung.
 
-Head_store login menggunakan tab "Head Store & Manager" dengan
-email + password individual (bukan shared password).
+Setoran ops dashboard direvamp: Pillar Performance dihapus, diganti
+1 summary card setoran dengan halaman detail penuh /ops/setoran
+(date selector, search, filter status, list per-toko).
 
-Upload foto sudah berfungsi via Google Apps Script langsung
-(tanpa backend). Script tersimpan di apps-script-bagikopi.txt.
+═══════════════════════════════════════════════════════════════
+CHANGE LOG SESI 2026-04-26
+═══════════════════════════════════════════════════════════════
+[FIX] SOP & KPI tidak tampil di production
+- Penyebab SOP: kode `fetchSopDocuments` & `fetchSopDocumentContent`
+  selalu lewat backend FastAPI (BACKEND_BASE default 'http://127.0.0.1:8000'
+  yang tidak accessible dari browser production). Sebelumnya punya fallback
+  chain Drive → Backend → Apps Script tapi dihapus saat refactor staff-login.
+- Fix SOP: BACKEND_BASE default jadi '' (kosong). Kalau VITE_BACKEND_URL
+  diset & backend jalan, coba backend dulu; gagal/kosong fallback ke
+  Apps Script doGet (action=listSops, getSopDoc).
+- Penyebab KPI: KPIHub.jsx & dm/VisitHub.jsx query tabel 'kpi_reports'
+  yang TIDAK ADA. Tabel asli bernama 'kpi_monthly_reports'. Promise.all
+  di KPIHub me-reject 3 tab (Toko/Personal/360) sekaligus karena query
+  store gagal.
+- Fix KPI: ganti 'kpi_reports' → 'kpi_monthly_reports' di 2 file.
+- Commit: 3607887
+
+[FEAT] Setoran Ops Dashboard revamp
+- ops/Hub.jsx: hapus section Pillar Performance (3 menu Retail/SC/
+  Trainer & Dev), ganti dengan 1 Setoran summary card.
+- Card berisi: ikon Retail Pillar + label, tombol Detail di pojok atas,
+  date selector prev/next inline (refetch on change, next disabled saat
+  hari ini), Total Masuk Rp besar di atas, X/Y toko sudah setor,
+  mini-tile Pending + "Belum Setor" yang clickable langsung ke detail
+  dengan filter=belum.
+- src/pages/ops/SetoranDetail.jsx: halaman baru /ops/setoran ala Gemini.
+  Date selector prev/next, 2 stat (Total Masuk + Pending), search nama
+  toko, filter chips (Semua/Belum/Pending/Selesai/Selisih/Ditolak), list
+  per-toko dengan badge status & nominal & waktu submit. URL params
+  ?date=YYYY-MM-DD&filter=... sync otomatis (replace).
+- Status mapping daily_deposits:
+    approved + selisih=0  → Selesai (hijau)
+    approved + selisih≠0  → Selisih (merah)
+    submitted             → Pending (oranye)
+    rejected              → Ditolak (rose)
+    no record / draft     → Belum (abu)
+- Commit: 8371cd3
+
+[FIX UX] Staff Home + Login + Trainer + Finance
+- Staff Home StatusItem helper: 6 status card (3 Ceklis + 3 Preparation)
+  diunifikasi pakai pola biru (sudah dikerjakan) / merah (belum
+  dikerjakan) / slate (loading). Hapus warna terpisah per shift
+  (blue/violet/indigo, emerald/teal/cyan) → konsisten visual.
+- Hapus bell button di header Staff Home (tidak punya onClick, tombol
+  mati). ReminderBanner di body sudah cukup.
+- Hapus tombol "Lihat Semua" di Papan Pengumuman (tidak punya onClick).
+- Hapus section "Papan Pengumuman" hardcoded ("Selamat Bekerja {nama}!").
+  Section "Pengumuman" dari tabel announcements tetap utuh dan jadi
+  satu-satunya papan pengumuman.
+- Fix Setoran status di Head Store Laporan card: sebelumnya pakai
+  status?.laporan (salah variable) + bar selalu full + text static
+  "Cek via form". Sekarang pakai status?.setoran, label "Sudah"/"Belum".
+- Login.jsx: help text tab Staff include auditor (sebelumnya cuma
+  staff toko & asisten head store, padahal auditor login dari sini).
+- trainer/Dashboard.jsx: icon 'star' (tidak ada di ICON_PATHS, silently
+  fallback ke spark) ganti eksplisit ke 'spark'.
+- finance/FinanceHub.jsx: tombol "Buka Audit Setoran" pakai <a href>
+  (full reload). Ganti ke <Link> supaya SPA navigation.
+- Commit: 6ddbfef
 
 ═══════════════════════════════════════════════════════════════
 1. DASHBOARD & FITUR OPERASIONAL
@@ -38,6 +96,8 @@ Upload foto sudah berfungsi via Google Apps Script langsung
 - Store Status real-time di /dm/stores (monitoring operasional per toko).
 - Pengumuman: input oleh ops_manager & support_spv di /ops/pengumuman,
   tampil di dashboard semua staff.
+- Setoran detail /ops/setoran: list per-toko status setoran harian dengan
+  date selector, search, filter chips.
 
 ═══════════════════════════════════════════════════════════════
 2. KPI DAN LEADERBOARD
@@ -49,6 +109,8 @@ Upload foto sudah berfungsi via Google Apps Script langsung
 - Leaderboard: Top 10 / Bottom 10, filter bulanan, tooltip cara hitung.
   Diakses oleh DM, Area Manager, Ops Manager.
 - /kpi/personal: input dan lihat KPI personal.
+- KPIHub di /kpi: 3 tab (Toko / Personal / 360) — VERIFIED OK 2026-04-26
+  setelah fix nama tabel kpi_monthly_reports.
 
 ═══════════════════════════════════════════════════════════════
 3. SOP CENTER
@@ -57,10 +119,11 @@ Upload foto sudah berfungsi via Google Apps Script langsung
 - Integrasi Google Docs native (Document Tabs) + file .docx.
 - Mobile: selector compact + sticky card.
 - Desktop: 3-panel — daftar dokumen | document tabs | isi dokumen.
-- Fallback sumber: Google Drive API → FastAPI backend → Apps Script.
-- Apps Script endpoint: listSops, getSopDoc (via doGet).
+- Sumber data utama: Apps Script doGet (listSops, getSopDoc).
+- Backend FastAPI opsional sebagai source pertama kalau VITE_BACKEND_URL diset.
 - Folder SOP aktif: 1GXkR3-A0XXkxJxkNlCv2FJXUO4NLqOSa
-- Status production: VERIFIED OK (2026-04-24).
+- Akun Apps Script: dienksatriawidhibrata@bagikopi.id
+- Status production: VERIFIED OK (2026-04-26)
 
 ═══════════════════════════════════════════════════════════════
 4. UPLOAD FOTO
@@ -72,14 +135,10 @@ Upload foto sudah berfungsi via Google Apps Script langsung
   tanpa setSharing (folder sudah di-set "Anyone with link" dari Drive UI).
 - Script lengkap: apps-script-bagikopi.txt (copy-paste ke Apps Script editor)
 - UPLOAD_FOLDER_ID: 1zsX4nKXk4xCzrwAgIlO135Zix8H13G_e
-- Akun Apps Script: dienksatriawidhibrata@bagikopi.id
 - VITE_APPS_SCRIPT_URL: sudah dikonfigurasi di .env dan Cloudflare Pages.
 
-CATATAN: backend/app/routers/uploads.py sudah DIHAPUS.
-Upload tidak lagi melalui backend FastAPI — langsung via Apps Script.
-
 ═══════════════════════════════════════════════════════════════
-5. BACKEND FASTAPI
+5. BACKEND FASTAPI (OPSIONAL)
 ═══════════════════════════════════════════════════════════════
 - Folder: backend/
 - Stack: FastAPI + supabase-py + pydantic-settings + google-api-python-client
@@ -101,8 +160,10 @@ Upload tidak lagi melalui backend FastAPI — langsung via Apps Script.
     backend/app/routers/
     backend/Procfile
     backend/.python-version            ← Python 3.12
-- STATUS: backend dijalankan lokal saja. Tidak di-deploy ke cloud.
-  Upload foto tidak lagi melalui backend.
+- STATUS: TIDAK DEPLOY ke cloud. Backend bisa dijalankan lokal untuk
+  development tapi tidak required untuk production.
+- VITE_BACKEND_URL di production = kosong. Kalau di set ke URL backend
+  yang valid, SOP akan coba backend dulu sebelum fallback Apps Script.
 
 ═══════════════════════════════════════════════════════════════
 6. STAFF LOGIN & HEAD STORE LOGIN
@@ -125,14 +186,9 @@ LOGIN HEAD STORE (email + password):
   Cara kerja: signIn() dengan email + password individual.
   Tab login: "Head Store & Manager" (butuh password).
 
-  Password head_store bersifat individual — TIDAK sama dengan shared password staff.
-  Untuk reset password head_store (misalnya lupa/salah):
+  Password head_store bersifat individual — TIDAK sama dengan shared
+  password staff. Untuk reset password head_store:
     node scripts/reset-head-store-passwords.mjs "PasswordBaru123!"
-
-PERBAIKAN AUTH CONTEXT (2026-04-25):
-  - fetchProfile() menerima accessToken — jika ada, pakai raw fetch() dengan
-    header Authorization langsung ke Supabase REST API, BUKAN supabase.js client.
-  - Guard: jika VITE_STAFF_PASS tidak di-set, tampil error ramah.
 
 SCRIPT PASSWORD:
   - scripts/update-staff-shared-password.mjs   ← sync shared password (tanpa head_store)
@@ -144,10 +200,10 @@ SCRIPT PASSWORD:
 ═══════════════════════════════════════════════════════════════
 - Role: auditor — read-only, hanya akses /dm/stores.
 - Login: email + VITE_STAFF_PASS (shared password, tab "Staff").
+- Help text tab Staff sekarang menyebut auditor (sebelumnya bingung).
 - Akun: dicky.iman18@gmail.com
 - Migration: supabase/migrations/018_auditor_role.sql
 - AuditorBottomNav: Store Status + SOP.
-- Status Supabase setup: SUDAH DILAKUKAN (2026-04-24).
 
 ═══════════════════════════════════════════════════════════════
 8. IN-APP REMINDER DEADLINE
@@ -169,10 +225,10 @@ SCRIPT PASSWORD:
 - Penerima: DM, Area Manager, Ops Manager — per wilayah masing-masing.
 - Email via Resend API.
 
-STATUS SETUP EMAIL (per 2026-04-25):
+STATUS SETUP EMAIL (per 2026-04-26):
   a. [DONE] Edge Function di-deploy via Supabase Dashboard Editor.
   b. [DONE] Secrets di-set: RESEND_API_KEY, RESEND_FROM_EMAIL, CRON_SECRET.
-  c. [DONE] Domain didaftarkan di Resend — DNS propagating (tunggu verifikasi).
+  c. [DONE] Domain didaftarkan di Resend — DNS propagating.
   d. [BELUM] Jalankan di SQL Editor setelah DNS verified:
        ALTER DATABASE postgres SET app.supabase_url = 'https://[PROJECT_REF].supabase.co';
        ALTER DATABASE postgres SET app.cron_secret  = '[CRON_SECRET]';
@@ -185,6 +241,7 @@ STATUS SETUP EMAIL (per 2026-04-25):
 - Migration: supabase/migrations/020_announcements.sql (SUDAH DIJALANKAN).
 - Tabel: announcements (id, title, body, is_active, published_at, created_by).
 - RLS: semua authenticated bisa baca, hanya ops_manager/support_spv bisa tulis.
+- Tampil di Staff Home section "Pengumuman" (max 5, urut published_at DESC).
 
 ═══════════════════════════════════════════════════════════════
 11. SECURITY HARDENING (BELUM DITERAPKAN)
@@ -193,8 +250,11 @@ STATUS SETUP EMAIL (per 2026-04-25):
 - STATUS: [BELUM] — belum dijalankan di Supabase SQL Editor.
 
 ═══════════════════════════════════════════════════════════════
-12. UI/UX DAN INFRASTRUKTUR
+12. UI/UX
 ═══════════════════════════════════════════════════════════════
+- Status indikator Staff Home unified pattern: biru (sudah dikerjakan)
+  / merah (belum dikerjakan) / slate (loading). Helper StatusItem
+  reusable untuk 6 card (3 Ceklis + 3 Preparation).
 - Tombol hapus foto di mobile selalu terlihat (bukan hover-only).
 - Logout confirmation modal DIHAPUS dari BottomNav.
 - BottomNav: tombol SOP (ikon buku) di semua role.
@@ -209,17 +269,19 @@ STATUS SETUP EMAIL (per 2026-04-25):
 - XLSX export: OPEX dan warehouse receipts.
 
 ═══════════════════════════════════════════════════════════════
-13. COMMIT GITHUB PENTING
+13. COMMIT GITHUB PENTING (urut terbaru)
 ═══════════════════════════════════════════════════════════════
+2026-04-26
+- 6ddbfef - fix(ux): unifikasi status indikator Staff Home + bersihin dead UI elements
+- 8371cd3 - feat: setoran summary card di ops dashboard + halaman /ops/setoran
+- 3607887 - fix: SOP fallback ke Apps Script + KPIHub pakai nama tabel yang benar
+
+2026-04-25
+- 35f3654 - docs: rewrite summary1.txt — update upload foto & status terkini
 - 21ff366 - fix: hapus setSharing dari apps script (andalkan folder permission)
 - 8442213 - fix: foto upload via Apps Script, hapus backend uploads router
-- c55510a - Update summary1.txt to reflect progress 2026-04-25
 - 9fdcdc0 - chore: trigger redeploy with VITE_STAFF_PASS env var
 - 8a3dca9 - revert: staff login kembali ke frontend-only (VITE_STAFF_PASS)
-- 800d32c - feat: staff login via backend + security hardening
-- ba9055c - Add announcements CRUD, toast feedback, and gallery upload for OPEX
-- f109889 - Revamp nav: move logout to header, replace BottomNav Keluar with SOP
-- bcfea71 - Add auditor role with read-only access to Store Status page
 
 ═══════════════════════════════════════════════════════════════
 14. MIGRATIONS SUPABASE (urutan)
@@ -228,7 +290,7 @@ STATUS SETUP EMAIL (per 2026-04-25):
 002_daily_visits_unique.sql  — unique constraint daily visits
 002_supply_chain.sql         — tabel supply chain
 003_supply_chain_scope_read.sql
-004_kpi_reports.sql
+004_kpi_reports.sql          — bikin tabel kpi_monthly_reports
 005_support_roles.sql
 006_staff_roles.sql
 007_store_roles_access.sql
@@ -263,13 +325,14 @@ scripts/bulk-upload-staff.mjs
 
 apps-script-bagikopi.txt
   → Kode lengkap Google Apps Script siap copy-paste.
-  → Berisi: doGet (SOP), doPost (upload foto), authorizeScript, testUpload.
+  → Berisi: doGet (SOP listSops, getSopDoc), doPost (upload foto),
+    authorizeScript, testUpload.
 
 ═══════════════════════════════════════════════════════════════
 16. YANG MASIH PERLU DIKERJAKAN
 ═══════════════════════════════════════════════════════════════
 PRIORITAS TINGGI:
-- [TODO]   Reset password head_store via script, lalu sampaikan ke masing-masing.
+- [TODO]   Reset password head_store via script, sampaikan ke masing-masing.
 - [BELUM]  Jalankan 021_security_hardening.sql di Supabase SQL Editor.
 - [BELUM]  Selesaikan setup email otomatis: jalankan step d & e (§9)
            setelah DNS Resend verified.
@@ -284,3 +347,128 @@ BUTUH SPEC / KEPUTUSAN:
 - Role Support redefinition: tugas/tanggung jawab baru di sistem.
 - PIC Audit Setoran: siapa PIC, cara assign, flow-nya.
 - OJT full module: halaman OJT lengkap belum dibuat.
+
+═══════════════════════════════════════════════════════════════
+17. REKOMENDASI UNTUK SESI BERIKUTNYA
+═══════════════════════════════════════════════════════════════
+A. AUDIT UX YANG BELUM TUNTAS (sesi 2026-04-26 cuma sempat dashboard utama)
+
+1. DM Dashboard (src/pages/dm/Dashboard.jsx — 2390 baris)
+   - File terlalu panjang, kemungkinan ada banyak section yang bisa
+     disederhanakan atau di-extract jadi komponen kecil.
+   - Audit: tombol mati, navigation friction, redundant data display,
+     section yang jarang dipakai.
+   - Rekomendasi: minta user demo flow harian DM (login → cek apa →
+     approve setoran → kunjungi toko → input visit → ...) lalu audit
+     screen-by-screen.
+
+2. Supply Chain workflow per sub-role
+   - 7 sub-role: warehouse_admin, warehouse_spv, sc_supervisor,
+     purchasing_admin, picking_spv, qc_spv, distribution_spv.
+   - BottomNav sudah konditional per sub-role tapi belum dicek apakah
+     stage handoff antar role mulus (mis. picking_spv selesai →
+     auto notify qc_spv).
+   - Audit: SC Dashboard, /sc/picking, /sc/qc, /sc/distribution,
+     /sc/sj, /sc/orders/:id.
+
+3. Trainer "KPI Toko" link
+   - Trainer Dashboard ada Quick Action "KPI Toko" → /kpi.
+   - Tapi role trainer tidak ada di KPI_PERSONAL_INPUT_ROLES, jadi
+     trainer cuma bisa lihat (tidak input). Label "KPI Toko" mungkin
+     misleading. Mungkin lebih baik label "Lihat KPI" atau buat
+     halaman khusus trainer (lihat KPI training-relevant saja).
+
+4. Finance audit flow
+   - finance/AuditSetoran.jsx perlu dicek: apakah audit per-toko mulus,
+     apakah ada audit log, apakah threshold selisih bisa di-config UI
+     (saat ini hardcoded 50000 di branches.selisih_threshold).
+
+5. HeadStore Laporan Card (Setoran tile)
+   - Setelah fix variable bug, sekarang setoran tile menampilkan
+     "Sudah/Belum" dari status?.setoran (yesterday submitted+approved).
+   - Card ini juga belum mengikuti pattern StatusItem biru/merah.
+   - Rekomendasi: extend StatusItem ke 3 tile Head Store (Laporan/
+     Opex/Setoran) supaya konsisten visual dengan section Ceklis/Prep.
+
+B. FITUR YANG SUDAH DIBANGUN TAPI BELUM SEPENUHNYA TER-INTEGRASI
+
+6. ReminderBanner indicator hilang dari Staff Home header
+   - Setelah hapus bell button (commit 6ddbfef), variable
+     hasPendingReportReminder tetap di-compute tapi cuma dipakai untuk
+     show pending warning section. Bell indicator hilang.
+   - Pikirkan: apakah perlu sistem notifikasi proper (bell + dropdown
+     list notifications)? Kalau iya, butuh tabel notifications + RLS
+     dan UI pattern.
+
+7. Tasks (dm_tasks) flow
+   - dm_tasks ada di banyak tempat (BottomNav badge, StaffHome head_store,
+     Trainer mungkin), tapi flow create→assign→done mungkin perlu
+     audit: apakah notifikasi muncul untuk assignee, apakah
+     status update real-time, apakah ada filter untuk task yang
+     overdue vs upcoming.
+
+8. KPI Personal Input untuk trainer
+   - Trainer bisa observe staff lewat OJE, tapi apakah hasilnya
+     ke-feed ke KPI personal staff? Atau trainer punya channel sendiri?
+   - Cek alur OJE → KPI personal sync.
+
+C. INFRA & DEPLOYMENT
+
+9. Backend FastAPI: pertahankan atau hapus?
+   - Sekarang backend cuma jalan lokal & opsional. Production tidak
+     pakai sama sekali. Endpoint yang masih ada:
+     /api/branches, /api/manager-visits/summary, /api/store-compliance/summary,
+     /api/warehouse/receipts (+csv), /api/sop/docs (+/{id}).
+   - Frontend tidak ada yang panggil endpoint-endpoint ini selain SOP
+     (yang sudah ada fallback Apps Script). Manager-visits, store-
+     compliance, warehouse/receipts di frontend mana? Cek apakah
+     masih dipakai. Kalau tidak dipakai → backend bisa dihapus
+     seluruhnya.
+
+10. Cloudflare Pages env vars audit
+    - Pastikan VITE_BACKEND_URL TIDAK terset di Cloudflare Pages
+      (kalau terset ke localhost atau Railway URL yang mati, SOP akan
+      stuck nyoba backend dulu sebelum fallback).
+    - Verifikasi VITE_APPS_SCRIPT_URL, VITE_GOOGLE_API_KEY,
+      VITE_GOOGLE_SOP_FOLDER_ID, VITE_GOOGLE_KPI_SHEET_ID,
+      VITE_STAFF_PASS, VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY
+      semua terset.
+
+11. Self-service password reset (Head Store / Manager)
+    - Saat ini lupa password = "hubungi admin". Manager tidak bisa
+      reset sendiri.
+    - Alternatif: pakai Supabase Auth password reset email built-in
+      (supabase.auth.resetPasswordForEmail). Butuh edge function
+      untuk template email + redirect URL.
+
+D. CLEANUP & TECH DEBT
+
+12. Hapus backend/app/routers/auth.py (staff-login endpoint)
+    - Staff login sudah pindah ke frontend-only sejak commit 8a3dca9.
+    - Endpoint /api/auth/staff-login masih ada tapi tidak dipakai.
+    - Kalau backend mau dipertahankan, hapus router ini.
+
+13. Verifikasi 021_security_hardening.sql tidak break apapun
+    - Migration berisi RLS restrictive policies untuk active session
+      check. Sebelum jalankan, test di staging atau review dulu apa
+      saja yang bisa pecah.
+
+14. Cleanup file untracked
+    - Gemini.txt (berisi API key Gemini) - JANGAN commit, tapi sebaiknya
+      pindahkan ke .env atau hapus kalau tidak dipakai.
+    - vite-dev.err.log, vite-dev.log - tambahkan ke .gitignore.
+
+═══════════════════════════════════════════════════════════════
+18. ENV VARS YANG DIPERLUKAN
+═══════════════════════════════════════════════════════════════
+.env (frontend) — dipakai juga di Cloudflare Pages:
+- VITE_SUPABASE_URL
+- VITE_SUPABASE_ANON_KEY
+- VITE_APPS_SCRIPT_URL          ← required (SOP + upload foto)
+- VITE_DRIVE_FOLDER_ID          ← upload foto folder
+- VITE_GOOGLE_API_KEY           ← KPI Sheets
+- VITE_GOOGLE_SOP_FOLDER_ID     ← (kalau Drive direct fallback diaktifkan)
+- VITE_GOOGLE_KPI_SHEET_ID      ← KPI sheet
+- VITE_STAFF_PASS               ← shared password staff
+- VITE_BACKEND_URL              ← OPSIONAL, isi cuma kalau backend deploy
+- SUPABASE_SERVICE_ROLE_KEY     ← buat scripts/* lokal saja, JANGAN ke Cloudflare
