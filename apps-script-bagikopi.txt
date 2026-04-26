@@ -22,7 +22,20 @@ var SOP_FOLDER_ID    = '1GXkR3-A0XXkxJxkNlCv2FJXUO4NLqOSa';
 
 function authorizeScript() {
   DriveApp.getFolderById(UPLOAD_FOLDER_ID);
+  DriveApp.getFolderById(SOP_FOLDER_ID);
   Logger.log('OK - folder accessible');
+}
+
+function testSopDoc() {
+  var folder = DriveApp.getFolderById(SOP_FOLDER_ID);
+  var files  = folder.getFilesByType(MimeType.GOOGLE_DOCS);
+  if (!files.hasNext()) {
+    Logger.log('SKIP - no Google Docs in SOP folder');
+    return;
+  }
+  var f   = files.next();
+  var doc = DocumentApp.openById(f.getId());
+  Logger.log('testSopDoc PASSED - opened: ' + doc.getName());
 }
 
 function testUpload() {

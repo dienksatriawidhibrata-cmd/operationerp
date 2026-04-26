@@ -74,11 +74,11 @@ export default function KPIHub() {
             .eq('bulan', `${period}-01`),
           supabase
             .from('kpi_personal_scores')
-            .select('staff_id,score,verified_at,updated_at,staff:profiles(full_name,role)')
+            .select('staff_id,score,verified_at,updated_at,staff:profiles!staff_id(full_name,role)')
             .eq('period_month', period),
           supabase
             .from('kpi_360_submissions')
-            .select('id,evaluatee_id,group_type,updated_at,evaluatee:profiles(full_name,role)')
+            .select('id,evaluatee_id,group_type,updated_at,evaluatee:profiles!evaluatee_id(full_name,role)')
             .eq('period_month', period),
         ])
 
