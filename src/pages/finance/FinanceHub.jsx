@@ -395,12 +395,12 @@ export default function FinanceHub({
             description="Halaman audit tetap tersedia terpisah untuk kebutuhan review finance."
           >
             <div className="flex justify-start">
-              <a
-                href="/finance/audit"
+              <Link
+                to="/finance/audit"
                 className="inline-flex items-center rounded-2xl bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-700"
               >
                 Buka Audit Setoran
-              </a>
+              </Link>
             </div>
           </SectionPanel>
         )}

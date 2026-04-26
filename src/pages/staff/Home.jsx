@@ -8,6 +8,29 @@ import { AppIcon } from '../../components/ui/AppKit'
 import { fmtRp, todayWIB, yesterdayWIB, sisaWaktuLaporan } from '../../lib/utils'
 import ReminderBanner from '../../components/ReminderBanner'
 
+function StatusItem({ icon, label, done, loading, statusLabel }) {
+  const tone = loading ? 'loading' : done ? 'done' : 'pending'
+  const styles = {
+    loading: { card: 'bg-slate-50',  iconBg: '#cbd5e1', track: 'bg-slate-100', fill: 'w-0' },
+    done:    { card: 'bg-blue-50',   iconBg: '#2563eb', track: 'bg-blue-100',  fill: 'bg-blue-600 w-full' },
+    pending: { card: 'bg-rose-50',   iconBg: '#ef4444', track: 'bg-rose-100',  fill: 'w-0' },
+  }[tone]
+  return (
+    <div className={`${styles.card} rounded-2xl p-3 text-center`}>
+      <div className="w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center" style={{ background: styles.iconBg }}>
+        <AppIcon name={icon} size={14} className="text-white" />
+      </div>
+      <p className="text-[9px] font-bold text-gray-500 uppercase mb-1">{label}</p>
+      <div className={`w-full ${styles.track} h-1.5 rounded-full overflow-hidden`}>
+        <div className={`h-1.5 rounded-full transition-all duration-500 ${styles.fill}`} />
+      </div>
+      <p className="text-[8px] text-gray-400 mt-1 font-semibold">
+        {loading ? '...' : statusLabel}
+      </p>
+    </div>
+  )
+}
+
 export default function StaffHome() {
   const { profile, signOut } = useAuth()
   const [status, setStatus] = useState(null)
@@ -165,17 +188,9 @@ export default function StaffHome() {
             <p className="font-extrabold text-gray-900 text-base leading-tight">{shortName}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button type="button" className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 hover:bg-blue-100 transition-colors relative">
-            <AppIcon name="bell" size={18} />
-            {hasPendingReportReminder && (
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border border-white" />
-            )}
-          </button>
-          <button type="button" onClick={signOut} className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 hover:bg-blue-100 transition-colors">
-            <AppIcon name="logout" size={18} />
-          </button>
-        </div>
+        <button type="button" onClick={signOut} className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 hover:bg-blue-100 transition-colors">
+          <AppIcon name="logout" size={18} />
+        </button>
       </div>
 
       <div className="px-5 pt-5">
@@ -227,15 +242,17 @@ export default function StaffHome() {
 
                 <div className="bg-rose-50 rounded-2xl p-3 text-center">
                   <div className="w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center"
-                    style={{ background: !loading && status?.laporan ? '#e11d48' : '#fecdd3' }}>
+                    style={{ background: !loading && status?.setoran ? '#e11d48' : '#fecdd3' }}>
                     <AppIcon name="finance" size={14}
-                      className={!loading && status?.laporan ? 'text-white' : 'text-rose-500'} />
+                      className={!loading && status?.setoran ? 'text-white' : 'text-rose-500'} />
                   </div>
                   <p className="text-[9px] font-bold text-gray-500 uppercase mb-1">Setoran</p>
                   <div className="w-full bg-rose-100 h-1.5 rounded-full overflow-hidden">
-                    <div className={`h-1.5 rounded-full transition-all duration-500 ${!loading ? 'bg-rose-500 w-full' : 'w-0'}`} />
+                    <div className={`h-1.5 rounded-full transition-all duration-500 ${!loading && status?.setoran ? 'bg-rose-500 w-full' : 'w-0'}`} />
                   </div>
-                  <p className="text-[8px] text-gray-400 mt-1 font-semibold">Cek via form</p>
+                  <p className="text-[8px] text-gray-400 mt-1 font-semibold">
+                    {loading ? '...' : status?.setoran ? 'Sudah' : 'Belum'}
+                  </p>
                 </div>
               </div>
             </div>
@@ -259,63 +276,27 @@ export default function StaffHome() {
             </div>
 
             <div className="grid grid-cols-3 gap-2 mb-4">
-              {/* Pagi */}
-              <div className="bg-blue-50 rounded-2xl p-3 text-center">
-                <div className="w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center"
-                  style={{ background: !loading && status?.ceklisPagi ? '#22c55e' : '#dbeafe' }}>
-                  <AppIcon name="spark" size={14}
-                    className={!loading && status?.ceklisPagi ? 'text-white' : 'text-blue-400'} />
-                </div>
-                <p className="text-[9px] font-bold text-gray-500 uppercase mb-1">Pagi</p>
-                <div className="w-full bg-blue-100 h-1.5 rounded-full overflow-hidden">
-                  <div className={`h-1.5 rounded-full transition-all duration-500 ${
-                    loading ? 'w-0' :
-                    status?.ceklisPagi
-                      ? (status.ceklisPagi.is_late ? 'bg-amber-400 w-full' : 'bg-green-500 w-full')
-                      : 'w-0'
-                  }`} />
-                </div>
-                <p className="text-[8px] text-gray-400 mt-1 font-semibold">
-                  {loading ? '...' : status?.ceklisPagi ? (status.ceklisPagi.is_late ? 'Terlambat' : 'Selesai') : 'Belum'}
-                </p>
-              </div>
-
-              {/* Middle Ceklis */}
-              <div className="bg-violet-50 rounded-2xl p-3 text-center">
-                <div className="w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center"
-                  style={{ background: !loading && status?.ceklisMiddle ? '#7c3aed' : '#ede9fe' }}>
-                  <AppIcon name="checklist" size={14}
-                    className={!loading && status?.ceklisMiddle ? 'text-white' : 'text-violet-400'} />
-                </div>
-                <p className="text-[9px] font-bold text-gray-500 uppercase mb-1">Middle</p>
-                <div className="w-full bg-violet-100 h-1.5 rounded-full overflow-hidden">
-                  <div className={`h-1.5 rounded-full transition-all duration-500 ${
-                    loading ? 'w-0' :
-                    status?.ceklisMiddle
-                      ? (status.ceklisMiddle.is_late ? 'bg-amber-400 w-full' : 'bg-violet-500 w-full')
-                      : 'w-0'
-                  }`} />
-                </div>
-                <p className="text-[8px] text-gray-400 mt-1 font-semibold">
-                  {loading ? '...' : status?.ceklisMiddle ? (status.ceklisMiddle.is_late ? 'Terlambat' : 'Selesai') : 'Belum'}
-                </p>
-              </div>
-
-              {/* Malam */}
-              <div className="bg-indigo-50 rounded-2xl p-3 text-center">
-                <div className="w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center"
-                  style={{ background: !loading && status?.ceklisMalam ? '#6366f1' : '#e0e7ff' }}>
-                  <AppIcon name="checklist" size={14}
-                    className={!loading && status?.ceklisMalam ? 'text-white' : 'text-indigo-400'} />
-                </div>
-                <p className="text-[9px] font-bold text-gray-500 uppercase mb-1">Malam</p>
-                <div className="w-full bg-indigo-100 h-1.5 rounded-full overflow-hidden">
-                  <div className={`h-1.5 rounded-full transition-all duration-500 ${!loading && status?.ceklisMalam ? 'bg-indigo-500 w-full' : 'w-0'}`} />
-                </div>
-                <p className="text-[8px] text-gray-400 mt-1 font-semibold">
-                  {loading ? '...' : status?.ceklisMalam ? 'Selesai' : 'Terbuka'}
-                </p>
-              </div>
+              <StatusItem
+                icon="spark"
+                label="Pagi"
+                done={!!status?.ceklisPagi}
+                loading={loading}
+                statusLabel={status?.ceklisPagi ? (status.ceklisPagi.is_late ? 'Terlambat' : 'Selesai') : 'Belum'}
+              />
+              <StatusItem
+                icon="checklist"
+                label="Middle"
+                done={!!status?.ceklisMiddle}
+                loading={loading}
+                statusLabel={status?.ceklisMiddle ? (status.ceklisMiddle.is_late ? 'Terlambat' : 'Selesai') : 'Belum'}
+              />
+              <StatusItem
+                icon="checklist"
+                label="Malam"
+                done={!!status?.ceklisMalam}
+                loading={loading}
+                statusLabel={status?.ceklisMalam ? 'Selesai' : 'Belum'}
+              />
             </div>
           </div>
 
@@ -339,53 +320,27 @@ export default function StaffHome() {
             </div>
 
             <div className="grid grid-cols-3 gap-2 mb-4">
-              {/* Prep Pagi */}
-              <div className="bg-emerald-50 rounded-2xl p-3 text-center">
-                <div className="w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center"
-                  style={{ background: !loading && status?.prepPagi ? '#10b981' : '#d1fae5' }}>
-                  <AppIcon name="spark" size={14}
-                    className={!loading && status?.prepPagi ? 'text-white' : 'text-emerald-400'} />
-                </div>
-                <p className="text-[9px] font-bold text-gray-500 uppercase mb-1">Pagi</p>
-                <div className="w-full bg-emerald-100 h-1.5 rounded-full overflow-hidden">
-                  <div className={`h-1.5 rounded-full transition-all duration-500 ${!loading && status?.prepPagi ? 'bg-emerald-500 w-full' : 'w-0'}`} />
-                </div>
-                <p className="text-[8px] text-gray-400 mt-1 font-semibold">
-                  {loading ? '...' : status?.prepPagi ? 'Selesai' : 'Belum'}
-                </p>
-              </div>
-
-              {/* Prep Middle */}
-              <div className="bg-teal-50 rounded-2xl p-3 text-center">
-                <div className="w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center"
-                  style={{ background: !loading && status?.prepMiddle ? '#0d9488' : '#ccfbf1' }}>
-                  <AppIcon name="checklist" size={14}
-                    className={!loading && status?.prepMiddle ? 'text-white' : 'text-teal-400'} />
-                </div>
-                <p className="text-[9px] font-bold text-gray-500 uppercase mb-1">Middle</p>
-                <div className="w-full bg-teal-100 h-1.5 rounded-full overflow-hidden">
-                  <div className={`h-1.5 rounded-full transition-all duration-500 ${!loading && status?.prepMiddle ? 'bg-teal-500 w-full' : 'w-0'}`} />
-                </div>
-                <p className="text-[8px] text-gray-400 mt-1 font-semibold">
-                  {loading ? '...' : status?.prepMiddle ? 'Selesai' : 'Belum'}
-                </p>
-              </div>
-
-              {/* Prep Malam */}
-              <div className="bg-cyan-50 rounded-2xl p-3 text-center">
-                <div className="w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center"
-                  style={{ background: !loading && status?.prepMalam ? '#0891b2' : '#cffafe' }}>
-                  <AppIcon name="approval" size={14}
-                    className={!loading && status?.prepMalam ? 'text-white' : 'text-cyan-400'} />
-                </div>
-                <p className="text-[9px] font-bold text-gray-500 uppercase mb-1">Malam</p>
-                <div className="w-full bg-cyan-100 h-1.5 rounded-full overflow-hidden">
-                  <div className={`h-1.5 rounded-full transition-all duration-500 ${!loading && status?.prepMalam ? 'bg-cyan-500 w-full' : 'w-0'}`} />
-                </div>
-                <p className="text-[8px] text-gray-400 mt-1 font-semibold">
-                  {loading ? '...' : status?.prepMalam ? 'Selesai' : 'Belum'}
-                </p>
-              </div>
+              <StatusItem
+                icon="spark"
+                label="Pagi"
+                done={!!status?.prepPagi}
+                loading={loading}
+                statusLabel={status?.prepPagi ? 'Selesai' : 'Belum'}
+              />
+              <StatusItem
+                icon="checklist"
+                label="Middle"
+                done={!!status?.prepMiddle}
+                loading={loading}
+                statusLabel={status?.prepMiddle ? 'Selesai' : 'Belum'}
+              />
+              <StatusItem
+                icon="approval"
+                label="Malam"
+                done={!!status?.prepMalam}
+                loading={loading}
+                statusLabel={status?.prepMalam ? 'Selesai' : 'Belum'}
+              />
             </div>
           </div>
 
@@ -486,25 +441,6 @@ export default function StaffHome() {
             <AppIcon name="warning" size={72} className="absolute -right-4 -bottom-4 opacity-10" />
           </div>
         )}
-
-        {/* Papan Pengumuman */}
-        <div className="mb-5">
-          <div className="flex justify-between items-center mb-3">
-            <h2 className="font-extrabold text-gray-800 text-sm">Papan Pengumuman</h2>
-            <button className="text-[10px] text-blue-600 font-bold">Lihat Semua</button>
-          </div>
-          <div className="bg-gradient-to-br from-blue-600 to-blue-800 p-5 rounded-[2rem] text-white relative overflow-hidden shadow-lg">
-            <div className="relative z-10">
-              <span className="bg-white/20 text-[8px] font-black px-2 py-0.5 rounded uppercase mb-2 inline-block">Pengumuman</span>
-              <h3 className="font-bold text-sm mb-1">Selamat Bekerja, {shortName}!</h3>
-              <p className="text-[10px] opacity-85 leading-relaxed">
-                Pastikan ceklis pagi & malam sudah diisi setiap hari. Laporan harian wajib disubmit sebelum pukul 10.00 WIB.
-              </p>
-            </div>
-            <AppIcon name="spark" size={80} className="absolute -right-4 -bottom-4 opacity-10" />
-          </div>
-        </div>
-
 
         {/* Announcements */}
         {announcements.length > 0 && (

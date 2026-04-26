@@ -135,7 +135,7 @@ export default function Login() {
 
             {mode === 'staff' && (
               <p className="rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-xs text-sky-700">
-                Untuk staff toko dan asisten head store. Cukup isi email yang sudah didaftarkan admin.
+                Untuk staff toko, asisten head store, dan auditor. Cukup isi email yang sudah didaftarkan admin.
               </p>
             )}
 
@@ -161,7 +161,7 @@ export default function Login() {
 
           <p className="mt-6 text-center text-xs text-slate-400">
             {mode === 'staff'
-              ? 'Login staff memakai email yang sudah terdaftar. Jika gagal masuk, hubungi admin.'
+              ? 'Login staff & auditor memakai email yang sudah terdaftar. Jika gagal masuk, hubungi admin.'
               : 'Gunakan email dan password akun masing-masing. Jika lupa password, hubungi admin.'}
           </p>
         </div>
