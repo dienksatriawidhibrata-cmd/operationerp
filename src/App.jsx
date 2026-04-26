@@ -332,7 +332,12 @@ export default function App() {
 
       <Route path="/sop" element={
         <RequireAuth roles={[...STORE_ROLES, ...MANAGER_ROLES, ...SUPPORT_ROLES, ...TRAINER_ROLES, ...SC_ROLES]}>
-          <SopPage />
+          <SopPage category="umum" />
+        </RequireAuth>
+      } />
+      <Route path="/sop/produk" element={
+        <RequireAuth roles={[...STORE_ROLES, ...MANAGER_ROLES, ...SUPPORT_ROLES, ...TRAINER_ROLES, ...SC_ROLES]}>
+          <SopPage category="produk" />
         </RequireAuth>
       } />
 

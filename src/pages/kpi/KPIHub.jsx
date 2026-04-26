@@ -42,6 +42,23 @@ export default function KPIHub() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
+  // Auto-switch ke periode terakhir yang punya data kalau periode aktif kosong
+  useEffect(() => {
+    if (!profile?.id) return
+    const findLatestPeriod = async () => {
+      const { data } = await supabase
+        .from('kpi_monthly_reports')
+        .select('bulan')
+        .order('bulan', { ascending: false })
+        .limit(1)
+      if (data?.[0]?.bulan) {
+        const latest = data[0].bulan.slice(0, 7)
+        if (latest < currentPeriodWIB()) setPeriod(latest)
+      }
+    }
+    findLatestPeriod()
+  }, [profile?.id])
+
   useEffect(() => {
     const load = async () => {
       if (!profile?.id) return

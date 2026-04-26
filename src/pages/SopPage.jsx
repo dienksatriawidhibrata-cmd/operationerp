@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { fetchSopDocumentContent, fetchSopDocuments } from '../lib/googleApis'
 import { DMBottomNav, OpsBottomNav, SCBottomNav, SmartBottomNav, StaffBottomNav } from '../components/BottomNav'
@@ -87,16 +88,34 @@ function getDocumentCategory(doc) {
   return 'umum'
 }
 
-export default function SopPage() {
+// category prop: 'umum' | 'produk' — jika diisi, halaman dikunci ke kategori itu
+export default function SopPage({ category: lockedCategory = null }) {
   const { profile } = useAuth()
   const [documents, setDocuments] = useState([])
-  const [activeCategory, setActiveCategory] = useState('umum')
+  const activeCategory = lockedCategory || 'umum'
   const [activeDocumentId, setActiveDocumentId] = useState('')
   const [activeDocument, setActiveDocument] = useState(null)
   const [activeTabId, setActiveTabId] = useState('')
   const [loadingDocs, setLoadingDocs] = useState(true)
   const [loadingContent, setLoadingContent] = useState(false)
   const [error, setError] = useState('')
+
+  const loadDocuments = () => {
+    setLoadingDocs(true)
+    setError('')
+    fetchSopDocuments()
+      .then((rows) => {
+        const docs = rows || []
+        setDocuments(docs)
+        const firstDoc = docs.find((doc) => getDocumentCategory(doc) === activeCategory) || null
+        setActiveDocumentId(firstDoc?.id || '')
+      })
+      .catch((err) => {
+        setDocuments([])
+        setError(err.message || 'Gagal memuat daftar SOP.')
+      })
+      .finally(() => setLoadingDocs(false))
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -107,10 +126,7 @@ export default function SopPage() {
         if (cancelled) return
         const docs = rows || []
         setDocuments(docs)
-        const hasGeneralDocs = docs.some((doc) => getDocumentCategory(doc) === 'umum')
-        const nextCategory = hasGeneralDocs ? 'umum' : 'produk'
-        const firstDoc = docs.find((doc) => getDocumentCategory(doc) === nextCategory) || docs[0] || null
-        setActiveCategory(nextCategory)
+        const firstDoc = docs.find((doc) => getDocumentCategory(doc) === activeCategory) || docs[0] || null
         setActiveDocumentId(firstDoc?.id || '')
       })
       .catch((err) => {
@@ -190,20 +206,31 @@ export default function SopPage() {
 
   if (isFinanceRole(profile?.role)) return null
 
+  const pageTitle = activeCategory === 'produk' ? 'SOP Buku Besar Produk' : 'SOP Umum'
+
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,_#eef4ff_0%,_#f8fafc_36%,_#f8fafc_100%)] pb-28 lg:h-screen lg:overflow-hidden lg:pb-0">
       <div className="border-b border-slate-100 bg-white/92 px-5 py-5 backdrop-blur">
         <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">SOP Center</div>
-        <div className="mt-1 text-xl font-extrabold text-slate-900">Panduan Operasional</div>
+        <div className="mt-1 text-xl font-extrabold text-slate-900">{pageTitle}</div>
         <div className="mt-2 text-sm text-slate-500">
-          Buka semua dokumen SOP dalam satu halaman khusus.
+          {activeCategory === 'produk'
+            ? 'Panduan resep, produk, dan standar sajian Bagi Kopi.'
+            : 'Panduan prosedur operasional standar harian.'}
         </div>
       </div>
 
       <div className="px-5 py-5 lg:h-[calc(100vh-109px)] lg:overflow-hidden">
         {error && (
           <div className="mb-4 rounded-[1.5rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            {error}
+            <div>{error}</div>
+            <button
+              type="button"
+              onClick={loadDocuments}
+              className="mt-2 rounded-xl bg-amber-100 px-3 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-200"
+            >
+              Coba lagi
+            </button>
           </div>
         )}
 
@@ -211,24 +238,22 @@ export default function SopPage() {
           <div className="sticky top-3 z-20 -mx-1 rounded-[2.2rem] bg-[linear-gradient(180deg,rgba(238,244,255,0.96)_0%,rgba(248,250,252,0.92)_100%)] px-1 pb-2 pt-1 backdrop-blur">
             <div className="rounded-[2rem] border border-slate-100 bg-white p-4 shadow-sm">
             <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setActiveCategory('umum')}
-                className={`rounded-[1.1rem] px-3 py-2 text-xs font-bold transition ${
+              <Link
+                to="/sop"
+                className={`rounded-[1.1rem] px-3 py-2 text-center text-xs font-bold transition ${
                   activeCategory === 'umum' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-500'
                 }`}
               >
                 SOP Umum
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveCategory('produk')}
-                className={`rounded-[1.1rem] px-3 py-2 text-xs font-bold transition ${
+              </Link>
+              <Link
+                to="/sop/produk"
+                className={`rounded-[1.1rem] px-3 py-2 text-center text-xs font-bold transition ${
                   activeCategory === 'produk' ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-600'
                 }`}
               >
                 SOP Produk
-              </button>
+              </Link>
             </div>
 
             <select
@@ -318,24 +343,22 @@ export default function SopPage() {
             </div>
 
             <div className="mb-3 grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setActiveCategory('umum')}
-                className={`rounded-[1.1rem] px-3 py-2 text-xs font-bold transition ${
+              <Link
+                to="/sop"
+                className={`rounded-[1.1rem] px-3 py-2 text-center text-xs font-bold transition ${
                   activeCategory === 'umum' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-500'
                 }`}
               >
                 SOP Umum
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveCategory('produk')}
-                className={`rounded-[1.1rem] px-3 py-2 text-xs font-bold transition ${
+              </Link>
+              <Link
+                to="/sop/produk"
+                className={`rounded-[1.1rem] px-3 py-2 text-center text-xs font-bold transition ${
                   activeCategory === 'produk' ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-600'
                 }`}
               >
                 SOP Produk
-              </button>
+              </Link>
             </div>
 
             {loadingDocs ? (
