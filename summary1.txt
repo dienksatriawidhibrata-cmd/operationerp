@@ -1,5 +1,5 @@
 SUMMARY PROGRESS PROJECT — BAGI KOPI OPS
-Tanggal update: 2026-04-27
+Tanggal update: 2026-04-26 21:55 WIB
 Production: https://operationerp.pages.dev (auto-deploy dari GitHub main)
 Frontend lokal: http://localhost:5173 | Backend lokal: http://127.0.0.1:8000 (opsional)
 
@@ -16,6 +16,18 @@ folder backend/ tapi tidak di-deploy ke cloud (opsional, lokal only).
 ═══════════════════════════════════════════════════════════════
 CHANGE LOG TERBARU
 ═══════════════════════════════════════════════════════════════
+2026-04-26 21:55 WIB — b02f06f (push ke-1 sesi ini)
+  [FIX] KPI embed error: ambiguous FK profiles di KPIHub
+  - kpi_personal_scores: staff:profiles → staff:profiles!staff_id
+  - kpi_360_submissions:  evaluatee:profiles → evaluatee:profiles!evaluatee_id
+  - Root cause: tabel punya 3 FK ke profiles (staff_id, scored_by, verified_by)
+    sehingga Supabase tidak bisa auto-resolve embedding
+  [UPDATE] apps-script-bagikopi.txt
+  - Tambah fungsi testSopDoc() untuk verifikasi DocumentApp scope
+  - authorizeScript() sekarang juga test akses SOP_FOLDER_ID
+  - ⚠ Perlu aksi manual: jalankan testSopDoc di Apps Script editor
+    → klik Allow scope DocumentApp → buat New version deployment
+
 2026-04-27 — d30bb18
   [FEAT] SOP dipecah jadi 2 halaman terpisah
   - /sop → SOP Umum
@@ -296,6 +308,8 @@ TECH DEBT:
 ═══════════════════════════════════════════════════════════════
 16. COMMIT GITHUB TERBARU
 ═══════════════════════════════════════════════════════════════
+b02f06f  fix(kpi): resolve ambiguous profiles FK + apps-script testSopDoc
+6d6a342  docs: rewrite summary1.txt — ringkas, akurat, up-to-date 2026-04-27
 33ed4fb  docs: rewrite summary1.txt — sesi 2026-04-27
 d30bb18  feat: split SOP jadi 2 halaman + KPIHub auto-detect periode terbaru
 adc70bf  docs: rewrite summary1.txt — sesi 2026-04-26
