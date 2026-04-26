@@ -4,7 +4,17 @@ import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { OpsBottomNav } from '../../components/BottomNav'
 import { AppIcon } from '../../components/ui/AppKit'
-import { currentPeriodWIB, lastNPeriods, periodBounds, periodLabel, roleLabel, todayWIB } from '../../lib/utils'
+import { currentPeriodWIB, fmtRp, lastNPeriods, periodBounds, periodLabel, roleLabel, todayWIB } from '../../lib/utils'
+
+function fmtSetoranDate(dateStr) {
+  return new Date(dateStr).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+function shiftDateStr(dateStr, days) {
+  const d = new Date(dateStr)
+  d.setUTCDate(d.getUTCDate() + days)
+  return d.toISOString().split('T')[0]
+}
 
 const WIB_OFFSET_MS = 7 * 60 * 60 * 1000
 
@@ -19,6 +29,15 @@ export default function OpsHub() {
     activeOrders: 0,
     totalBranches: 0,
   })
+  const [setoranDate, setSetoranDate] = useState(today)
+  const [setoranStats, setSetoranStats] = useState({
+    totalMasuk: 0,
+    sudahSetor: 0,
+    pending: 0,
+    belumSetor: 0,
+    total: 0,
+  })
+  const [loadingSetoran, setLoadingSetoran] = useState(true)
   const [leaderboards, setLeaderboards] = useState({
     staffTop: [],
     staffBottom: [],
@@ -37,6 +56,32 @@ export default function OpsHub() {
   useEffect(() => {
     fetchLeaderboards()
   }, [selectedPeriod])
+
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      setLoadingSetoran(true)
+      const [branchRes, depRes] = await Promise.all([
+        supabase.from('branches').select('id', { count: 'exact', head: true }).eq('is_active', true),
+        supabase.from('daily_deposits').select('status, cash_disetorkan').eq('tanggal', setoranDate),
+      ])
+      if (cancelled) return
+      const total = branchRes.count ?? 0
+      let totalMasuk = 0, sudahSetor = 0, pending = 0
+      ;(depRes.data || []).forEach((d) => {
+        if (d.status === 'approved') {
+          sudahSetor += 1
+          totalMasuk += Number(d.cash_disetorkan || 0)
+        }
+        if (d.status === 'submitted') pending += 1
+      })
+      const belumSetor = Math.max(total - sudahSetor - pending, 0)
+      setSetoranStats({ totalMasuk, sudahSetor, pending, belumSetor, total })
+      setLoadingSetoran(false)
+    }
+    load()
+    return () => { cancelled = true }
+  }, [setoranDate])
 
   const fetchStats = async () => {
     const [setoranRes, ceklisRes, ordersRes, branchRes] = await Promise.all([
@@ -326,35 +371,10 @@ export default function OpsHub() {
   const shortName = profile?.full_name?.split(' ')[0] ?? 'Manager'
   const periodText = periodLabel(selectedPeriod)
 
-  const pillars = [
-    {
-      icon: 'store',
-      label: 'Retail Pillar',
-      sub: `${loading ? '-' : stats.totalBranches} Toko Aktif`,
-      status: stats.pendingSetoran > 0 ? 'Pending' : 'Normal',
-      detail: stats.pendingSetoran > 0 ? `${stats.pendingSetoran} setoran pending` : `Ceklis masuk ${stats.ceklisToday}`,
-      statusColor: stats.pendingSetoran > 0 ? 'text-orange-500' : 'text-green-500',
-      bg: 'bg-orange-50 text-orange-600',
-    },
-    {
-      icon: 'finance',
-      label: 'Supply Chain',
-      sub: `${loading ? '-' : stats.activeOrders} Order Aktif`,
-      status: stats.activeOrders > 0 ? 'Berjalan' : 'Aman',
-      detail: stats.activeOrders > 0 ? `${stats.activeOrders} order diproses` : 'Tidak ada order tertunda',
-      statusColor: stats.activeOrders > 0 ? 'text-blue-500' : 'text-green-500',
-      bg: 'bg-blue-50 text-blue-600',
-    },
-    {
-      icon: 'users',
-      label: 'Trainer & Dev',
-      sub: 'Staff Onboarding',
-      status: 'Active',
-      detail: 'Lihat dashboard trainer',
-      statusColor: 'text-indigo-600',
-      bg: 'bg-indigo-50 text-indigo-600',
-    },
-  ]
+  const isSetoranToday = setoranDate === today
+  const setoranDateParam = isSetoranToday ? '' : `date=${setoranDate}`
+  const setoranDetailHref = `/ops/setoran${setoranDateParam ? `?${setoranDateParam}` : ''}`
+  const setoranBelumHref = `/ops/setoran?${[setoranDateParam, 'filter=belum'].filter(Boolean).join('&')}`
 
   const quickActions = [
     { to: '/dm/approval', icon: 'approval', label: 'Approval\nSetoran', bg: 'bg-amber-50 border-amber-100 text-amber-600' },
@@ -419,25 +439,77 @@ export default function OpsHub() {
           </div>
         </div>
 
-        <h2 className="mb-4 text-sm font-extrabold text-gray-800">Pillar Performance</h2>
-        <div className="mb-6 space-y-3">
-          {pillars.map((pillar) => (
-            <div key={pillar.label} className="flex items-center justify-between rounded-3xl border border-gray-100 bg-white p-4 shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-2xl ${pillar.bg}`}>
-                  <AppIcon name={pillar.icon} size={20} />
-                </div>
-                <div>
-                  <p className="text-xs font-black">{pillar.label}</p>
-                  <p className="text-[10px] text-gray-400">{pillar.sub}</p>
-                </div>
+        <div className="mb-6 rounded-[2rem] border border-blue-100 bg-white p-5 shadow-sm">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-orange-50 text-orange-600">
+                <AppIcon name="store" size={20} />
               </div>
-              <div className="text-right">
-                <p className={`text-xs font-black ${pillar.statusColor}`}>{pillar.status}</p>
-                <p className="text-[9px] text-gray-400">{pillar.detail}</p>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Retail Pillar</p>
+                <h3 className="text-sm font-extrabold text-slate-900">Setoran Toko</h3>
               </div>
             </div>
-          ))}
+            <Link
+              to={setoranDetailHref}
+              className="flex items-center gap-1 rounded-full bg-blue-50 px-3 py-2 text-[10px] font-bold text-blue-600"
+            >
+              Detail
+              <AppIcon name="chevronRight" size={14} />
+            </Link>
+          </div>
+
+          <div className="mb-4 flex items-center justify-between rounded-2xl bg-slate-50 p-1.5">
+            <button
+              type="button"
+              onClick={() => setSetoranDate(shiftDateStr(setoranDate, -1))}
+              className="rounded-xl p-2 text-slate-500 hover:bg-white"
+            >
+              <AppIcon name="chevronLeft" size={16} />
+            </button>
+            <div className="flex items-center gap-2">
+              <AppIcon name="calendar" size={14} className="text-blue-600" />
+              <span className="text-xs font-bold">{fmtSetoranDate(setoranDate)}</span>
+              {isSetoranToday && (
+                <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[8px] font-bold text-blue-700">
+                  HARI INI
+                </span>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setSetoranDate(shiftDateStr(setoranDate, 1))}
+              disabled={isSetoranToday}
+              className="rounded-xl p-2 text-slate-500 hover:bg-white disabled:opacity-30 disabled:hover:bg-transparent"
+            >
+              <AppIcon name="chevronRight" size={16} />
+            </button>
+          </div>
+
+          <div className="mb-4 rounded-2xl bg-blue-600 p-4 text-white shadow-lg shadow-blue-100">
+            <p className="text-[10px] font-bold uppercase opacity-80">Total Masuk</p>
+            <p className="text-2xl font-black">
+              {loadingSetoran ? '...' : fmtRp(setoranStats.totalMasuk)}
+            </p>
+            <p className="mt-1 text-[10px] font-bold opacity-80">
+              {loadingSetoran ? '-' : `${setoranStats.sudahSetor}/${setoranStats.total} toko sudah setor`}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-2xl bg-orange-50 p-3">
+              <p className="text-[9px] font-bold uppercase text-orange-600">Pending</p>
+              <p className="text-lg font-black text-orange-600">
+                {loadingSetoran ? '-' : `${setoranStats.pending} Toko`}
+              </p>
+            </div>
+            <Link to={setoranBelumHref} className="rounded-2xl bg-rose-50 p-3 transition active:scale-95">
+              <p className="text-[9px] font-bold uppercase text-rose-600">Belum Setor</p>
+              <p className="text-lg font-black text-rose-600">
+                {loadingSetoran ? '-' : `${setoranStats.belumSetor} Toko`}
+              </p>
+            </Link>
+          </div>
         </div>
 
         <h2 className="mb-4 text-sm font-extrabold text-gray-800">Akses Cepat</h2>

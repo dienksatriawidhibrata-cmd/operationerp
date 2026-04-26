@@ -37,6 +37,7 @@ const KPIReport      = lazy(() => import('./pages/kpi/KPIReport'))
 const OpsHub          = lazy(() => import('./pages/ops/Hub'))
 const OpsVisitStatus  = lazy(() => import('./pages/ops/VisitStatus'))
 const OpsVisitMonitor = lazy(() => import('./pages/ops/VisitMonitor'))
+const OpsSetoranDetail = lazy(() => import('./pages/ops/SetoranDetail'))
 const TasksPage       = lazy(() => import('./pages/tasks/TasksPage'))
 const TrainerDashboard = lazy(() => import('./pages/trainer/Dashboard'))
 const TrainerStaffBaru = lazy(() => import('./pages/trainer/StaffBaru'))
@@ -273,6 +274,11 @@ export default function App() {
       <Route path="/ops/laporan" element={
         <RequireAuth roles={['ops_manager', ...SUPPORT_ROLES]}>
           <FinanceHub pageTitle="Laporan Harian" pageEyebrow="Ops Monitoring" showAuditAction={false} />
+        </RequireAuth>
+      } />
+      <Route path="/ops/setoran" element={
+        <RequireAuth roles={['ops_manager', ...SUPPORT_ROLES]}>
+          <OpsSetoranDetail />
         </RequireAuth>
       } />
       <Route path="/finance/audit" element={
