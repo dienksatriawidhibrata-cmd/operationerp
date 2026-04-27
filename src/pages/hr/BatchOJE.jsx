@@ -30,7 +30,7 @@ export default function HRBatchOJE() {
 
   // State untuk kandidat yang ditambah ke batch sebelum submit
   const [candidates, setCandidates] = useState([
-    { full_name: '', phone: '', applied_position: 'barista' },
+    { full_name: '', phone: '', email: '', applied_position: 'barista' },
   ])
 
   useEffect(() => {
@@ -55,7 +55,7 @@ export default function HRBatchOJE() {
   }, [])
 
   function addCandidate() {
-    setCandidates(prev => [...prev, { full_name: '', phone: '', applied_position: 'barista' }])
+    setCandidates(prev => [...prev, { full_name: '', phone: '', email: '', applied_position: 'barista' }])
   }
 
   function removeCandidate(idx) {
@@ -69,8 +69,8 @@ export default function HRBatchOJE() {
   async function handleSubmit(e) {
     e.preventDefault()
     if (!form.branch_id) return showToast('Pilih toko terlebih dahulu', 'error')
-    const valid = candidates.every(c => c.full_name.trim() && c.phone.trim())
-    if (!valid) return showToast('Nama dan nomor HP semua kandidat wajib diisi', 'error')
+    const valid = candidates.every(c => c.full_name.trim() && c.phone.trim() && c.email.trim())
+    if (!valid) return showToast('Nama, nomor HP, dan email semua kandidat wajib diisi', 'error')
 
     setSaving(true)
     try {
@@ -94,6 +94,7 @@ export default function HRBatchOJE() {
       const candidateRows = candidates.map(c => ({
         full_name: c.full_name.trim(),
         phone: c.phone.trim(),
+        email: c.email.trim(),
         applied_position: c.applied_position,
         branch_id: form.branch_id,
         batch_id: batch.id,
@@ -220,6 +221,14 @@ export default function HRBatchOJE() {
                       placeholder="Nomor HP"
                       value={c.phone}
                       onChange={e => updateCandidate(idx, 'phone', e.target.value)}
+                      className="input-field"
+                      required
+                    />
+                    <input
+                      type="email"
+                      placeholder="Email"
+                      value={c.email}
+                      onChange={e => updateCandidate(idx, 'email', e.target.value)}
                       className="input-field"
                       required
                     />

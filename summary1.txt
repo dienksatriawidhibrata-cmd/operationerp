@@ -1,5 +1,5 @@
 SUMMARY PROGRESS PROJECT — BAGI KOPI OPS
-Tanggal update: 2026-04-27 WIB
+Tanggal update: 2026-04-27 WIB (sesi 2)
 Production: https://operationerp.pages.dev (auto-deploy dari GitHub main)
 Frontend lokal: http://localhost:5175 | Backend lokal: http://127.0.0.1:8000 (opsional)
 
@@ -33,6 +33,45 @@ Recruitment Module SUDAH BERJALAN di lokal (testing confirmed):
 ═══════════════════════════════════════════════════════════════
 CHANGE LOG TERBARU
 ═══════════════════════════════════════════════════════════════
+2026-04-27 — LOKAL sesi 3 (belum commit)
+  [FIX] HR pipeline: koneksi HR↔HS↔DM + fitur hadir batch OJE
+  - src/lib/recruitment.js
+    · HR_STAFF_ACTION_STAGES: tambah batch_oje_reviewed + review_hrstaff
+      (sebelumnya hr_staff tidak dapat notif "Butuh Aksi" di 2 stage ini)
+  - src/pages/hr/StoreView.jsx
+    · Fix DM actionStages: sekarang hanya ['batch_oje_issued'] (tidak lagi
+      ikut semua HS_ACTION_STAGES yang bukan tugas DM)
+    · Tambah section "Batch OJE" untuk HS/DM: list batch terbaru dengan
+      badge "Belum diisi" kalau masih ada kandidat di stage batch_oje_issued
+  - supabase/migrations/026_batch_hadir.sql
+    · ALTER TABLE oje_batch_items ADD COLUMN hadir BOOLEAN DEFAULT true
+    · Jalankan di Supabase SQL Editor
+  - src/pages/hr/BatchDetail.jsx
+    · Toggle hadir/tidak hadir per peserta (✓ Hadir / ✗ Tidak Hadir)
+    · Kalau tidak hadir: semua nilai di-reset ke 0, input disabled
+    · "Tandai Batch Selesai": kandidat tidak hadir otomatis diterminasi
+      dengan catatan "Tidak hadir saat OJE Batch" di stage_history
+    · Warning banner sebelum tandai selesai jika ada peserta tidak hadir
+
+2026-04-27 — LOKAL sesi 2 (belum commit)
+  [FIX] HR Recruitment + UX polish
+  - supabase/migrations/025_hr_oje_access.sql
+    · Tambah HR roles ke RLS oje_batches (SELECT/INSERT/UPDATE/DELETE)
+    · Tambah HR roles ke RLS oje_batch_items (SELECT/INSERT/UPDATE)
+    · Root cause: migration 010 tidak mencakup hr_staff/hr_administrator
+      sehingga insert batch OJE selalu gagal karena RLS block
+  - src/pages/hr/Hub.jsx
+    · Quick Actions: tambah tombol "Keluar" (logout) di baris navigasi cepat
+  - src/pages/hr/BatchOJE.jsx
+    · Form kandidat: tambah field email (wajib) di antara no.HP & posisi
+    · Insert candidates sekarang sertakan email
+    · Validasi: nama + no.HP + email semua wajib diisi
+  - src/pages/trainer/Dashboard.jsx
+    · Label quick action "KPI Toko" → "Lihat KPI" (trainer hanya bisa baca)
+  - src/pages/staff/Home.jsx
+    · HeadStore Laporan Card: refactor ke pattern StatusItem (konsisten
+      dengan Ceklis & Preparation card)
+
 2026-04-27 — LOKAL (belum commit)
   [FEAT] Recruitment Module — pipeline rekrutmen 12 tahap
   - supabase/migrations/023_recruitment_module.sql
@@ -318,6 +357,8 @@ PENDUKUNG RECRUITMENT YANG BELUM DIBUAT:
   [BELUM] Deploy Edge Function + set Secret STAFF_SHARED_PASSWORD
   [BELUM] Tambah link "Rekrutmen" di BottomNav Head Store & Trainer
   [BELUM] Tabel work_schedules + jadwal shift otomatis pasca kontrak
+  [DONE]  Migration 025_hr_oje_access.sql sudah dijalankan
+  [BELUM] Jalankan migration 026_batch_hadir.sql di Supabase SQL Editor
 
 ═══════════════════════════════════════════════════════════════
 13. MIGRATIONS SUPABASE (urutan)
@@ -430,9 +471,10 @@ AUDIT UX YANG BELUM TUNTAS:
     perlu audit tombol mati, redundant section, navigation friction
   - Supply Chain handoff antar sub-role: cek apakah picking_spv selesai
     otomatis notify qc_spv, dst.
-  - Trainer "KPI Toko" link misleading — trainer hanya bisa lihat, tidak input
-  - HeadStore Laporan Card: tile Laporan/Opex/Setoran belum pakai pattern StatusItem
-  - Finance AuditSetoran: audit log, threshold selisih hardcoded 50000
+  - [DONE] Trainer "KPI Toko" link → diganti "Lihat KPI" (sesi 2)
+  - [DONE] HeadStore Laporan Card → sudah pakai pattern StatusItem (sesi 2)
+  - Finance AuditSetoran: audit log belum ada; selisih_threshold (50000 default
+    di schema) belum dipakai di frontend — butuh spec: kapan threshold dipakai?
 
 TECH DEBT:
   - Backend /api/auth/staff-login tidak dipakai → hapus kalau backend mau dipertahankan

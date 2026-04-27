@@ -7,6 +7,7 @@ import {
 } from '../../components/ui/AppKit'
 import { SmartBottomNav } from '../../components/BottomNav'
 import { stageLabel, HS_ACTION_STAGES, TRAINER_ACTION_STAGES } from '../../lib/recruitment'
+import { fmtDate } from '../../lib/utils'
 
 const FILTER_OPTIONS = [
   { key: 'all',    label: 'Semua' },
@@ -23,29 +24,47 @@ function homeFor(role) {
   return '/staff'
 }
 
+function actionStagesForRole(role) {
+  if (['head_store','asst_head_store'].includes(role)) return HS_ACTION_STAGES
+  if (role === 'district_manager') return ['batch_oje_issued']
+  if (role === 'trainer') return TRAINER_ACTION_STAGES
+  return [...HS_ACTION_STAGES, ...TRAINER_ACTION_STAGES]
+}
+
 export default function HRStoreView() {
   const { profile } = useAuth()
   const [candidates, setCandidates] = useState([])
+  const [batches, setBatches] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
 
   const role = profile?.role
-  const actionStages = ['head_store','asst_head_store'].includes(role)
-    ? HS_ACTION_STAGES
-    : role === 'trainer'
-    ? TRAINER_ACTION_STAGES
-    : [...HS_ACTION_STAGES, ...TRAINER_ACTION_STAGES]
+  const actionStages = actionStagesForRole(role)
+  const showBatchSection = ['head_store','district_manager'].includes(role)
 
   useEffect(() => {
     async function load() {
-      let q = supabase
-        .from('candidates')
-        .select('id, full_name, phone, applied_position, branch_id, current_stage, status, branches(name)')
-        .eq('status', 'active')
-        .order('created_at', { ascending: false })
+      const queries = [
+        supabase
+          .from('candidates')
+          .select('id, full_name, phone, applied_position, branch_id, current_stage, status, branches(name)')
+          .eq('status', 'active')
+          .order('created_at', { ascending: false }),
+      ]
 
-      const { data } = await q
-      setCandidates(data ?? [])
+      if (showBatchSection) {
+        queries.push(
+          supabase
+            .from('oje_batches')
+            .select('id, batch_date, notes, branches(name)')
+            .order('created_at', { ascending: false })
+            .limit(10)
+        )
+      }
+
+      const [{ data: cands }, batchRes] = await Promise.all(queries)
+      setCandidates(cands ?? [])
+      if (batchRes) setBatches(batchRes.data ?? [])
       setLoading(false)
     }
     load()
@@ -59,6 +78,11 @@ export default function HRStoreView() {
   })
 
   const butuhAksi = candidates.filter(c => actionStages.includes(c.current_stage))
+
+  // Batch yang masih butuh diisi nilai (kandidat masih di stage batch_oje_issued)
+  const batchPendingIds = new Set(
+    candidates.filter(c => c.current_stage === 'batch_oje_issued').map(c => c.batch_id).filter(Boolean)
+  )
 
   return (
     <SubpageShell title="Rekrutmen" eyebrow="Toko / Trainer" backTo={homeFor(role)}>
@@ -77,6 +101,39 @@ export default function HRStoreView() {
           </div>
         </div>
       </div>
+
+      {/* Shortcut batch aktif untuk HS/DM */}
+      {showBatchSection && batches.length > 0 && (
+        <SectionPanel title="Batch OJE" className="mx-4 mt-4">
+          <div className="divide-y divide-slate-100">
+            {batches.map(b => {
+              const pending = batchPendingIds.has(b.id)
+              return (
+                <Link
+                  key={b.id}
+                  to={`/hr/batch/${b.id}`}
+                  className="flex items-center justify-between px-4 py-3 hover:bg-slate-50"
+                >
+                  <div>
+                    <div className="text-sm font-semibold text-slate-800">{b.branches?.name ?? '-'}</div>
+                    <div className="text-xs text-slate-500 mt-0.5">{fmtDate(b.batch_date)}</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {pending && (
+                      <span className="text-xs bg-amber-100 text-amber-700 font-semibold px-2 py-0.5 rounded-full">
+                        Belum diisi
+                      </span>
+                    )}
+                    <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path d="m9 18 6-6-6-6" />
+                    </svg>
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
+        </SectionPanel>
+      )}
 
       {/* Filter */}
       <div className="flex gap-2 px-4 pt-3 overflow-x-auto pb-1">

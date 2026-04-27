@@ -28,7 +28,7 @@ function actionStagesForRole(role) {
 }
 
 export default function HRHub() {
-  const { profile } = useAuth()
+  const { profile, signOut } = useAuth()
   const [candidates, setCandidates] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -90,6 +90,12 @@ export default function HRHub() {
           >
             Lihat per Toko
           </Link>
+          <button
+            onClick={signOut}
+            className="flex-1 bg-rose-50 text-rose-600 text-xs font-semibold rounded-xl py-2.5 text-center"
+          >
+            Keluar
+          </button>
         </div>
       )}
 

@@ -14,10 +14,12 @@ const BATCH_CRITERIA = ['disiplin','sikap','behavior','nyapu_ngepel','layout','t
 const BATCH_LABELS   = ['Disiplin','Sikap','Behavior','Nyapu/Ngepel','Layout','Toilet','Stamina','Kerja Sama','Fokus','Subjektif']
 
 function calcTotal(item) {
+  if (!item.hadir) return 0
   return BATCH_CRITERIA.reduce((s, k) => s + (Number(item[k]) || 0), 0)
 }
 
-function hasil(total) {
+function hasil(total, hadir) {
+  if (!hadir) return { label: 'Tidak Hadir', tone: 'danger' }
   if (total >= 24) return { label: 'Lulus', tone: 'ok' }
   if (total >= 18) return { label: 'Dipertimbangkan', tone: 'warn' }
   return { label: 'Gagal', tone: 'danger' }
@@ -74,6 +76,34 @@ export default function HRBatchDetail() {
     }))
   }
 
+  async function toggleHadir(item) {
+    const newHadir = !item.hadir
+    const { error } = await supabase
+      .from('oje_batch_items')
+      .update({
+        hadir: newHadir,
+        // Reset semua nilai ke 0 kalau tidak hadir
+        ...(newHadir ? {} : BATCH_CRITERIA.reduce((acc, k) => ({ ...acc, [k]: 0 }), {})),
+      })
+      .eq('id', item.id)
+
+    if (error) {
+      showToast('Gagal update kehadiran: ' + error.message, 'error')
+    } else {
+      setItems(prev => prev.map(it =>
+        it.id === item.id
+          ? { ...it, hadir: newHadir, ...(newHadir ? {} : BATCH_CRITERIA.reduce((acc, k) => ({ ...acc, [k]: 0 }), {})) }
+          : it
+      ))
+      // Batalkan edit mode kalau sedang edit
+      setEditingItems(prev => {
+        const next = { ...prev }
+        delete next[item.id]
+        return next
+      })
+    }
+  }
+
   async function saveItem(itemId) {
     const edited = editingItems[itemId]
     if (!edited) return
@@ -98,27 +128,69 @@ export default function HRBatchDetail() {
     setSaving(false)
   }
 
-  // HR Staff: tandai batch selesai diupload → update candidates ke stage batch_oje_uploaded
+  // Tandai batch selesai: advance yang hadir → batch_oje_uploaded,
+  // terminate yang tidak hadir (otomatis)
   async function markUploaded() {
-    if (!window.confirm('Tandai batch ini selesai diisi? Kandidat akan lanjut ke tahap Seleksi.')) return
-    setSaving(true)
-    const { error } = await supabase
-      .from('candidates')
-      .update({ current_stage: 'batch_oje_uploaded' })
-      .eq('batch_id', id)
-      .eq('current_stage', 'batch_oje_issued')
+    const tidakHadirItems = items.filter(it => !it.hadir)
+    const tidakHadirNames = new Set(tidakHadirItems.map(it => it.nama_peserta))
 
-    if (error) {
-      showToast('Gagal: ' + error.message, 'error')
-    } else {
-      setCandidates(prev => prev.map(c =>
-        c.current_stage === 'batch_oje_issued'
-          ? { ...c, current_stage: 'batch_oje_uploaded' }
-          : c
-      ))
-      showToast('Batch ditandai selesai diisi', 'success')
+    const hadirCandidates  = candidates.filter(c => c.current_stage === 'batch_oje_issued' && !tidakHadirNames.has(c.full_name))
+    const absenCandidates  = candidates.filter(c => c.current_stage === 'batch_oje_issued' && tidakHadirNames.has(c.full_name))
+
+    const absenCount = absenCandidates.length
+    const msg = absenCount > 0
+      ? `Tandai batch selesai?\n${hadirCandidates.length} kandidat lanjut ke seleksi.\n${absenCount} kandidat tidak hadir akan otomatis diterminasi.`
+      : 'Tandai batch ini selesai diisi? Semua kandidat akan lanjut ke tahap Seleksi.'
+
+    if (!window.confirm(msg)) return
+    setSaving(true)
+
+    try {
+      // Advance kandidat yang hadir
+      if (hadirCandidates.length > 0) {
+        const { error } = await supabase
+          .from('candidates')
+          .update({ current_stage: 'batch_oje_uploaded' })
+          .in('id', hadirCandidates.map(c => c.id))
+        if (error) throw error
+      }
+
+      // Terminate kandidat tidak hadir
+      if (absenCandidates.length > 0) {
+        const { error } = await supabase
+          .from('candidates')
+          .update({ status: 'terminated' })
+          .in('id', absenCandidates.map(c => c.id))
+        if (error) throw error
+
+        // Insert stage_history untuk setiap terminasi
+        await supabase.from('stage_history').insert(
+          absenCandidates.map(c => ({
+            candidate_id: c.id,
+            from_stage: 'batch_oje_issued',
+            to_stage: 'terminated',
+            action: 'terminate',
+            notes: 'Tidak hadir saat OJE Batch',
+            performed_by: profile?.id,
+          }))
+        )
+      }
+
+      setCandidates(prev => prev.map(c => {
+        if (hadirCandidates.find(h => h.id === c.id))  return { ...c, current_stage: 'batch_oje_uploaded' }
+        if (absenCandidates.find(a => a.id === c.id))  return { ...c, status: 'terminated' }
+        return c
+      }))
+
+      const msg2 = absenCount > 0
+        ? `Batch selesai. ${absenCount} kandidat tidak hadir diterminasi.`
+        : 'Batch ditandai selesai diisi'
+      showToast(msg2, 'success')
+    } catch (err) {
+      showToast('Gagal: ' + err.message, 'error')
+    } finally {
+      setSaving(false)
     }
-    setSaving(false)
   }
 
   // HR Staff: advance kandidat pilihan ke OJE in Store (batch_oje_reviewed)
@@ -192,6 +264,7 @@ export default function HRBatchDetail() {
   const allUploaded = candidates.length > 0 && candidates.every(c =>
     c.current_stage !== 'batch_oje_issued'
   )
+  const tidakHadirCount = items.filter(it => !it.hadir).length
 
   return (
     <SubpageShell
@@ -206,7 +279,10 @@ export default function HRBatchDetail() {
           <InfoRow label="Tanggal" value={fmtDate(batch.batch_date)} />
           {batch.evaluator_name && <InfoRow label="Evaluator" value={batch.evaluator_name} />}
           {batch.notes && <InfoRow label="Catatan" value={batch.notes} />}
-          <InfoRow label="Jumlah Kandidat" value={candidates.length} />
+          <InfoRow label="Jumlah Peserta" value={items.length} />
+          {tidakHadirCount > 0 && (
+            <InfoRow label="Tidak Hadir" value={`${tidakHadirCount} orang`} />
+          )}
         </div>
       </SectionPanel>
 
@@ -220,10 +296,10 @@ export default function HRBatchDetail() {
               const isEditing = !!editingItems[item.id]
               const current = isEditing ? editingItems[item.id] : item
               const total = calcTotal(current)
-              const { label, tone } = hasil(total)
+              const { label, tone } = hasil(total, item.hadir)
 
               return (
-                <div key={item.id} className="px-4 py-3">
+                <div key={item.id} className={`px-4 py-3 ${!item.hadir ? 'opacity-60' : ''}`}>
                   <div className="flex items-center justify-between mb-2">
                     <div>
                       <span className="text-sm font-semibold text-slate-800">{item.nama_peserta}</span>
@@ -232,60 +308,87 @@ export default function HRBatchDetail() {
                       )}
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-slate-700">{total}/30</span>
+                      {item.hadir && (
+                        <span className="text-xs font-bold text-slate-700">{total}/30</span>
+                      )}
                       <ToneBadge tone={tone} label={label} />
                     </div>
                   </div>
 
-                  {isEditing ? (
-                    <div className="space-y-2">
-                      <div className="grid grid-cols-2 gap-2">
+                  {/* Toggle kehadiran */}
+                  {canUpload && (
+                    <div className="flex items-center gap-2 mb-2">
+                      <button
+                        onClick={() => toggleHadir(item)}
+                        className={`text-xs font-semibold px-3 py-1 rounded-full border transition-colors ${
+                          item.hadir
+                            ? 'bg-green-50 text-green-700 border-green-200'
+                            : 'bg-rose-50 text-rose-600 border-rose-200'
+                        }`}
+                      >
+                        {item.hadir ? '✓ Hadir' : '✗ Tidak Hadir'}
+                      </button>
+                      <span className="text-xs text-slate-400">Klik untuk ubah</span>
+                    </div>
+                  )}
+
+                  {/* Nilai — hanya tampil kalau hadir */}
+                  {item.hadir && (
+                    isEditing ? (
+                      <div className="space-y-2">
+                        <div className="grid grid-cols-2 gap-2">
+                          {BATCH_CRITERIA.map((k, i) => (
+                            <div key={k} className="flex items-center justify-between">
+                              <span className="text-xs text-slate-500">{BATCH_LABELS[i]}</span>
+                              <input
+                                type="number"
+                                min={0}
+                                max={3}
+                                value={current[k] || 0}
+                                onChange={e => updateEdit(item.id, k, e.target.value)}
+                                className="w-12 text-center border border-slate-200 rounded-lg text-xs py-1"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex gap-2 pt-1">
+                          <button
+                            onClick={() => setEditingItems(prev => { const n = {...prev}; delete n[item.id]; return n })}
+                            className="flex-1 text-xs bg-slate-100 text-slate-700 rounded-lg py-1.5 font-semibold"
+                          >
+                            Batal
+                          </button>
+                          <LoadingButton
+                            loading={saving}
+                            onClick={() => saveItem(item.id)}
+                            className="flex-1 btn-primary text-xs py-1.5"
+                          >
+                            Simpan
+                          </LoadingButton>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap gap-1">
                         {BATCH_CRITERIA.map((k, i) => (
-                          <div key={k} className="flex items-center justify-between">
-                            <span className="text-xs text-slate-500">{BATCH_LABELS[i]}</span>
-                            <input
-                              type="number"
-                              min={0}
-                              max={3}
-                              value={current[k] || 0}
-                              onChange={e => updateEdit(item.id, k, e.target.value)}
-                              className="w-12 text-center border border-slate-200 rounded-lg text-xs py-1"
-                            />
-                          </div>
+                          <span key={k} className="text-xs bg-slate-50 text-slate-600 rounded px-1.5 py-0.5">
+                            {BATCH_LABELS[i]}: <strong>{item[k] || 0}</strong>
+                          </span>
                         ))}
+                        {canUpload && (
+                          <button
+                            onClick={() => startEdit(item)}
+                            className="text-xs text-primary-600 font-semibold ml-1"
+                          >
+                            Edit
+                          </button>
+                        )}
                       </div>
-                      <div className="flex gap-2 pt-1">
-                        <button
-                          onClick={() => setEditingItems(prev => { const n = {...prev}; delete n[item.id]; return n })}
-                          className="flex-1 text-xs bg-slate-100 text-slate-700 rounded-lg py-1.5 font-semibold"
-                        >
-                          Batal
-                        </button>
-                        <LoadingButton
-                          loading={saving}
-                          onClick={() => saveItem(item.id)}
-                          className="flex-1 btn-primary text-xs py-1.5"
-                        >
-                          Simpan
-                        </LoadingButton>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-wrap gap-1">
-                      {BATCH_CRITERIA.map((k, i) => (
-                        <span key={k} className="text-xs bg-slate-50 text-slate-600 rounded px-1.5 py-0.5">
-                          {BATCH_LABELS[i]}: <strong>{item[k] || 0}</strong>
-                        </span>
-                      ))}
-                      {canUpload && (
-                        <button
-                          onClick={() => startEdit(item)}
-                          className="text-xs text-primary-600 font-semibold ml-1"
-                        >
-                          Edit
-                        </button>
-                      )}
-                    </div>
+                    )
+                  )}
+
+                  {/* Peserta tidak hadir — tampil keterangan */}
+                  {!item.hadir && (
+                    <p className="text-xs text-slate-400 italic">Tidak hadir — tidak dinilai</p>
                   )}
                 </div>
               )
@@ -296,6 +399,11 @@ export default function HRBatchDetail() {
         {/* Tandai selesai upload */}
         {canUpload && !allUploaded && candidates.some(c => c.current_stage === 'batch_oje_issued') && (
           <div className="px-4 pb-3">
+            {tidakHadirCount > 0 && (
+              <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2 mb-2">
+                {tidakHadirCount} peserta tidak hadir akan otomatis diterminasi saat batch diselesaikan.
+              </p>
+            )}
             <LoadingButton loading={saving} onClick={markUploaded} className="w-full btn-primary text-sm py-2.5">
               Tandai Batch Selesai Diisi
             </LoadingButton>
@@ -313,7 +421,7 @@ export default function HRBatchDetail() {
             {uploadedCandidates.map(c => {
               const item = items.find(it => it.nama_peserta === c.full_name)
               const total = item ? calcTotal(item) : 0
-              const { label, tone } = hasil(total)
+              const { label, tone } = hasil(total, item?.hadir ?? true)
               return (
                 <div key={c.id} className="flex items-center justify-between px-4 py-3">
                   <div>

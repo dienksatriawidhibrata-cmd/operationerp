@@ -46,9 +46,11 @@ export const ACTION_LABELS = {
 
 // Stage yang butuh aksi dari hr_staff
 export const HR_STAFF_ACTION_STAGES = [
-  'batch_oje_uploaded',
-  'oje_instore_submitted',
-  'revision_hrstaff',
+  'batch_oje_uploaded',    // seleksi siapa lanjut
+  'batch_oje_reviewed',    // terbitkan OJE in Store
+  'oje_instore_submitted', // review form OJE
+  'review_hrstaff',        // approve / flag revisi
+  'revision_hrstaff',      // putuskan langkah berikutnya
 ]
 
 // Stage yang butuh aksi dari hr_spv

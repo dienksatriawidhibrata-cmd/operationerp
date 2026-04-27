@@ -214,46 +214,27 @@ export default function StaffHome() {
               </div>
 
               <div className="grid grid-cols-3 gap-2 mb-4">
-                <div className="bg-amber-50 rounded-2xl p-3 text-center">
-                  <div className="w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center"
-                    style={{ background: !loading && status?.laporan ? '#f59e0b' : '#fde68a' }}>
-                    <AppIcon name="chart" size={14}
-                      className={!loading && status?.laporan ? 'text-white' : 'text-amber-500'} />
-                  </div>
-                  <p className="text-[9px] font-bold text-gray-500 uppercase mb-1">Laporan</p>
-                  <div className="w-full bg-amber-100 h-1.5 rounded-full overflow-hidden">
-                    <div className={`h-1.5 rounded-full transition-all duration-500 ${!loading && status?.laporan ? 'bg-amber-500 w-full' : 'w-0'}`} />
-                  </div>
-                  <p className="text-[8px] text-gray-400 mt-1 font-semibold">{loading ? '...' : laporanStatus}</p>
-                </div>
-
-                <div className="bg-orange-50 rounded-2xl p-3 text-center">
-                  <div className="w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center"
-                    style={{ background: !loading && (status?.totalOpex || 0) > 0 ? '#f97316' : '#fed7aa' }}>
-                    <AppIcon name="opex" size={14}
-                      className={!loading && (status?.totalOpex || 0) > 0 ? 'text-white' : 'text-orange-500'} />
-                  </div>
-                  <p className="text-[9px] font-bold text-gray-500 uppercase mb-1">Opex</p>
-                  <div className="w-full bg-orange-100 h-1.5 rounded-full overflow-hidden">
-                    <div className={`h-1.5 rounded-full transition-all duration-500 ${!loading && (status?.totalOpex || 0) > 0 ? 'bg-orange-500 w-full' : 'w-0'}`} />
-                  </div>
-                  <p className="text-[8px] text-gray-400 mt-1 font-semibold">{loading ? '...' : opexStatus}</p>
-                </div>
-
-                <div className="bg-rose-50 rounded-2xl p-3 text-center">
-                  <div className="w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center"
-                    style={{ background: !loading && status?.setoran ? '#e11d48' : '#fecdd3' }}>
-                    <AppIcon name="finance" size={14}
-                      className={!loading && status?.setoran ? 'text-white' : 'text-rose-500'} />
-                  </div>
-                  <p className="text-[9px] font-bold text-gray-500 uppercase mb-1">Setoran</p>
-                  <div className="w-full bg-rose-100 h-1.5 rounded-full overflow-hidden">
-                    <div className={`h-1.5 rounded-full transition-all duration-500 ${!loading && status?.setoran ? 'bg-rose-500 w-full' : 'w-0'}`} />
-                  </div>
-                  <p className="text-[8px] text-gray-400 mt-1 font-semibold">
-                    {loading ? '...' : status?.setoran ? 'Sudah' : 'Belum'}
-                  </p>
-                </div>
+                <StatusItem
+                  icon="chart"
+                  label="Laporan"
+                  done={!loading && !!status?.laporan}
+                  loading={loading}
+                  statusLabel={laporanStatus}
+                />
+                <StatusItem
+                  icon="opex"
+                  label="Opex"
+                  done={!loading && (status?.totalOpex || 0) > 0}
+                  loading={loading}
+                  statusLabel={opexStatus}
+                />
+                <StatusItem
+                  icon="finance"
+                  label="Setoran"
+                  done={!loading && !!status?.setoran}
+                  loading={loading}
+                  statusLabel={loading ? '...' : status?.setoran ? 'Sudah' : 'Belum'}
+                />
               </div>
             </div>
 

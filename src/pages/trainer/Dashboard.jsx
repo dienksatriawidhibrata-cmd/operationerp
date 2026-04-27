@@ -59,7 +59,7 @@ export default function TrainerDashboard() {
     { to: '/trainer/staff-baru', icon: 'users', label: 'Staff\nBaru' },
     { to: '/trainer/staff-lama', icon: 'matrix', label: 'Staff\nLama' },
     { to: '/trainer/oje', icon: 'spark', label: 'OJE\nPenilaian' },
-    { to: '/kpi', icon: 'chart', label: 'KPI\nToko' },
+    { to: '/kpi', icon: 'chart', label: 'Lihat\nKPI' },
     { to: '/sop', icon: 'checklist', label: 'Panduan\nSOP' },
   ]
 
