@@ -114,7 +114,8 @@ export default function HRBatchOJE() {
         sort_order: idx,
       }))
 
-      await supabase.from('oje_batch_items').insert(batchItems)
+      const { error: itemsErr } = await supabase.from('oje_batch_items').insert(batchItems)
+      if (itemsErr) throw itemsErr
 
       showToast(`Batch OJE dibuat — ${candidates.length} kandidat`, 'success')
       navigate(`/hr/batch/${batch.id}`)
