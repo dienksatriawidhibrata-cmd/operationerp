@@ -255,7 +255,7 @@ export default function HRBatchOJE() {
               >
                 Batal
               </button>
-              <LoadingButton loading={saving} className="flex-1 btn-primary text-sm py-2.5">
+              <LoadingButton loading={saving} type="submit" className="flex-1 btn-primary text-sm py-2.5">
                 Buat Batch
               </LoadingButton>
             </div>
