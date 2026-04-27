@@ -1,7 +1,7 @@
 SUMMARY PROGRESS PROJECT — BAGI KOPI OPS
 Tanggal update: 2026-04-27 WIB
 Production: https://operationerp.pages.dev (auto-deploy dari GitHub main)
-Frontend lokal: http://localhost:5173 | Backend lokal: http://127.0.0.1:8000 (opsional)
+Frontend lokal: http://localhost:5175 | Backend lokal: http://127.0.0.1:8000 (opsional)
 
 ═══════════════════════════════════════════════════════════════
 STATUS KESELURUHAN
@@ -23,54 +23,74 @@ SOP Center sudah live dengan arsitektur baru:
 - SOP Produk: Buku Besar embed via iframe — tabel tetap rapi persis
   seperti di Google Docs, tanpa parsing
 
+Recruitment Module SUDAH BERJALAN di lokal (testing confirmed):
+- 4 HR roles baru: hr_staff, hr_spv, hr_legal, hr_administrator
+- 12-stage pipeline: Batch OJE → OJE in Store → Review → Approval
+  → Kontrak (auto-create akun) → OJT → Assessment → Training → On Duty
+- OJT Checklist: 14 item, 3 kolom sign-off (HS, Trainer, Staff)
+- Migration 023 + 024 SUDAH dijalankan di Supabase
+
 ═══════════════════════════════════════════════════════════════
 CHANGE LOG TERBARU
 ═══════════════════════════════════════════════════════════════
+2026-04-27 — LOKAL (belum commit)
+  [FEAT] Recruitment Module — pipeline rekrutmen 12 tahap
+  - supabase/migrations/023_recruitment_module.sql
+    · Tabel: candidates, stage_history, stage_forms
+    · 4 HR roles baru: hr_staff, hr_spv, hr_legal, hr_administrator
+    · RLS lengkap per role, helper functions: archive_stage_form,
+      next_form_version, set_updated_at
+    · Update: profiles_role_check, handle_new_user, can_access_branch
+  - supabase/migrations/024_ojt_checklists.sql
+    · Tabel: ojt_checklists (14 item, 3 kolom sign-off JSONB)
+    · is_complete generated column, RLS per role
+  - supabase/functions/recruitment-onboard/index.ts
+    · Dipanggil saat hr_legal submit kontrak
+    · Auto-create auth user → profile (handle_new_user trigger)
+    · Update candidate: email final, stage → ojt_instore
+    · Insert stage_history action=activate
+  - src/lib/recruitment.js
+    · Konstanta: STAGES (14 stage), OJT_ITEMS (14 item), OJT_SIGNERS
+    · Helpers: stageLabel, needsActionFrom, actionStagesForRole
+  - src/pages/hr/Hub.jsx — dashboard HR: pipeline overview + butuh aksi
+  - src/pages/hr/BatchOJE.jsx — create batch + daftar batch riwayat
+  - src/pages/hr/BatchDetail.jsx — input nilai peserta + seleksi lanjut
+  - src/pages/hr/CandidateDetail.jsx — stage timeline + semua action form
+    · Partial revision: flag field spesifik, HS edit hanya field diflag
+    · kontrak: panggil Edge Function recruitment-onboard
+    · Link ke OJT Checklist saat stage ojt_instore/assessment/training
+  - src/pages/hr/StoreView.jsx — view HS/DM/Trainer (filter butuh aksi)
+  - src/pages/hr/KontrakPage.jsx — list kontrak_pending untuk hr_legal
+  - src/pages/hr/OjtChecklist.jsx — checklist 14 item interaktif
+    · Tick per item sesuai kolom role, final sign-off per pihak
+  - src/components/BottomNav.jsx — HRBottomNav + SmartBottomNav update
+  - src/lib/access.js — tambah HR_ROLES constant
+  - src/lib/utils.js — tambah label hr_staff/hr_spv/hr_legal/hr_administrator
+  - src/App.jsx — routing + redirect untuk semua HR roles
+
 2026-04-27 — cf084d7
   [FIX] SOP Center: file .docx terdeteksi + iframe embed untuk produk
   - apps-script-bagikopi.txt:
     · listSops: scan Google Docs DAN .docx di folder SOP, tambah field mimeType
     · getSopDoc: ganti getParagraphs() ke iterasi body children
       → sekarang baca paragraph, list_item, DAN table dengan benar
-    · DocumentApp scope sudah di-authorize (testSopDoc PASSED), Apps Script
-      sudah di-redeploy ke versi baru
+    · DocumentApp scope sudah di-authorize (testSopDoc PASSED)
   - src/pages/SopPage.jsx:
-    · Tambah isGoogleDoc(), getDocPreviewUrl(), useIframeView
     · File .docx: tampil via drive.google.com/file/{id}/preview (iframe)
     · Kategori produk: selalu iframe embed docs.google.com/document/{id}/preview
-    · Skip fetchSopDocumentContent untuk mode iframe
-    · Panel Document Tabs desktop: pesan "Navigasi di dalam dokumen" saat iframe
 
 2026-04-27 — 15ffa86
   [FEAT] Data Explorer widget di dashboard ops_manager
   - src/components/AskTheData.jsx: 8 kategori analitik dengan tabel
-    · Status Setoran Toko, Skip Rate Ceklis & Prep, Beban Opex
-    · Kepatuhan Laporan HS, Visit DM & AM, Aktivitas Staff
-    · Sales POS per Outlet, Ringkasan Komplain
-  - Period selector bulanan (12 bulan ke belakang)
   - Query langsung ke Supabase — tanpa AI API, tanpa Edge Function
-  - src/pages/ops/Hub.jsx: widget dipasang di atas quote block
-
-2026-04-27 — c57ae46
-  [FEAT] Data infrastruktur untuk analitik
-  - 022_sales_analytics.sql: tabel pos_sales_monthly + pos_complaints + RLS
-    (SUDAH dijalankan di Supabase SQL Editor)
-  - scripts/sync-pos-to-supabase.py: sync SQLite → Supabase
-    (SUDAH dijalankan: 1.022 rows sales + 3.887 rows komplain)
-  - supabase/functions/ask-the-data/index.ts: Edge Function (deploy, standby)
-    · Auth check ops_manager, Gemini REST API, 9 tools
-    · Tidak aktif dipakai — Data Explorer lebih dipilih untuk saat ini
-
-2026-04-26 — b02f06f
-  [FIX] KPI embed error: ambiguous FK profiles di KPIHub
-  [UPDATE] apps-script-bagikopi.txt: tambah testSopDoc() + perbaiki authorizeScript()
 
 ═══════════════════════════════════════════════════════════════
 1. DASHBOARD & FITUR OPERASIONAL
 ═══════════════════════════════════════════════════════════════
 Dashboard aktif per role:
   Staff, Head Store, District Manager, Area Manager,
-  Ops Manager, Finance, Supply Chain, Trainer, Auditor.
+  Ops Manager, Finance, Supply Chain, Trainer, Auditor,
+  HR Staff, HR SPV, HR Legal, HR Administrator.
 
 Fitur utama:
 - Ceklis harian 3 shift (pagi/middle/malam) + foto per item
@@ -90,6 +110,7 @@ Fitur utama:
     rejected              → Ditolak (rose)
     no record / draft     → Belum (abu)
 - Data Explorer di /ops: 8 tabel analitik untuk ops_manager
+- Recruitment Module di /hr (lokal, belum production)
 
 ═══════════════════════════════════════════════════════════════
 2. KPI DAN LEADERBOARD
@@ -116,9 +137,8 @@ Tabel Supabase: kpi_monthly_reports, kpi_personal_scores,
 
 ARSITEKTUR DATA (per 2026-04-27):
   listSops (Apps Script):
-    → Scan folder SOP_FOLDER_ID untuk Google Docs (application/vnd.google-apps.document)
-      DAN file Word (.docx) — keduanya dikembalikan dengan field mimeType
-    → Sort by name
+    → Scan folder SOP_FOLDER_ID untuk Google Docs DAN file Word (.docx)
+    → Sort by name, field mimeType disertakan
 
   Rendering di frontend (SopPage.jsx):
     → Google Docs (SOP Umum): getSopDoc → parsed blocks (heading, paragraph,
@@ -126,10 +146,6 @@ ARSITEKTUR DATA (per 2026-04-27):
     → File .docx (SOP Umum): iframe drive.google.com/file/{id}/preview
     → Kategori produk: selalu iframe docs.google.com/document/{id}/preview
       (preserves table formatting Buku Besar)
-
-  getSopDoc (Apps Script):
-    → Iterasi body.getNumChildren() → handle PARAGRAPH, LIST_ITEM, TABLE
-    → Tabel di-parse ke { type: 'table', rows: [[...]] }
 
 Apps Script config:
   - Akun: dienksatriawidhibrata@bagikopi.id
@@ -155,7 +171,6 @@ Apps Script config:
 ═══════════════════════════════════════════════════════════════
 - Folder: backend/ | Stack: FastAPI + supabase-py | Python 3.12
 - VITE_BACKEND_URL di production = kosong (tidak diset di Cloudflare Pages)
-- Kalau diset ke URL valid, SOP akan coba backend dulu sebelum fallback Apps Script
 - Endpoint yang ada (lokal only):
     GET  /health
     GET  /api/branches
@@ -163,7 +178,7 @@ Apps Script config:
     GET  /api/store-compliance/summary
     GET  /api/warehouse/receipts  (+.csv)
     GET  /api/sop/docs  (+/{document_id})
-    POST /api/auth/staff-login  ← ADA tapi tidak dipakai (login sudah frontend-only)
+    POST /api/auth/staff-login  ← tidak dipakai (login sudah frontend-only)
 
 ═══════════════════════════════════════════════════════════════
 6. STAFF LOGIN & HEAD STORE LOGIN
@@ -175,11 +190,13 @@ LOGIN STAFF — tab "Staff" (email saja, tanpa password):
   SHARED PASSWORD: tersimpan di .env (VITE_STAFF_PASS) + Cloudflare Pages env vars
   Sync script: node scripts/update-staff-shared-password.mjs
   Target roles: staff, barista, kitchen, waitress, asst_head_store, auditor
-               (HEAD_STORE TIDAK TERMASUK)
+               (HEAD_STORE TIDAK TERMASUK, HR ROLES TIDAK TERMASUK)
 
-LOGIN HEAD STORE — tab "Head Store & Manager" (email + password):
-  Role: head_store — password individual, bukan shared password
-  Reset: node scripts/reset-head-store-passwords.mjs "PasswordBaru123!"
+LOGIN HEAD STORE & MANAGER — tab "Head Store & Manager" (email + password):
+  Roles: head_store, district_manager, area_manager, ops_manager,
+         finance_supervisor, trainer, dan semua HR roles
+  Password: individual per akun
+  Reset head_store: node scripts/reset-head-store-passwords.mjs "PasswordBaru123!"
 
 Scripts butuh: SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY di .env
 
@@ -240,11 +257,70 @@ Status setup (per 2026-04-27):
 - ErrorBoundary global di App.jsx
 - LoadingButton component
 - XLSX export: OPEX dan warehouse receipts
-- BottomNav: tombol SOP (ikon buku) aktif untuk semua role,
-  active state pakai pathname.startsWith('/sop') → cover /sop dan /sop/produk
+- BottomNav SmartBottomNav: auto-detect role → nav yang sesuai
+  Tersedia: StaffBottomNav, DMBottomNav, OpsBottomNav, TrainerBottomNav,
+            FinanceBottomNav, SCBottomNav, AuditorBottomNav, HRBottomNav
 
 ═══════════════════════════════════════════════════════════════
-12. MIGRATIONS SUPABASE (urutan)
+12. RECRUITMENT MODULE
+═══════════════════════════════════════════════════════════════
+Status: LIVE di lokal (testing confirmed), belum deploy ke production.
+Routes: /hr, /hr/batch, /hr/batch/:id, /hr/candidates/:id,
+        /hr/candidates/:id/ojt, /hr/store, /hr/kontrak
+
+ROLES BARU:
+  hr_staff       → buat batch, review form, forward ke hr_spv
+  hr_spv         → approval final sebelum kontrak
+  hr_legal       → submit kontrak → trigger auto-create akun
+  hr_administrator → semua aksi HR (super-HR, hanya di modul recruitment)
+  Login: individual password via tab "Head Store & Manager"
+
+STATE MACHINE (14 stage):
+  batch_oje_issued      → HS/DM upload nilai batch
+  batch_oje_uploaded    → hr_staff seleksi siapa lanjut
+  batch_oje_reviewed    → hr_staff terbitkan OJE in Store
+  oje_instore_issued    → HS upload form kelulusan OJE
+  oje_instore_submitted → hr_staff review form
+  review_hrstaff        → approve ke hr_spv / flag revisi ke HS
+  revision_hs           → HS edit hanya field yang diflag
+  pending_hrspv         → hr_spv approve / kembalikan ke hr_staff
+  revision_hrstaff      → hr_staff putuskan langkah berikutnya
+  kontrak_pending       → hr_legal submit kontrak
+    → AUTO: buat auth user + profile (role & branch dari data kandidat)
+    → AUTO: kandidat masuk stage ojt_instore, status active
+  ojt_instore           → HS + Trainer isi OJT Checklist (14 item)
+  assessment            → Trainer assess (pass/fail, max 2x)
+  training              → Trainer complete
+  on_duty               → aktif bekerja, status on_duty
+
+OJT CHECKLIST (src/pages/hr/OjtChecklist.jsx):
+  - 14 item, 3 kolom: Head Store | PIC Training | Staff
+  - Tick per item sesuai kolom role yang login
+  - Final sign-off per pihak (tombol aktif setelah semua item di-tick)
+  - is_complete = true jika ketiga pihak sudah sign-off
+
+TABEL SUPABASE:
+  candidates          — pipeline record, source of truth stage
+  stage_history       — audit trail append-only (tidak boleh delete/update)
+  stage_forms         — form data versioned (is_current pattern)
+  ojt_checklists      — checklist OJT per kandidat (JSONB per item)
+  oje_batches         — batch header (existing, reused)
+  oje_batch_items     — peserta batch (existing, reused)
+  oje_evaluations     — evaluasi individual (existing, reused)
+
+EDGE FUNCTION:
+  supabase/functions/recruitment-onboard/index.ts
+  → Dipanggil frontend saat hr_legal submit kontrak
+  → Butuh Supabase Secret: STAFF_SHARED_PASSWORD
+  → Belum di-deploy (lokal only)
+
+PENDUKUNG RECRUITMENT YANG BELUM DIBUAT:
+  [BELUM] Deploy Edge Function + set Secret STAFF_SHARED_PASSWORD
+  [BELUM] Tambah link "Rekrutmen" di BottomNav Head Store & Trainer
+  [BELUM] Tabel work_schedules + jadwal shift otomatis pasca kontrak
+
+═══════════════════════════════════════════════════════════════
+13. MIGRATIONS SUPABASE (urutan)
 ═══════════════════════════════════════════════════════════════
 001_schema.sql                  — schema utama
 002_daily_visits_unique.sql     — unique constraint daily visits
@@ -256,7 +332,7 @@ Status setup (per 2026-04-27):
 007_store_roles_access.sql
 008_sc_race_condition_and_tables.sql
 009_receive_qty_on_surat_jalan.sql
-010_oje_tables.sql
+010_oje_tables.sql              — oje_batches, oje_batch_items, oje_evaluations
 011_daily_preparation.sql
 012_daily_checklists_middle_shift.sql
 013_kpi_personal.sql            — kpi_personal_scores, kpi_360_submissions, kpi_360_scores
@@ -269,12 +345,14 @@ Status setup (per 2026-04-27):
 020_announcements.sql           — SUDAH dijalankan
 021_security_hardening.sql      — RLS restrictive + trigger (BELUM dijalankan)
 022_sales_analytics.sql         — pos_sales_monthly + pos_complaints (SUDAH dijalankan)
+023_recruitment_module.sql      — candidates, stage_history, stage_forms, 4 HR roles (SUDAH dijalankan)
+024_ojt_checklists.sql          — ojt_checklists 14 item 3 sign-off (SUDAH dijalankan)
 
 ═══════════════════════════════════════════════════════════════
-13. SCRIPTS PENTING
+14. SCRIPTS PENTING
 ═══════════════════════════════════════════════════════════════
 scripts/update-staff-shared-password.mjs
-  → Sync shared password ke semua staff (tanpa head_store)
+  → Sync shared password ke semua staff (store roles + auditor, tanpa head_store & HR)
   → node scripts/update-staff-shared-password.mjs
 
 scripts/reset-head-store-passwords.mjs
@@ -298,13 +376,13 @@ apps-script-bagikopi.txt
   → Setiap kali file ini diubah: paste ulang ke editor → New version → Deploy
 
 ═══════════════════════════════════════════════════════════════
-14. ENV VARS
+15. ENV VARS
 ═══════════════════════════════════════════════════════════════
 Diperlukan di .env dan Cloudflare Pages:
   VITE_SUPABASE_URL           ← wajib
   VITE_SUPABASE_ANON_KEY      ← wajib
   VITE_APPS_SCRIPT_URL        ← wajib (SOP + upload foto)
-  VITE_STAFF_PASS             ← wajib (shared password staff)
+  VITE_STAFF_PASS             ← wajib (shared password store roles)
   VITE_GOOGLE_API_KEY         ← wajib (KPI Sheets supplementary)
   VITE_GOOGLE_KPI_SHEET_ID    ← wajib (KPI Sheets supplementary)
   VITE_DRIVE_FOLDER_ID        ← wajib (upload foto folder)
@@ -314,20 +392,31 @@ Diperlukan di .env dan Cloudflare Pages:
 Hanya untuk scripts lokal (JANGAN ke Cloudflare):
   SUPABASE_SERVICE_ROLE_KEY
 
-Supabase Secrets (di-set via CLI, tidak perlu di .env):
-  GEMINI_API_KEY  → untuk Edge Function ask-the-data (standby, tidak aktif dipakai)
+Supabase Secrets (di-set via Dashboard/CLI):
+  GEMINI_API_KEY        → Edge Function ask-the-data (standby, tidak aktif)
+  RESEND_API_KEY        → Edge Function send-deadline-alerts
+  RESEND_FROM_EMAIL     → Edge Function send-deadline-alerts
+  CRON_SECRET           → Edge Function send-deadline-alerts
+  STAFF_SHARED_PASSWORD → Edge Function recruitment-onboard (BELUM di-set)
 
 ═══════════════════════════════════════════════════════════════
-15. YANG MASIH PERLU DIKERJAKAN
+16. YANG MASIH PERLU DIKERJAKAN
 ═══════════════════════════════════════════════════════════════
 PRIORITAS TINGGI:
   [TODO]  Reset password head_store via script, sampaikan ke masing-masing
   [BELUM] Jalankan 021_security_hardening.sql di Supabase SQL Editor
   [BELUM] Selesaikan setup email: jalankan step SQL + migration 019 (§9)
   [TODO]  Pastikan semua file di folder SOP Drive di-set "Anyone with link can view"
-          agar iframe SOP bisa tampil untuk semua user (bukan hanya akun bagikopi.id)
+
+RECRUITMENT — LANGKAH DEPLOY:
+  [BELUM] Set Supabase Secret STAFF_SHARED_PASSWORD (isi = VITE_STAFF_PASS)
+  [BELUM] Deploy Edge Function recruitment-onboard via Supabase CLI/Dashboard
+  [BELUM] Commit + push ke GitHub → deploy ke production
+  [BELUM] Tambah link "Rekrutmen" di BottomNav Head Store & Trainer
+  [BELUM] Tabel work_schedules + jadwal shift otomatis pasca kontrak (§12)
 
 BUTUH SPEC / KEPUTUSAN:
+  - Jadwal shift otomatis: format tabel, siapa yang input, integrasi ke mana?
   - Actionable notifications: aksi apa yang bisa dilakukan dari notifikasi?
   - Badge Training system: badge apa, kriteria, display di mana?
   - Kanban antar divisi: kolom apa, siapa drag, data dari mana?
@@ -335,7 +424,6 @@ BUTUH SPEC / KEPUTUSAN:
   - Panduan per role: butuh konten per role
   - Role Support redefinition: tugas/tanggung jawab baru di sistem
   - PIC Audit Setoran: siapa PIC, cara assign, flow-nya
-  - OJT full module: halaman OJT lengkap belum dibuat
 
 AUDIT UX YANG BELUM TUNTAS:
   - DM Dashboard (src/pages/dm/Dashboard.jsx — ~2390 baris): terlalu panjang,
@@ -350,7 +438,7 @@ TECH DEBT:
   - Backend /api/auth/staff-login tidak dipakai → hapus kalau backend mau dipertahankan
 
 ═══════════════════════════════════════════════════════════════
-17. DATA EXPLORER — OPS MANAGER (§17)
+17. DATA EXPLORER — OPS MANAGER
 ═══════════════════════════════════════════════════════════════
 Status: LIVE di production (operationerp.pages.dev, login ops_manager)
 Komponen: src/components/AskTheData.jsx
@@ -382,15 +470,12 @@ EDGE FUNCTION (standby):
   Secret: GEMINI_API_KEY sudah di-set di Supabase secrets
 
 ═══════════════════════════════════════════════════════════════
-16. COMMIT GITHUB TERBARU
+18. COMMIT GITHUB TERBARU
 ═══════════════════════════════════════════════════════════════
 cf084d7  fix(sop): tampilkan file .docx di SOP Umum + iframe embed untuk SOP Produk
 3d55aff  docs: update summary + security cleanup
 15ffa86  refactor(ai): ganti AI chat ke Data Explorer tabel langsung
 47e8edb  fix(ai): ganti Gemini SDK ke REST API langsung di Edge Function
 c57ae46  feat(ai): Ask-the-Data AI Agent untuk ops_manager
-de4c098  docs: update summary1.txt — planning Ask-the-Data AI agent
-856ced6  docs: update summary1.txt — sesi 2026-04-26 21:55 WIB
 b02f06f  fix(kpi): resolve ambiguous profiles FK + apps-script testSopDoc
 d30bb18  feat: split SOP jadi 2 halaman + KPIHub auto-detect periode terbaru
-3607887  fix: SOP fallback ke Apps Script + KPIHub pakai nama tabel yang benar

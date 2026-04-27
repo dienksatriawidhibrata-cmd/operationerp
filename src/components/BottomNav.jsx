@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { AppIcon } from './ui/AppKit'
-import { isManagerRole, isOpsLikeRole, isStoreRole, isFinanceRole, canAccessTasks } from '../lib/access'
+import { isManagerRole, isOpsLikeRole, isStoreRole, isFinanceRole, canAccessTasks, HR_ROLES } from '../lib/access'
 
 function NavItem({ to, icon, label, active, badgeCount = 0 }) {
   return (
@@ -149,6 +149,7 @@ export function StaffBottomNav() {
         <NavItem to="/staff/laporan" icon="chart"   label="Laporan"       active={pathname.startsWith('/staff/laporan')} />
         <NavItem to="/sc/sj"         icon="finance" label="Terima Barang" active={pathname.startsWith('/sc')} badgeCount={issuedSjCount} />
         <NavItem to="/kpi"           icon="chart"   label="KPI"           active={pathname.startsWith('/kpi')} />
+        <NavItem to="/hr/store"      icon="users"   label="Rekrutmen"     active={pathname.startsWith('/hr')} />
         <NavItem to="/sop"           icon="book"    label="SOP"           active={pathname.startsWith('/sop')} />
       </Dock>
     )
@@ -222,7 +223,7 @@ export function TrainerBottomNav() {
       <NavItem to="/trainer/staff-lama" icon="matrix"    label="Staff Lama" active={pathname.startsWith('/trainer/staff-lama')} />
       <NavItem to="/trainer/oje"        icon="checklist" label="OJE"        active={pathname.startsWith('/trainer/oje')} />
       <NavItem to="/tasks"              icon="approval"  label="Tugas"      active={pathname.startsWith('/tasks')} badgeCount={taskCount} />
-      <NavItem to="/sop"                icon="book"      label="SOP"        active={pathname.startsWith('/sop')} />
+      <NavItem to="/hr/store"           icon="users"     label="Rekrutmen"  active={pathname.startsWith('/hr')} />
     </Dock>
   )
 }
@@ -271,6 +272,28 @@ export function AuditorBottomNav() {
   )
 }
 
+export function HRBottomNav() {
+  const { pathname } = useLocation()
+  const { profile } = useAuth()
+  const role = profile?.role
+
+  const showBatch   = ['hr_staff','hr_administrator'].includes(role)
+  const showKontrak = ['hr_legal','hr_administrator'].includes(role)
+
+  return (
+    <Dock>
+      <NavItem to="/hr"          icon="home"      label="Dashboard"  active={pathname === '/hr'} />
+      {showBatch && (
+        <NavItem to="/hr/batch"  icon="checklist" label="Batch OJE"  active={pathname.startsWith('/hr/batch')} />
+      )}
+      <NavItem to="/hr/store"    icon="store"     label="Per Toko"   active={pathname.startsWith('/hr/store')} />
+      {showKontrak && (
+        <NavItem to="/hr/kontrak" icon="approval" label="Kontrak"    active={pathname.startsWith('/hr/kontrak')} />
+      )}
+    </Dock>
+  )
+}
+
 export function SmartBottomNav() {
   const { profile } = useAuth()
   const role = profile?.role
@@ -280,5 +303,6 @@ export function SmartBottomNav() {
   if (role === 'trainer')        return <TrainerBottomNav />
   if (isFinanceRole(role))       return <FinanceBottomNav />
   if (role === 'auditor')        return <AuditorBottomNav />
+  if (HR_ROLES.includes(role))   return <HRBottomNav />
   return <SCBottomNav />
 }

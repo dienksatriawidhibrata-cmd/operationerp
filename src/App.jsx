@@ -4,6 +4,7 @@ import { useAuth } from './contexts/AuthContext'
 import {
   AUDITOR_ROLES,
   FINANCE_ROLES,
+  HR_ROLES,
   KPI_ALLOWED_ROLES,
   KPI_PERSONAL_VIEW_ROLES,
   KPI_PERSONAL_INPUT_ROLES,
@@ -59,6 +60,14 @@ const KPIPersonalInput   = lazy(() => import('./pages/kpi/KPIPersonalInputPage')
 const PeerReview360Page  = lazy(() => import('./pages/kpi/PeerReview360Page'))
 const KPI360ResultsPage  = lazy(() => import('./pages/kpi/KPI360ResultsPage'))
 
+const HRHub              = lazy(() => import('./pages/hr/Hub'))
+const HRBatchOJE         = lazy(() => import('./pages/hr/BatchOJE'))
+const HRBatchDetail      = lazy(() => import('./pages/hr/BatchDetail'))
+const HRCandidateDetail  = lazy(() => import('./pages/hr/CandidateDetail'))
+const HRStoreView        = lazy(() => import('./pages/hr/StoreView'))
+const HRKontrakPage      = lazy(() => import('./pages/hr/KontrakPage'))
+const HROjtChecklist     = lazy(() => import('./pages/hr/OjtChecklist'))
+
 function RootRedirect() {
   const { user, profile, loading, profileError, signOut } = useAuth()
 
@@ -74,6 +83,7 @@ function RootRedirect() {
   if (role === 'ops_manager' || SUPPORT_ROLES.includes(role)) return <Navigate to="/ops" replace />
   if (role === 'trainer') return <Navigate to="/trainer" replace />
   if (role === 'finance_supervisor') return <Navigate to="/finance" replace />
+  if (HR_ROLES.includes(role)) return <Navigate to="/hr" replace />
   if (role === 'picking_spv') return <Navigate to="/sc/picking" replace />
   if (role === 'qc_spv') return <Navigate to="/sc/qc" replace />
   if (role === 'distribution_spv') return <Navigate to="/sc/distribution" replace />
@@ -350,6 +360,44 @@ export default function App() {
       <Route path="/ops/pengumuman" element={
         <RequireAuth roles={['ops_manager', 'support_spv']}>
           <AnnouncementsPage />
+        </RequireAuth>
+      } />
+
+      {/* ── HR Recruitment ── */}
+      <Route path="/hr" element={
+        <RequireAuth roles={[...HR_ROLES, 'ops_manager']}>
+          <HRHub />
+        </RequireAuth>
+      } />
+      <Route path="/hr/batch" element={
+        <RequireAuth roles={['hr_staff', 'hr_administrator', 'ops_manager']}>
+          <HRBatchOJE />
+        </RequireAuth>
+      } />
+      <Route path="/hr/batch/:id" element={
+        <RequireAuth roles={[...HR_ROLES, 'head_store', 'district_manager', 'ops_manager']}>
+          <HRBatchDetail />
+        </RequireAuth>
+      } />
+      <Route path="/hr/candidates/:id" element={
+        <RequireAuth roles={[...HR_ROLES, 'head_store', 'district_manager', 'trainer', 'ops_manager']}>
+          <HRCandidateDetail />
+        </RequireAuth>
+      } />
+      <Route path="/hr/store" element={
+        <RequireAuth roles={['head_store', 'district_manager', ...HR_ROLES, 'ops_manager']}>
+          <HRStoreView />
+        </RequireAuth>
+      } />
+      <Route path="/hr/kontrak" element={
+        <RequireAuth roles={['hr_legal', 'hr_administrator', 'ops_manager']}>
+          <HRKontrakPage />
+        </RequireAuth>
+      } />
+      <Route path="/hr/candidates/:id/ojt" element={
+        <RequireAuth roles={[...HR_ROLES, 'head_store', 'district_manager', 'trainer', 'ops_manager',
+                             'staff', 'barista', 'kitchen', 'waitress', 'asst_head_store']}>
+          <HROjtChecklist />
         </RequireAuth>
       } />
 

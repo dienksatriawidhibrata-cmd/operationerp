@@ -100,6 +100,10 @@ export function roleLabel(role) {
     support_admin: 'Support Admin',
     trainer: 'Trainer',
     auditor: 'Auditor',
+    hr_staff: 'HR Staff',
+    hr_spv: 'HR Supervisor',
+    hr_legal: 'HR Legal',
+    hr_administrator: 'HR Administrator',
   }
   return map[role] || role
 }
