@@ -13,8 +13,12 @@ import { stageLabel } from '../../lib/recruitment'
 const BATCH_CRITERIA = ['disiplin','sikap','behavior','nyapu_ngepel','layout','toilet','stamina','kerja_sama','fokus','subjektif']
 const BATCH_LABELS   = ['Disiplin','Sikap','Behavior','Nyapu/Ngepel','Layout','Toilet','Stamina','Kerja Sama','Fokus','Subjektif']
 
+function isHadir(item) {
+  return item.hadir !== false
+}
+
 function calcTotal(item) {
-  if (!item.hadir) return 0
+  if (!isHadir(item)) return 0
   return BATCH_CRITERIA.reduce((s, k) => s + (Number(item[k]) || 0), 0)
 }
 
@@ -77,7 +81,7 @@ export default function HRBatchDetail() {
   }
 
   async function toggleHadir(item) {
-    const newHadir = !item.hadir
+    const newHadir = !isHadir(item)
     const { error } = await supabase
       .from('oje_batch_items')
       .update({
@@ -296,10 +300,11 @@ export default function HRBatchDetail() {
               const isEditing = !!editingItems[item.id]
               const current = isEditing ? editingItems[item.id] : item
               const total = calcTotal(current)
-              const { label, tone } = hasil(total, item.hadir)
+              const hadirFlag = isHadir(item)
+              const { label, tone } = hasil(total, hadirFlag)
 
               return (
-                <div key={item.id} className={`px-4 py-3 ${!item.hadir ? 'opacity-60' : ''}`}>
+                <div key={item.id} className={`px-4 py-3 ${!hadirFlag ? 'opacity-60' : ''}`}>
                   <div className="flex items-center justify-between mb-2">
                     <div>
                       <span className="text-sm font-semibold text-slate-800">{item.nama_peserta}</span>
@@ -308,7 +313,7 @@ export default function HRBatchDetail() {
                       )}
                     </div>
                     <div className="flex items-center gap-2">
-                      {item.hadir && (
+                      {hadirFlag && (
                         <span className="text-xs font-bold text-slate-700">{total}/30</span>
                       )}
                       <ToneBadge tone={tone} label={label} />
@@ -321,19 +326,19 @@ export default function HRBatchDetail() {
                       <button
                         onClick={() => toggleHadir(item)}
                         className={`text-xs font-semibold px-3 py-1 rounded-full border transition-colors ${
-                          item.hadir
+                          hadirFlag
                             ? 'bg-green-50 text-green-700 border-green-200'
                             : 'bg-rose-50 text-rose-600 border-rose-200'
                         }`}
                       >
-                        {item.hadir ? '✓ Hadir' : '✗ Tidak Hadir'}
+                        {hadirFlag ? '✓ Hadir' : '✗ Tidak Hadir'}
                       </button>
                       <span className="text-xs text-slate-400">Klik untuk ubah</span>
                     </div>
                   )}
 
                   {/* Nilai — hanya tampil kalau hadir */}
-                  {item.hadir && (
+                  {hadirFlag && (
                     isEditing ? (
                       <div className="space-y-2">
                         <div className="grid grid-cols-2 gap-2">
@@ -387,7 +392,7 @@ export default function HRBatchDetail() {
                   )}
 
                   {/* Peserta tidak hadir — tampil keterangan */}
-                  {!item.hadir && (
+                  {!hadirFlag && (
                     <p className="text-xs text-slate-400 italic">Tidak hadir — tidak dinilai</p>
                   )}
                 </div>
