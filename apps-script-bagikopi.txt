@@ -1,149 +1,183 @@
-// ============================================================
-//  BagiKopi Ops — Google Apps Script
-//  Akun: dienksatriawidhibrata@bagikopi.id
-//
-//  doGet  → SOP: listSops, getSopDoc
-//  doPost → Upload foto ke Google Drive
-//
-//  File yang di-upload akan accessible via direct link karena
-//  folder UPLOAD_FOLDER_ID sudah di-set "Anyone with link" dari
-//  Drive UI — tidak perlu setSharing per file.
-//
-//  ── Cara deploy (URUTAN WAJIB) ───────────────────────────────
-//  1. Paste kode ini, ganti semua → Save (Ctrl+S)
-//  2. Run → authorizeScript  (pastikan log: "OK")
-//  3. Run → testUpload       (pastikan log: "testUpload PASSED")
-//  4. Deploy → Manage deployments → Edit → New version → Deploy
-//     Jika muncul popup izin → Allow semua
-// ============================================================
+  // ============================================================
+  //  BagiKopi Ops — Google Apps Script
+  //  Akun: dienksatriawidhibrata@bagikopi.id
+  //
+  //  doGet  → SOP: listSops, getSopDoc
+  //  doPost → Upload foto ke Google Drive
+  //
+  //  File yang di-upload akan accessible via direct link karena
+  //  folder UPLOAD_FOLDER_ID sudah di-set "Anyone with link" dari
+  //  Drive UI — tidak perlu setSharing per file.
+  //
+  //  ── Cara deploy (URUTAN WAJIB) ───────────────────────────────
+  //  1. Paste kode ini, ganti semua → Save (Ctrl+S)
+  //  2. Run → authorizeScript  (pastikan log: "OK")
+  //  3. Run → testUpload       (pastikan log: "testUpload PASSED")
+  //  4. Deploy → Manage deployments → Edit → New version → Deploy
+  //     Jika muncul popup izin → Allow semua
+  // ============================================================
 
-var UPLOAD_FOLDER_ID = '1zsX4nKXk4xCzrwAgIlO135Zix8H13G_e';
-var SOP_FOLDER_ID    = '1GXkR3-A0XXkxJxkNlCv2FJXUO4NLqOSa';
+  var UPLOAD_FOLDER_ID = '1zsX4nKXk4xCzrwAgIlO135Zix8H13G_e';
+  var SOP_FOLDER_ID    = '1GXkR3-A0XXkxJxkNlCv2FJXUO4NLqOSa';
 
-function authorizeScript() {
-  DriveApp.getFolderById(UPLOAD_FOLDER_ID);
-  DriveApp.getFolderById(SOP_FOLDER_ID);
-  Logger.log('OK - folder accessible');
-}
-
-function testSopDoc() {
-  var folder = DriveApp.getFolderById(SOP_FOLDER_ID);
-  var files  = folder.getFilesByType(MimeType.GOOGLE_DOCS);
-  if (!files.hasNext()) {
-    Logger.log('SKIP - no Google Docs in SOP folder');
-    return;
+  function authorizeScript() {
+    DriveApp.getFolderById(UPLOAD_FOLDER_ID);
+    DriveApp.getFolderById(SOP_FOLDER_ID);
+    Logger.log('OK - folder accessible');
   }
-  var f   = files.next();
-  var doc = DocumentApp.openById(f.getId());
-  Logger.log('testSopDoc PASSED - opened: ' + doc.getName());
-}
 
-function testUpload() {
-  try {
-    var folder = DriveApp.getFolderById(UPLOAD_FOLDER_ID);
-    Logger.log('getFolderById OK: ' + folder.getName());
-
-    var blob = Utilities.newBlob('test', 'text/plain', 'test_bagikopi.txt');
-    var file = folder.createFile(blob);
-    Logger.log('createFile OK: ' + file.getId());
-
-    file.setTrashed(true);
-    Logger.log('testUpload PASSED');
-  } catch (err) {
-    Logger.log('FAILED: ' + err.toString());
+  function testSopDoc() {
+    var folder = DriveApp.getFolderById(SOP_FOLDER_ID);
+    var files  = folder.getFilesByType(MimeType.GOOGLE_DOCS);
+    if (!files.hasNext()) {
+      Logger.log('SKIP - no Google Docs in SOP folder');
+      return;
+    }
+    var f   = files.next();
+    var doc = DocumentApp.openById(f.getId());
+    Logger.log('testSopDoc PASSED - opened: ' + doc.getName());
   }
-}
 
-// ── Entry points ─────────────────────────────────────────────
+  function testUpload() {
+    try {
+      var folder = DriveApp.getFolderById(UPLOAD_FOLDER_ID);
+      Logger.log('getFolderById OK: ' + folder.getName());
 
-function doGet(e) {
-  var action = (e.parameter && e.parameter.action) || '';
-  try {
-    if (action === 'listSops')  return listSops();
-    if (action === 'getSopDoc') return getSopDoc(e.parameter.documentId);
-    return jsonResponse({ ok: false, error: 'Unknown action: ' + action });
-  } catch (err) {
-    return jsonResponse({ ok: false, error: err.toString() });
+      var blob = Utilities.newBlob('test', 'text/plain', 'test_bagikopi.txt');
+      var file = folder.createFile(blob);
+      Logger.log('createFile OK: ' + file.getId());
+
+      file.setTrashed(true);
+      Logger.log('testUpload PASSED');
+    } catch (err) {
+      Logger.log('FAILED: ' + err.toString());
+    }
   }
-}
 
-function doPost(e) {
-  try {
-    var payload = JSON.parse(e.postData.contents);
-    var decoded = Utilities.base64Decode(payload.data);
-    var blob    = Utilities.newBlob(decoded, payload.mimeType, payload.fileName);
+  // ── Entry points ─────────────────────────────────────────────
 
-    var folder = DriveApp.getFolderById(UPLOAD_FOLDER_ID);
-    var file   = folder.createFile(blob);
-    // Tidak perlu setSharing — folder sudah "Anyone with link" dari Drive UI
+  function doGet(e) {
+    var action = (e.parameter && e.parameter.action) || '';
+    try {
+      if (action === 'listSops')  return listSops();
+      if (action === 'getSopDoc') return getSopDoc(e.parameter.documentId);
+      return jsonResponse({ ok: false, error: 'Unknown action: ' + action });
+    } catch (err) {
+      return jsonResponse({ ok: false, error: err.toString() });
+    }
+  }
 
-    var fileId = file.getId();
+  function doPost(e) {
+    try {
+      var payload = JSON.parse(e.postData.contents);
+      var decoded = Utilities.base64Decode(payload.data);
+      var blob    = Utilities.newBlob(decoded, payload.mimeType, payload.fileName);
+
+      var folder = DriveApp.getFolderById(UPLOAD_FOLDER_ID);
+      var file   = folder.createFile(blob);
+      // Tidak perlu setSharing — folder sudah "Anyone with link" dari Drive UI
+
+      var fileId = file.getId();
+      return jsonResponse({
+        success: true,
+        fileId:  fileId,
+        url:     'https://drive.google.com/uc?id=' + fileId + '&export=view'
+      });
+    } catch (err) {
+      return jsonResponse({ success: false, error: err.toString() });
+    }
+  }
+
+  // ── SOP ──────────────────────────────────────────────────────
+
+  function listSops() {
+    var folder = DriveApp.getFolderById(SOP_FOLDER_ID);
+    var items  = [];
+
+    var gdocs = folder.getFilesByType(MimeType.GOOGLE_DOCS);
+    while (gdocs.hasNext()) {
+      var f = gdocs.next();
+      items.push({
+        id:           f.getId(),
+        name:         f.getName(),
+        mimeType:     MimeType.GOOGLE_DOCS,
+        modifiedTime: f.getLastUpdated().toISOString(),
+        webViewLink:  f.getUrl()
+      });
+    }
+
+    var DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    var docxFiles = folder.getFilesByType(DOCX_MIME);
+    while (docxFiles.hasNext()) {
+      var f = docxFiles.next();
+      items.push({
+        id:           f.getId(),
+        name:         f.getName(),
+        mimeType:     DOCX_MIME,
+        modifiedTime: f.getLastUpdated().toISOString(),
+        webViewLink:  f.getUrl()
+      });
+    }
+
+    items.sort(function(a, b) { return a.name.localeCompare(b.name); });
+    return jsonResponse({ ok: true, count: items.length, items: items });
+  }
+
+  function getSopDoc(documentId) {
+    if (!documentId) return jsonResponse({ ok: false, error: 'documentId diperlukan' });
+
+    var doc    = DocumentApp.openById(documentId);
+    var body   = doc.getBody();
+    var blocks = [];
+
+    for (var i = 0; i < body.getNumChildren(); i++) {
+      var el     = body.getChild(i);
+      var elType = el.getType();
+
+      if (elType === DocumentApp.ElementType.PARAGRAPH) {
+        var para    = el.asParagraph();
+        var text    = para.getText().trim();
+        if (!text) continue;
+        var heading = para.getHeading();
+        var bType   = 'paragraph';
+        var bStyle  = 'NORMAL_TEXT';
+        if      (heading === DocumentApp.ParagraphHeading.HEADING1) { bType = 'heading'; bStyle = 'HEADING_1'; }
+        else if (heading === DocumentApp.ParagraphHeading.HEADING2) { bType = 'heading'; bStyle = 'HEADING_2'; }
+        else if (heading === DocumentApp.ParagraphHeading.HEADING3) { bType = 'heading'; bStyle = 'HEADING_3'; }
+        blocks.push({ type: bType, style: bStyle, text: text });
+      }
+      else if (elType === DocumentApp.ElementType.LIST_ITEM) {
+        var li   = el.asListItem();
+        var text = li.getText().trim();
+        if (text) blocks.push({ type: 'list_item', style: 'NORMAL_TEXT', text: text });
+      }
+      else if (elType === DocumentApp.ElementType.TABLE) {
+        var table = el.asTable();
+        var rows  = [];
+        for (var r = 0; r < table.getNumRows(); r++) {
+          var tableRow = table.getRow(r);
+          var cells    = [];
+          for (var c = 0; c < tableRow.getNumCells(); c++) {
+            cells.push(tableRow.getCell(c).getText().trim());
+          }
+          rows.push(cells);
+        }
+        if (rows.length) blocks.push({ type: 'table', rows: rows });
+      }
+    }
+
     return jsonResponse({
-      success: true,
-      fileId:  fileId,
-      url:     'https://drive.google.com/uc?id=' + fileId + '&export=view'
-    });
-  } catch (err) {
-    return jsonResponse({ success: false, error: err.toString() });
-  }
-}
-
-// ── SOP ──────────────────────────────────────────────────────
-
-function listSops() {
-  var folder = DriveApp.getFolderById(SOP_FOLDER_ID);
-  var files  = folder.getFilesByType(MimeType.GOOGLE_DOCS);
-  var items  = [];
-
-  while (files.hasNext()) {
-    var f = files.next();
-    items.push({
-      id:           f.getId(),
-      name:         f.getName(),
-      modifiedTime: f.getLastUpdated().toISOString(),
-      webViewLink:  f.getUrl()
+      ok:    true,
+      id:    documentId,
+      title: doc.getName(),
+      tabs:  [{ id: 'main', title: doc.getName(), depth: 0, blocks: blocks }]
     });
   }
 
-  items.sort(function(a, b) { return a.name.localeCompare(b.name); });
-  return jsonResponse({ ok: true, count: items.length, items: items });
-}
+  // ── Helper ────────────────────────────────────────────────────
 
-function getSopDoc(documentId) {
-  if (!documentId) return jsonResponse({ ok: false, error: 'documentId diperlukan' });
-
-  var doc        = DocumentApp.openById(documentId);
-  var paragraphs = doc.getBody().getParagraphs();
-  var blocks     = [];
-
-  for (var i = 0; i < paragraphs.length; i++) {
-    var para = paragraphs[i];
-    var text = para.getText().trim();
-    if (!text) continue;
-
-    var heading = para.getHeading();
-    var type    = 'paragraph';
-    var style   = 'NORMAL_TEXT';
-
-    if      (heading === DocumentApp.ParagraphHeading.HEADING1) { type = 'heading'; style = 'HEADING_1'; }
-    else if (heading === DocumentApp.ParagraphHeading.HEADING2) { type = 'heading'; style = 'HEADING_2'; }
-    else if (heading === DocumentApp.ParagraphHeading.HEADING3) { type = 'heading'; style = 'HEADING_3'; }
-
-    blocks.push({ type: type, style: style, text: text });
+  function jsonResponse(data) {
+    return ContentService
+      .createTextOutput(JSON.stringify(data))
+      .setMimeType(ContentService.MimeType.JSON);
   }
-
-  return jsonResponse({
-    ok:    true,
-    id:    documentId,
-    title: doc.getName(),
-    tabs:  [{ id: 'main', title: doc.getName(), depth: 0, blocks: blocks }]
-  });
-}
-
-// ── Helper ────────────────────────────────────────────────────
-
-function jsonResponse(data) {
-  return ContentService
-    .createTextOutput(JSON.stringify(data))
-    .setMimeType(ContentService.MimeType.JSON);
-}

@@ -75,6 +75,19 @@ function normalizeDocLabel(name) {
   return String(name || '').replace(/\.(docx?|pdf|pptx?)$/i, '').trim()
 }
 
+const GDOC_MIME = 'application/vnd.google-apps.document'
+
+function isGoogleDoc(doc) {
+  return !doc?.mimeType || doc.mimeType === GDOC_MIME
+}
+
+function getDocPreviewUrl(docId, mimeType) {
+  if (!mimeType || mimeType === GDOC_MIME) {
+    return `https://docs.google.com/document/d/${docId}/preview`
+  }
+  return `https://drive.google.com/file/d/${docId}/preview`
+}
+
 function formatDocDate(value) {
   return value ? new Date(value).toLocaleDateString('id-ID') : 'Google Docs'
 }
@@ -150,6 +163,13 @@ export default function SopPage({ category: lockedCategory = null }) {
       return
     }
 
+    const meta = documents.find((d) => d.id === activeDocumentId)
+    if (activeCategory === 'produk' || !isGoogleDoc(meta)) {
+      setActiveDocument(null)
+      setLoadingContent(false)
+      return
+    }
+
     let cancelled = false
     setLoadingContent(true)
     setError('')
@@ -192,6 +212,11 @@ export default function SopPage({ category: lockedCategory = null }) {
     if (tabs.length > 1) return true
     return tabs.some((tab) => Number(tab?.depth || 0) > 0)
   }, [activeDocument])
+
+  const useIframeView = useMemo(
+    () => activeCategory === 'produk' || !isGoogleDoc(activeDocMeta),
+    [activeCategory, activeDocMeta]
+  )
 
   useEffect(() => {
     if (!filteredDocuments.length) {
@@ -298,35 +323,48 @@ export default function SopPage({ category: lockedCategory = null }) {
 
           <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-white shadow-sm">
             <div className="border-b border-slate-100 px-5 py-4">
-              <div className="text-lg font-extrabold text-slate-900">{activeDocument?.title || 'Panduan SOP'}</div>
+              <div className="text-lg font-extrabold text-slate-900">
+                {normalizeDocLabel(activeDocMeta?.name) || activeDocument?.title || 'Panduan SOP'}
+              </div>
               <div className="mt-1 text-sm text-slate-500">
-                {hasDocumentTabs ? activeTab?.title || 'Pilih document tab' : 'Dokumen SOP'}
+                {useIframeView ? 'Dokumen SOP' : hasDocumentTabs ? activeTab?.title || 'Pilih document tab' : 'Dokumen SOP'}
               </div>
             </div>
 
-            <div className="bg-[radial-gradient(circle_at_top,_rgba(96,165,250,0.10),_transparent_32%),linear-gradient(180deg,_#ffffff_0%,_#f8fafc_100%)] px-4 py-4">
-              {loadingContent ? (
-                <div className="flex min-h-[60vh] items-center justify-center text-sm text-slate-400">Memuat isi dokumen...</div>
-              ) : activeTab ? (
-                <div className="rounded-[1.75rem] border border-slate-200 bg-white px-5 py-5 shadow-[0_28px_80px_-40px_rgba(15,23,42,0.2)]">
-                  <div className="mb-6 border-b border-slate-100 pb-4">
-                    <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-blue-500">Live from Docs</div>
-                    <div className="mt-2 text-xl font-black text-slate-950">
-                      {hasDocumentTabs ? activeTab.title : activeDocument?.title}
-                    </div>
-                    {activeDocument?.summary && (
-                      <div className="mt-2 text-sm leading-6 text-slate-500">{activeDocument.summary}</div>
-                    )}
-                  </div>
-
-                  <div className="space-y-5">
-                    {activeTab.blocks.map((block, index) => renderBlock(block, index))}
-                  </div>
-                </div>
+            {useIframeView ? (
+              activeDocumentId ? (
+                <iframe
+                  src={getDocPreviewUrl(activeDocumentId, activeDocMeta?.mimeType)}
+                  className="block h-[70vh] w-full border-0"
+                  title={normalizeDocLabel(activeDocMeta?.name)}
+                />
               ) : (
                 <div className="flex min-h-[60vh] items-center justify-center text-sm text-slate-400">Pilih dokumen SOP untuk mulai membaca.</div>
-              )}
-            </div>
+              )
+            ) : (
+              <div className="bg-[radial-gradient(circle_at_top,_rgba(96,165,250,0.10),_transparent_32%),linear-gradient(180deg,_#ffffff_0%,_#f8fafc_100%)] px-4 py-4">
+                {loadingContent ? (
+                  <div className="flex min-h-[60vh] items-center justify-center text-sm text-slate-400">Memuat isi dokumen...</div>
+                ) : activeTab ? (
+                  <div className="rounded-[1.75rem] border border-slate-200 bg-white px-5 py-5 shadow-[0_28px_80px_-40px_rgba(15,23,42,0.2)]">
+                    <div className="mb-6 border-b border-slate-100 pb-4">
+                      <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-blue-500">Live from Docs</div>
+                      <div className="mt-2 text-xl font-black text-slate-950">
+                        {hasDocumentTabs ? activeTab.title : activeDocument?.title}
+                      </div>
+                      {activeDocument?.summary && (
+                        <div className="mt-2 text-sm leading-6 text-slate-500">{activeDocument.summary}</div>
+                      )}
+                    </div>
+                    <div className="space-y-5">
+                      {activeTab.blocks.map((block, index) => renderBlock(block, index))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex min-h-[60vh] items-center justify-center text-sm text-slate-400">Pilih dokumen SOP untuk mulai membaca.</div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -395,7 +433,9 @@ export default function SopPage({ category: lockedCategory = null }) {
               <AppIcon name="matrix" size={16} className="text-slate-300" />
             </div>
 
-            {loadingContent ? (
+            {useIframeView ? (
+              <div className="py-12 text-center text-sm text-slate-400">Navigasi tersedia di dalam dokumen.</div>
+            ) : loadingContent ? (
               <div className="py-12 text-center text-sm text-slate-400">Memuat tabs...</div>
             ) : hasDocumentTabs ? (
               <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
@@ -425,9 +465,11 @@ export default function SopPage({ category: lockedCategory = null }) {
             <div className="border-b border-slate-100 px-5 py-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <div className="text-lg font-extrabold text-slate-900">{activeDocument?.title || 'Panduan SOP'}</div>
+                  <div className="text-lg font-extrabold text-slate-900">
+                    {normalizeDocLabel(activeDocMeta?.name) || activeDocument?.title || 'Panduan SOP'}
+                  </div>
                   <div className="mt-1 text-sm text-slate-500">
-                    {hasDocumentTabs ? activeTab?.title || 'Pilih document tab' : 'Dokumen SOP'}
+                    {useIframeView ? 'Dokumen SOP' : hasDocumentTabs ? activeTab?.title || 'Pilih document tab' : 'Dokumen SOP'}
                   </div>
                 </div>
                 {activeDocMeta?.webViewLink && (
@@ -444,29 +486,40 @@ export default function SopPage({ category: lockedCategory = null }) {
               </div>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top,_rgba(96,165,250,0.10),_transparent_32%),linear-gradient(180deg,_#ffffff_0%,_#f8fafc_100%)] px-5 py-5">
-              {loadingContent ? (
-                <div className="flex h-full items-center justify-center text-sm text-slate-400">Memuat isi dokumen...</div>
-              ) : activeTab ? (
-                <div className="mx-auto max-w-4xl rounded-[2rem] border border-slate-200 bg-white px-6 py-6 shadow-[0_28px_80px_-40px_rgba(15,23,42,0.2)]">
-                  <div className="mb-6 border-b border-slate-100 pb-4">
-                    <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-blue-500">Live from Docs</div>
-                    <div className="mt-2 text-2xl font-black text-slate-950">
-                      {hasDocumentTabs ? activeTab.title : activeDocument?.title}
-                    </div>
-                    {activeDocument?.summary && (
-                      <div className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">{activeDocument.summary}</div>
-                    )}
-                  </div>
-
-                  <div className="space-y-5">
-                    {activeTab.blocks.map((block, index) => renderBlock(block, index))}
-                  </div>
-                </div>
+            {useIframeView ? (
+              activeDocumentId ? (
+                <iframe
+                  src={getDocPreviewUrl(activeDocumentId, activeDocMeta?.mimeType)}
+                  className="block min-h-0 flex-1 w-full border-0"
+                  title={normalizeDocLabel(activeDocMeta?.name)}
+                />
               ) : (
                 <div className="flex h-full items-center justify-center text-sm text-slate-400">Pilih dokumen SOP untuk mulai membaca.</div>
-              )}
-            </div>
+              )
+            ) : (
+              <div className="min-h-0 flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top,_rgba(96,165,250,0.10),_transparent_32%),linear-gradient(180deg,_#ffffff_0%,_#f8fafc_100%)] px-5 py-5">
+                {loadingContent ? (
+                  <div className="flex h-full items-center justify-center text-sm text-slate-400">Memuat isi dokumen...</div>
+                ) : activeTab ? (
+                  <div className="mx-auto max-w-4xl rounded-[2rem] border border-slate-200 bg-white px-6 py-6 shadow-[0_28px_80px_-40px_rgba(15,23,42,0.2)]">
+                    <div className="mb-6 border-b border-slate-100 pb-4">
+                      <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-blue-500">Live from Docs</div>
+                      <div className="mt-2 text-2xl font-black text-slate-950">
+                        {hasDocumentTabs ? activeTab.title : activeDocument?.title}
+                      </div>
+                      {activeDocument?.summary && (
+                        <div className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">{activeDocument.summary}</div>
+                      )}
+                    </div>
+                    <div className="space-y-5">
+                      {activeTab.blocks.map((block, index) => renderBlock(block, index))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex h-full items-center justify-center text-sm text-slate-400">Pilih dokumen SOP untuk mulai membaca.</div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
