@@ -20,9 +20,10 @@ export function ToastProvider({ children }) {
   const toastSuccess = useCallback((message) => add(message, 'success'), [add])
   const toastError   = useCallback((message) => add(message, 'error'), [add])
   const toastInfo    = useCallback((message) => add(message, 'info'), [add])
+  const showToast    = useCallback((message, type = 'info') => add(message, type), [add])
 
   return (
-    <ToastContext.Provider value={{ toastSuccess, toastError, toastInfo }}>
+    <ToastContext.Provider value={{ toastSuccess, toastError, toastInfo, showToast }}>
       {children}
       <ToastContainer toasts={toasts} onDismiss={dismiss} />
     </ToastContext.Provider>
