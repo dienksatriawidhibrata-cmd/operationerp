@@ -17,9 +17,30 @@ Data Explorer (§17) sudah live di dashboard ops_manager:
 8 kategori analitik query langsung ke Supabase, tanpa dependensi
 API eksternal.
 
+SOP Center sudah live dengan arsitektur baru:
+- SOP Umum: daftar Google Docs + .docx dari folder Drive, isi tampil
+  parsed (heading, paragraf, tabel, list item)
+- SOP Produk: Buku Besar embed via iframe — tabel tetap rapi persis
+  seperti di Google Docs, tanpa parsing
+
 ═══════════════════════════════════════════════════════════════
 CHANGE LOG TERBARU
 ═══════════════════════════════════════════════════════════════
+2026-04-27 — cf084d7
+  [FIX] SOP Center: file .docx terdeteksi + iframe embed untuk produk
+  - apps-script-bagikopi.txt:
+    · listSops: scan Google Docs DAN .docx di folder SOP, tambah field mimeType
+    · getSopDoc: ganti getParagraphs() ke iterasi body children
+      → sekarang baca paragraph, list_item, DAN table dengan benar
+    · DocumentApp scope sudah di-authorize (testSopDoc PASSED), Apps Script
+      sudah di-redeploy ke versi baru
+  - src/pages/SopPage.jsx:
+    · Tambah isGoogleDoc(), getDocPreviewUrl(), useIframeView
+    · File .docx: tampil via drive.google.com/file/{id}/preview (iframe)
+    · Kategori produk: selalu iframe embed docs.google.com/document/{id}/preview
+    · Skip fetchSopDocumentContent untuk mode iframe
+    · Panel Document Tabs desktop: pesan "Navigasi di dalam dokumen" saat iframe
+
 2026-04-27 — 15ffa86
   [FEAT] Data Explorer widget di dashboard ops_manager
   - src/components/AskTheData.jsx: 8 kategori analitik dengan tabel
@@ -42,17 +63,7 @@ CHANGE LOG TERBARU
 
 2026-04-26 — b02f06f
   [FIX] KPI embed error: ambiguous FK profiles di KPIHub
-  - kpi_personal_scores: staff:profiles → staff:profiles!staff_id
-  - kpi_360_submissions:  evaluatee:profiles → evaluatee:profiles!evaluatee_id
-  [UPDATE] apps-script-bagikopi.txt
-  - Tambah fungsi testSopDoc() untuk verifikasi DocumentApp scope
-  - authorizeScript() sekarang juga test akses SOP_FOLDER_ID
-  - ⚠ Perlu aksi manual: jalankan testSopDoc di Apps Script editor
-    → klik Allow scope DocumentApp → buat New version deployment
-
-2026-04-27 — d30bb18
-  [FEAT] SOP dipecah jadi 2 halaman: /sop dan /sop/produk
-  [FIX] KPIHub auto-detect periode terbaru
+  [UPDATE] apps-script-bagikopi.txt: tambah testSopDoc() + perbaiki authorizeScript()
 
 ═══════════════════════════════════════════════════════════════
 1. DASHBOARD & FITUR OPERASIONAL
@@ -101,18 +112,34 @@ Tabel Supabase: kpi_monthly_reports, kpi_personal_scores,
 - /sop        → SOP Umum (panduan prosedur operasional harian)
 - /sop/produk → SOP Buku Besar Produk (resep, standar sajian)
 - Aktif untuk semua role operasional (kecuali Finance)
-- Mobile: sticky selector compact + card
-- Desktop: 3-panel — daftar dokumen | document tabs | isi dokumen
-- Error state: pesan error + tombol "Coba lagi"
+- Mobile: sticky selector + card; Desktop: 3-panel layout
 
-Sumber data:
-  1. Apps Script doGet (action=listSops, getSopDoc) — PRIMARY
-  2. Backend FastAPI /api/sop — opsional, coba dulu kalau VITE_BACKEND_URL diset
+ARSITEKTUR DATA (per 2026-04-27):
+  listSops (Apps Script):
+    → Scan folder SOP_FOLDER_ID untuk Google Docs (application/vnd.google-apps.document)
+      DAN file Word (.docx) — keduanya dikembalikan dengan field mimeType
+    → Sort by name
+
+  Rendering di frontend (SopPage.jsx):
+    → Google Docs (SOP Umum): getSopDoc → parsed blocks (heading, paragraph,
+      list_item, table) — tampil inline di halaman
+    → File .docx (SOP Umum): iframe drive.google.com/file/{id}/preview
+    → Kategori produk: selalu iframe docs.google.com/document/{id}/preview
+      (preserves table formatting Buku Besar)
+
+  getSopDoc (Apps Script):
+    → Iterasi body.getNumChildren() → handle PARAGRAPH, LIST_ITEM, TABLE
+    → Tabel di-parse ke { type: 'table', rows: [[...]] }
 
 Apps Script config:
   - Akun: dienksatriawidhibrata@bagikopi.id
   - SOP_FOLDER_ID: 1GXkR3-A0XXkxJxkNlCv2FJXUO4NLqOSa
   - Kode: apps-script-bagikopi.txt (copy-paste ke Apps Script editor)
+  - DocumentApp scope: SUDAH di-authorize (testSopDoc PASSED)
+  - Deployment: versi terbaru SUDAH di-deploy
+
+  ⚠ Pastikan file-file di folder SOP sharing "Anyone with link can view"
+    agar iframe tampil untuk semua user (bukan hanya akun bagikopi.id)
 
 ═══════════════════════════════════════════════════════════════
 4. UPLOAD FOTO
@@ -266,8 +293,9 @@ scripts/sync-pos-to-supabase.py
 
 apps-script-bagikopi.txt
   → Kode lengkap Apps Script siap copy-paste ke editor
-  → Isi: doGet (listSops, getSopDoc), doPost (upload foto), authorizeScript, testUpload,
-         testSopDoc (verifikasi DocumentApp scope)
+  → Isi: doGet (listSops, getSopDoc), doPost (upload foto), authorizeScript,
+         testUpload, testSopDoc
+  → Setiap kali file ini diubah: paste ulang ke editor → New version → Deploy
 
 ═══════════════════════════════════════════════════════════════
 14. ENV VARS
@@ -296,6 +324,8 @@ PRIORITAS TINGGI:
   [TODO]  Reset password head_store via script, sampaikan ke masing-masing
   [BELUM] Jalankan 021_security_hardening.sql di Supabase SQL Editor
   [BELUM] Selesaikan setup email: jalankan step SQL + migration 019 (§9)
+  [TODO]  Pastikan semua file di folder SOP Drive di-set "Anyone with link can view"
+          agar iframe SOP bisa tampil untuk semua user (bukan hanya akun bagikopi.id)
 
 BUTUH SPEC / KEPUTUSAN:
   - Actionable notifications: aksi apa yang bisa dilakukan dari notifikasi?
@@ -354,6 +384,8 @@ EDGE FUNCTION (standby):
 ═══════════════════════════════════════════════════════════════
 16. COMMIT GITHUB TERBARU
 ═══════════════════════════════════════════════════════════════
+cf084d7  fix(sop): tampilkan file .docx di SOP Umum + iframe embed untuk SOP Produk
+3d55aff  docs: update summary + security cleanup
 15ffa86  refactor(ai): ganti AI chat ke Data Explorer tabel langsung
 47e8edb  fix(ai): ganti Gemini SDK ke REST API langsung di Edge Function
 c57ae46  feat(ai): Ask-the-Data AI Agent untuk ops_manager
@@ -362,5 +394,3 @@ de4c098  docs: update summary1.txt — planning Ask-the-Data AI agent
 b02f06f  fix(kpi): resolve ambiguous profiles FK + apps-script testSopDoc
 d30bb18  feat: split SOP jadi 2 halaman + KPIHub auto-detect periode terbaru
 3607887  fix: SOP fallback ke Apps Script + KPIHub pakai nama tabel yang benar
-8371cd3  feat: setoran summary card di ops dashboard + halaman /ops/setoran
-6ddbfef  fix(ux): unifikasi status indikator Staff Home + bersihin dead UI elements
