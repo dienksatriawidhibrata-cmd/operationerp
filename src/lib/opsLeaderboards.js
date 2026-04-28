@@ -2,7 +2,56 @@ import { roleLabel } from './utils'
 
 const WIB_OFFSET_MS = 7 * 60 * 60 * 1000
 
+export const EMPTY_LEADERBOARDS = {
+  staffTop: [], staffBottom: [],
+  storesTop: [], storesBottom: [],
+  headStoresTop: [], headStoresBottom: [],
+  staffAll: [], headStoresAll: [], storesAll: [],
+}
+
 export async function fetchOperationalLeaderboards({ supabase, period, today, branchIds = [] }) {
+  const rpcResult = await fetchOperationalLeaderboardsViaRpc({ supabase, period, today })
+  if (rpcResult) return rpcResult
+
+  return fetchOperationalLeaderboardsLegacy({ supabase, period, today, branchIds })
+}
+
+async function fetchOperationalLeaderboardsViaRpc({ supabase, period, today }) {
+  const { data, error } = await supabase.rpc('get_operational_leaderboards', {
+    p_period: period,
+    p_today: today,
+  })
+
+  if (error) {
+    const message = String(error.message || '')
+    const details = String(error.details || '')
+    const missingRpc = message.includes('get_operational_leaderboards') || details.includes('get_operational_leaderboards')
+    const missingRelation = message.includes('does not exist') || details.includes('does not exist')
+
+    if (missingRpc || missingRelation) return null
+    throw new Error(error.message || 'Gagal memuat leaderboard operasional.')
+  }
+
+  return normalizeLeaderboards(data)
+}
+
+function normalizeLeaderboards(data) {
+  if (!data || typeof data !== 'object') return EMPTY_LEADERBOARDS
+
+  return {
+    staffTop: Array.isArray(data.staffTop) ? data.staffTop : [],
+    staffBottom: Array.isArray(data.staffBottom) ? data.staffBottom : [],
+    storesTop: Array.isArray(data.storesTop) ? data.storesTop : [],
+    storesBottom: Array.isArray(data.storesBottom) ? data.storesBottom : [],
+    headStoresTop: Array.isArray(data.headStoresTop) ? data.headStoresTop : [],
+    headStoresBottom: Array.isArray(data.headStoresBottom) ? data.headStoresBottom : [],
+    staffAll: Array.isArray(data.staffAll) ? data.staffAll : [],
+    headStoresAll: Array.isArray(data.headStoresAll) ? data.headStoresAll : [],
+    storesAll: Array.isArray(data.storesAll) ? data.storesAll : [],
+  }
+}
+
+async function fetchOperationalLeaderboardsLegacy({ supabase, period, today, branchIds = [] }) {
   const { startDate, endDate, daysInMonth } = getPeriodBounds(period)
   const elapsedDays = getElapsedDaysInPeriod(period, today, daysInMonth)
   const expectedChecklistDays = elapsedDays * 3
@@ -27,14 +76,7 @@ export async function fetchOperationalLeaderboards({ supabase, period, today, br
   const branches = branchesRes.data || []
   const scopedBranchIds = branches.map((branch) => branch.id)
   if (!scopedBranchIds.length) {
-    return {
-      staffTop: [],
-      staffBottom: [],
-      storesTop: [],
-      storesBottom: [],
-      headStoresTop: [],
-      headStoresBottom: [],
-    }
+    return EMPTY_LEADERBOARDS
   }
 
   const [
@@ -111,7 +153,7 @@ export async function fetchOperationalLeaderboards({ supabase, period, today, br
         checklistCount: 0,
         checklistOnTime: 0,
       },
-    ])
+    ]),
   )
 
   const storeBase = Object.fromEntries(
@@ -126,7 +168,7 @@ export async function fetchOperationalLeaderboards({ supabase, period, today, br
         preparationCount: 0,
         preparationOnTime: 0,
       },
-    ])
+    ]),
   )
 
   ;(checklistsRes.data || []).forEach((row) => {
@@ -192,7 +234,7 @@ export async function fetchOperationalLeaderboards({ supabase, period, today, br
         depositDays: new Map(),
         opexDays: new Map(),
       },
-    ])
+    ]),
   )
 
   ;(reportsRes.data || []).forEach((row) => {
@@ -235,11 +277,11 @@ export async function fetchOperationalLeaderboards({ supabase, period, today, br
     const opexOnTime = [...row.opexDays.values()].filter((item) => item.onTime).length
     const completionPct = pct(
       reportCount + depositCount + opexCount,
-      expectedHeadStoreReportDays + expectedHeadStoreDepositDays + expectedHeadStoreOpexDays
+      expectedHeadStoreReportDays + expectedHeadStoreDepositDays + expectedHeadStoreOpexDays,
     )
     const onTimePct = pct(
       reportOnTime + depositOnTime + opexOnTime,
-      expectedHeadStoreReportDays + expectedHeadStoreDepositDays + expectedHeadStoreOpexDays
+      expectedHeadStoreReportDays + expectedHeadStoreDepositDays + expectedHeadStoreOpexDays,
     )
     const score = weightedScore(completionPct, onTimePct)
 
@@ -266,13 +308,6 @@ export async function fetchOperationalLeaderboards({ supabase, period, today, br
     headStoresAll: [...headStoreRows].sort(topSort),
     storesAll: [...storeRows].sort(topSort),
   }
-}
-
-export const EMPTY_LEADERBOARDS = {
-  staffTop: [], staffBottom: [],
-  storesTop: [], storesBottom: [],
-  headStoresTop: [], headStoresBottom: [],
-  staffAll: [], headStoresAll: [], storesAll: [],
 }
 
 function buildTopRows(rows) {

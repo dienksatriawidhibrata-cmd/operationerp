@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toEmbedUrl, toFullUrl } from '../lib/drive'
 
 /**
@@ -12,14 +12,16 @@ import { toEmbedUrl, toFullUrl } from '../lib/drive'
  *   allOffset  – index awal `urls` di dalam `allUrls`
  */
 export default function PhotoViewer({ urls = [], emptyText = 'Tidak ada foto', allUrls, allOffset = 0 }) {
-  // navUrls = semua foto yang bisa dinavigasi di lightbox
   const navUrls = allUrls || urls
   const [lightboxIdx, setLightboxIdx] = useState(null)
   const [broken, setBroken] = useState({})
   const [imgLoading, setImgLoading] = useState(false)
+  const touchStartRef = useRef(null)
+  const touchDeltaRef = useRef(0)
 
   const isOpen = lightboxIdx !== null
   const total = navUrls?.length ?? 0
+  const localActiveIdx = isOpen ? lightboxIdx - allOffset : -1
 
   const open = (localIdx) => {
     setImgLoading(true)
@@ -50,21 +52,60 @@ export default function PhotoViewer({ urls = [], emptyText = 'Tidak ada foto', a
     return () => window.removeEventListener('keydown', handler)
   }, [isOpen, total])
 
+  useEffect(() => {
+    if (!isOpen || typeof document === 'undefined') return undefined
+
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [isOpen])
+
   if (!urls || urls.length === 0) {
     return <p className="text-xs italic text-gray-400">{emptyText}</p>
   }
 
   const currentUrl = isOpen ? navUrls[lightboxIdx] : null
 
+  const handlePointerDown = (event) => {
+    if (total <= 1) return
+    touchStartRef.current = event.clientX
+    touchDeltaRef.current = 0
+  }
+
+  const handlePointerMove = (event) => {
+    if (touchStartRef.current == null) return
+    touchDeltaRef.current = event.clientX - touchStartRef.current
+  }
+
+  const handlePointerUp = (event) => {
+    if (touchStartRef.current == null) return
+    event.stopPropagation()
+
+    const delta = touchDeltaRef.current
+    touchStartRef.current = null
+    touchDeltaRef.current = 0
+
+    if (Math.abs(delta) < 48 || total <= 1) return
+
+    setImgLoading(true)
+    setLightboxIdx((current) => {
+      if (delta < 0) return (current + 1) % total
+      return (current - 1 + total) % total
+    })
+  }
+
   return (
     <>
-      <div className="flex flex-wrap gap-2">
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-5">
         {urls.map((url, idx) => (
           <button
             key={idx}
             type="button"
             onClick={() => open(idx)}
-            className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl border border-primary-200 bg-gray-100 transition-colors hover:border-primary-400 sm:h-20 sm:w-20"
+            className="aspect-square overflow-hidden rounded-xl border border-primary-200 bg-gray-100 transition-colors hover:border-primary-400"
           >
             {broken[idx] ? (
               <div className="flex h-full w-full items-center justify-center px-1 text-[10px] leading-tight text-gray-400">
@@ -85,10 +126,9 @@ export default function PhotoViewer({ urls = [], emptyText = 'Tidak ada foto', a
 
       {isOpen && (
         <div
-          className="fixed inset-0 z-50 flex flex-col bg-black/95"
+          className="fixed inset-0 z-50 flex flex-col overflow-hidden bg-black/95 overscroll-contain"
           onClick={close}
         >
-          {/* Header */}
           <div className="flex flex-none items-center justify-between bg-gradient-to-b from-black/60 to-transparent px-4 py-3">
             <span className="text-sm font-medium text-white/70">
               {lightboxIdx + 1} / {total}
@@ -101,8 +141,10 @@ export default function PhotoViewer({ urls = [], emptyText = 'Tidak ada foto', a
             </button>
           </div>
 
-          {/* Image area — flex-1 so it fills remaining space between header and dots */}
-          <div className="relative min-h-0 flex-1 flex items-center justify-center px-12 py-4 sm:px-14" onClick={close}>
+          <div
+            className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden px-4 py-4 sm:px-14"
+            onClick={close}
+          >
             {imgLoading && (
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="h-8 w-8 animate-spin rounded-full border-2 border-white border-t-transparent" />
@@ -112,17 +154,23 @@ export default function PhotoViewer({ urls = [], emptyText = 'Tidak ada foto', a
               key={currentUrl}
               src={toFullUrl(currentUrl)}
               alt={`Foto ${lightboxIdx + 1}`}
-              className={`max-h-full max-w-full rounded-xl object-contain transition-opacity duration-200 ${imgLoading ? 'opacity-0' : 'opacity-100'}`}
+              className={`max-h-full max-w-full touch-pan-y rounded-xl object-contain transition-opacity duration-200 ${imgLoading ? 'opacity-0' : 'opacity-100'}`}
               onLoad={() => setImgLoading(false)}
               onError={() => setImgLoading(false)}
               onClick={(event) => event.stopPropagation()}
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              onPointerCancel={() => {
+                touchStartRef.current = null
+                touchDeltaRef.current = 0
+              }}
             />
           </div>
 
-          {/* Dots */}
           {total > 1 && (
             <div className="flex flex-none justify-center gap-1.5 pb-4 pt-1">
-              {urls.map((_, idx) => (
+              {navUrls.map((_, idx) => (
                 <button
                   key={idx}
                   className={`h-2 w-2 rounded-full transition-colors ${idx === lightboxIdx ? 'bg-white' : 'bg-white/40'}`}
@@ -136,22 +184,27 @@ export default function PhotoViewer({ urls = [], emptyText = 'Tidak ada foto', a
             </div>
           )}
 
-          {/* Prev / next arrows */}
           {total > 1 && (
             <>
               <button
-                className="absolute left-2 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-lg text-white transition-colors hover:bg-white/25"
+                className="absolute left-2 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-lg text-white transition-colors hover:bg-white/25 sm:flex"
                 onClick={prev}
               >
                 &lt;
               </button>
               <button
-                className="absolute right-2 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-lg text-white transition-colors hover:bg-white/25"
+                className="absolute right-2 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-lg text-white transition-colors hover:bg-white/25 sm:flex"
                 onClick={next}
               >
                 &gt;
               </button>
             </>
+          )}
+
+          {urls.length > 1 && localActiveIdx >= 0 && (
+            <div className="pb-4 text-center text-xs font-medium text-white/60 sm:hidden">
+              Geser foto kiri atau kanan
+            </div>
           )}
         </div>
       )}

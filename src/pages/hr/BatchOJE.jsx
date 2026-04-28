@@ -1,15 +1,36 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
-import {
-  SubpageShell, SectionPanel, LoadingButton, EmptyPanel,
-} from '../../components/ui/AppKit'
 import { SmartBottomNav } from '../../components/BottomNav'
-import { fmtDate, todayWIB } from '../../lib/utils'
+import {
+  AppIcon,
+  EmptyPanel,
+  HeroCard,
+  InlineStat,
+  LoadingButton,
+  SectionPanel,
+  ToneBadge,
+} from '../../components/ui/AppKit'
+import { todayWIB } from '../../lib/utils'
 import { useToast } from '../../contexts/ToastContext'
+import { POSITION_LABELS } from '../../lib/recruitment'
 
 const POSITIONS = ['barista', 'kitchen', 'waitress', 'staff', 'asst_head_store']
+
+function blankCandidate() {
+  return { full_name: '', phone: '', email: '', applied_position: 'barista' }
+}
+
+function formatDate(value) {
+  if (!value) return '-'
+  return new Date(`${value}T00:00:00Z`).toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  })
+}
 
 export default function HRBatchOJE() {
   const { profile } = useAuth()
@@ -27,15 +48,11 @@ export default function HRBatchOJE() {
     branch_id: '',
     notes: '',
   })
-
-  // State untuk kandidat yang ditambah ke batch sebelum submit
-  const [candidates, setCandidates] = useState([
-    { full_name: '', phone: '', email: '', applied_position: 'barista' },
-  ])
+  const [candidates, setCandidates] = useState([blankCandidate()])
 
   useEffect(() => {
     async function load() {
-      const [{ data: b }, { data: br }] = await Promise.all([
+      const [{ data: batchRows }, { data: branchRows }] = await Promise.all([
         supabase
           .from('oje_batches')
           .select('id, batch_date, notes, branches(name), created_at, evaluator_name')
@@ -47,34 +64,52 @@ export default function HRBatchOJE() {
           .eq('is_active', true)
           .order('name'),
       ])
-      setBatches(b ?? [])
-      setBranches(br ?? [])
+
+      setBatches(batchRows || [])
+      setBranches(branchRows || [])
       setLoading(false)
     }
     load()
   }, [])
 
+  const validCandidateCount = useMemo(
+    () => candidates.filter((candidate) => candidate.full_name.trim() || candidate.phone.trim() || candidate.email.trim()).length,
+    [candidates],
+  )
+
   function addCandidate() {
-    setCandidates(prev => [...prev, { full_name: '', phone: '', email: '', applied_position: 'barista' }])
+    setCandidates((current) => [...current, blankCandidate()])
   }
 
-  function removeCandidate(idx) {
-    setCandidates(prev => prev.filter((_, i) => i !== idx))
+  function removeCandidate(index) {
+    setCandidates((current) => current.filter((_, idx) => idx !== index))
   }
 
-  function updateCandidate(idx, field, value) {
-    setCandidates(prev => prev.map((c, i) => i === idx ? { ...c, [field]: value } : c))
+  function updateCandidate(index, field, value) {
+    setCandidates((current) => current.map((candidate, idx) => (
+      idx === index ? { ...candidate, [field]: value } : candidate
+    )))
   }
 
-  async function handleSubmit(e) {
-    e.preventDefault()
+  function resetForm() {
+    setForm({
+      batch_date: todayWIB(),
+      branch_id: '',
+      notes: '',
+    })
+    setCandidates([blankCandidate()])
+    setShowForm(false)
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault()
+
     if (!form.branch_id) return showToast('Pilih toko terlebih dahulu', 'error')
-    const valid = candidates.every(c => c.full_name.trim() && c.phone.trim() && c.email.trim())
+    const valid = candidates.every((candidate) => candidate.full_name.trim() && candidate.phone.trim() && candidate.email.trim())
     if (!valid) return showToast('Nama, nomor HP, dan email semua kandidat wajib diisi', 'error')
 
     setSaving(true)
     try {
-      // 1. Buat oje_batch
       const { data: batch, error: batchErr } = await supabase
         .from('oje_batches')
         .insert({
@@ -90,12 +125,11 @@ export default function HRBatchOJE() {
 
       if (batchErr) throw batchErr
 
-      // 2. Buat candidates dan hubungkan ke batch
-      const candidateRows = candidates.map(c => ({
-        full_name: c.full_name.trim(),
-        phone: c.phone.trim(),
-        email: c.email.trim(),
-        applied_position: c.applied_position,
+      const candidateRows = candidates.map((candidate) => ({
+        full_name: candidate.full_name.trim(),
+        phone: candidate.phone.trim(),
+        email: candidate.email.trim(),
+        applied_position: candidate.applied_position,
         branch_id: form.branch_id,
         batch_id: batch.id,
         current_stage: 'batch_oje_issued',
@@ -103,21 +137,20 @@ export default function HRBatchOJE() {
         created_by: profile?.id,
       }))
 
-      const { error: candErr } = await supabase.from('candidates').insert(candidateRows)
-      if (candErr) throw candErr
+      const { error: candidateErr } = await supabase.from('candidates').insert(candidateRows)
+      if (candidateErr) throw candidateErr
 
-      // 3. Insert oje_batch_items (satu per kandidat, nilai awal 0)
-      const batchItems = candidates.map((c, idx) => ({
+      const batchItems = candidates.map((candidate, index) => ({
         batch_id: batch.id,
-        nama_peserta: c.full_name.trim(),
+        nama_peserta: candidate.full_name.trim(),
         nama_panggilan: '',
-        sort_order: idx,
+        sort_order: index,
       }))
 
       const { error: itemsErr } = await supabase.from('oje_batch_items').insert(batchItems)
       if (itemsErr) throw itemsErr
 
-      showToast(`Batch OJE dibuat — ${candidates.length} kandidat`, 'success')
+      showToast(`Batch OJE dibuat untuk ${candidates.length} kandidat`, 'success')
       navigate(`/hr/batch/${batch.id}`)
     } catch (err) {
       console.error(err)
@@ -128,174 +161,239 @@ export default function HRBatchOJE() {
   }
 
   return (
-    <SubpageShell title="Batch OJE" eyebrow="HR · Recruitment" backTo="/hr">
-      {/* Tombol buat batch baru */}
-      {!showForm && (
-        <div className="px-4 pt-4">
-          <button
-            onClick={() => setShowForm(true)}
-            className="w-full bg-primary-600 text-white text-sm font-semibold rounded-xl py-3"
+    <div className="min-h-screen bg-[#f8fbff] pb-28">
+      <div className="sticky top-0 z-50 flex items-center justify-between border-b border-blue-50 bg-white/85 px-5 py-4 backdrop-blur-md">
+        <div className="flex items-center gap-3">
+          <Link
+            to="/hr"
+            className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 transition-colors hover:bg-blue-100"
           >
-            + Buat Batch OJE Baru
-          </button>
+            <AppIcon name="chevronLeft" size={18} />
+          </Link>
+          <div>
+            <h1 className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600">Recruitment</h1>
+            <p className="text-lg font-extrabold text-gray-900">Batch OJE</p>
+          </div>
         </div>
-      )}
+      </div>
 
-      {/* Form buat batch */}
-      {showForm && (
-        <SectionPanel title="Batch OJE Baru" className="mx-4 mt-4">
-          <form onSubmit={handleSubmit} className="p-4 space-y-4">
-            <div>
-              <label className="text-xs font-semibold text-slate-600 block mb-1">Tanggal Batch</label>
-              <input
-                type="date"
-                value={form.batch_date}
-                onChange={e => setForm(f => ({ ...f, batch_date: e.target.value }))}
-                className="input-field"
-                required
-              />
-            </div>
+      <div className="px-5 pt-5">
+        <HeroCard
+          eyebrow="Batch Control"
+          title="Buat batch lalu lanjut ke scorecard"
+          description="Pola kerjanya disederhanakan: buat batch, isi kandidat, lalu langsung pindah ke halaman detail batch untuk penilaian dan seleksi."
+          meta={(
+            <>
+              <ToneBadge tone="info">{batches.length} riwayat batch</ToneBadge>
+              <ToneBadge tone={showForm ? 'warn' : 'ok'}>{showForm ? 'Form aktif' : 'Siap buat batch'}</ToneBadge>
+            </>
+          )}
+        >
+          <div className="grid gap-3 sm:grid-cols-3">
+            <InlineStat label="Riwayat Batch" value={batches.length} tone="primary" />
+            <InlineStat label="Toko Aktif" value={branches.length} tone="slate" />
+            <InlineStat label="Draft Kandidat" value={validCandidateCount} tone={validCandidateCount > 0 ? 'amber' : 'slate'} />
+          </div>
+        </HeroCard>
 
-            <div>
-              <label className="text-xs font-semibold text-slate-600 block mb-1">Toko Target</label>
-              <select
-                value={form.branch_id}
-                onChange={e => setForm(f => ({ ...f, branch_id: e.target.value }))}
-                className="input-field"
-                required
+        <SectionPanel
+          className="mt-6"
+          eyebrow="Create Batch"
+          title={showForm ? 'Form Batch OJE Baru' : 'Mulai Batch Baru'}
+          description={showForm ? 'Lengkapi data batch dan semua kandidat yang akan ikut sesi ini.' : 'Tekan tombol di bawah untuk membuat batch baru.'}
+          actions={
+            !showForm ? (
+              <button
+                onClick={() => setShowForm(true)}
+                className="rounded-2xl bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700"
               >
-                <option value="">-- Pilih Toko --</option>
-                {branches.map(b => (
-                  <option key={b.id} value={b.id}>{b.name}</option>
-                ))}
-              </select>
-            </div>
+                Buat Batch Baru
+              </button>
+            ) : (
+              <ToneBadge tone="warn">{candidates.length} kandidat</ToneBadge>
+            )
+          }
+        >
+          {!showForm ? (
+            <EmptyPanel
+              title="Belum ada draft batch"
+              description="Mulai dari sini kalau HR sedang menyiapkan sesi batch OJE baru."
+              actionLabel="Buat Batch OJE"
+              onAction={() => setShowForm(true)}
+            />
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="label">Tanggal Batch</label>
+                  <input
+                    type="date"
+                    value={form.batch_date}
+                    onChange={(event) => setForm((current) => ({ ...current, batch_date: event.target.value }))}
+                    className="input"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="label">Toko Target</label>
+                  <select
+                    value={form.branch_id}
+                    onChange={(event) => setForm((current) => ({ ...current, branch_id: event.target.value }))}
+                    className="input"
+                    required
+                  >
+                    <option value="">Pilih toko</option>
+                    {branches.map((branch) => (
+                      <option key={branch.id} value={branch.id}>{branch.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
 
-            <div>
-              <label className="text-xs font-semibold text-slate-600 block mb-1">Catatan (opsional)</label>
-              <textarea
-                value={form.notes}
-                onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-                className="input-field"
-                rows={2}
-                placeholder="Catatan batch OJE..."
-              />
-            </div>
+              <div>
+                <label className="label">Catatan Batch</label>
+                <textarea
+                  rows={3}
+                  value={form.notes}
+                  onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))}
+                  className="input resize-none"
+                  placeholder="Catatan sesi batch, evaluator, atau kebutuhan khusus."
+                />
+              </div>
 
-            {/* Daftar kandidat */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-xs font-semibold text-slate-600">Kandidat</label>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm font-semibold text-slate-900">Daftar Kandidat</div>
+                    <div className="text-xs text-slate-500">Nama, nomor HP, email, dan posisi wajib diisi untuk semua peserta.</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addCandidate}
+                    className="rounded-xl border border-primary-200 bg-primary-50 px-3 py-2 text-xs font-semibold text-primary-700 hover:bg-primary-100"
+                  >
+                    + Tambah Kandidat
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  {candidates.map((candidate, index) => (
+                    <div key={index} className="rounded-[22px] bg-slate-50/85 p-4">
+                      <div className="mb-3 flex items-center justify-between">
+                        <div className="text-sm font-semibold text-slate-900">Kandidat {index + 1}</div>
+                        {candidates.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeCandidate(index)}
+                            className="text-xs font-semibold text-rose-600"
+                          >
+                            Hapus
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <input
+                          type="text"
+                          value={candidate.full_name}
+                          onChange={(event) => updateCandidate(index, 'full_name', event.target.value)}
+                          className="input"
+                          placeholder="Nama lengkap"
+                          required
+                        />
+                        <input
+                          type="tel"
+                          value={candidate.phone}
+                          onChange={(event) => updateCandidate(index, 'phone', event.target.value)}
+                          className="input"
+                          placeholder="Nomor HP"
+                          required
+                        />
+                        <input
+                          type="email"
+                          value={candidate.email}
+                          onChange={(event) => updateCandidate(index, 'email', event.target.value)}
+                          className="input"
+                          placeholder="Email"
+                          required
+                        />
+                        <select
+                          value={candidate.applied_position}
+                          onChange={(event) => updateCandidate(index, 'applied_position', event.target.value)}
+                          className="input"
+                        >
+                          {POSITIONS.map((position) => (
+                            <option key={position} value={position}>{POSITION_LABELS[position] || position}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3 sm:flex-row">
                 <button
                   type="button"
-                  onClick={addCandidate}
-                  className="text-xs text-primary-600 font-semibold"
+                  onClick={resetForm}
+                  className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-600 hover:border-slate-300"
                 >
-                  + Tambah
+                  Batal
                 </button>
+                <LoadingButton
+                  type="submit"
+                  loading={saving}
+                  className="btn-primary flex-1"
+                >
+                  Simpan dan Buka Batch Detail
+                </LoadingButton>
               </div>
-              <div className="space-y-3">
-                {candidates.map((c, idx) => (
-                  <div key={idx} className="bg-slate-50 rounded-xl p-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-slate-500">Kandidat {idx + 1}</span>
-                      {candidates.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => removeCandidate(idx)}
-                          className="text-xs text-rose-500 font-semibold"
-                        >
-                          Hapus
-                        </button>
-                      )}
-                    </div>
-                    <input
-                      type="text"
-                      placeholder="Nama lengkap"
-                      value={c.full_name}
-                      onChange={e => updateCandidate(idx, 'full_name', e.target.value)}
-                      className="input-field"
-                      required
-                    />
-                    <input
-                      type="tel"
-                      placeholder="Nomor HP"
-                      value={c.phone}
-                      onChange={e => updateCandidate(idx, 'phone', e.target.value)}
-                      className="input-field"
-                      required
-                    />
-                    <input
-                      type="email"
-                      placeholder="Email"
-                      value={c.email}
-                      onChange={e => updateCandidate(idx, 'email', e.target.value)}
-                      className="input-field"
-                      required
-                    />
-                    <select
-                      value={c.applied_position}
-                      onChange={e => updateCandidate(idx, 'applied_position', e.target.value)}
-                      className="input-field"
-                    >
-                      {POSITIONS.map(p => (
-                        <option key={p} value={p}>{p}</option>
-                      ))}
-                    </select>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setShowForm(false)}
-                className="flex-1 bg-slate-100 text-slate-700 text-sm font-semibold rounded-xl py-2.5"
-              >
-                Batal
-              </button>
-              <LoadingButton loading={saving} type="submit" className="flex-1 btn-primary text-sm py-2.5">
-                Buat Batch
-              </LoadingButton>
-            </div>
-          </form>
+            </form>
+          )}
         </SectionPanel>
-      )}
 
-      {/* Daftar batch existing */}
-      <SectionPanel title="Riwayat Batch OJE" className="mx-4 mt-4 mb-24">
-        {loading ? (
-          <p className="text-xs text-slate-400 px-4 py-3">Memuat...</p>
-        ) : batches.length === 0 ? (
-          <EmptyPanel message="Belum ada batch OJE" />
-        ) : (
-          <div className="divide-y divide-slate-100">
-            {batches.map(b => (
-              <Link
-                key={b.id}
-                to={`/hr/batch/${b.id}`}
-                className="flex items-center justify-between px-4 py-3 hover:bg-slate-50"
-              >
-                <div>
-                  <div className="text-sm font-semibold text-slate-800">
-                    {b.branches?.name ?? '-'}
+        <SectionPanel
+          className="mt-6 mb-2"
+          eyebrow="Batch History"
+          title="Riwayat Batch OJE"
+          description="Buka batch untuk lanjut isi scorecard atau meninjau sesi yang sudah pernah dibuat."
+          actions={<ToneBadge tone="info">{batches.length} batch</ToneBadge>}
+        >
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <div className="h-7 w-7 animate-spin rounded-full border-2 border-primary-600 border-t-transparent" />
+            </div>
+          ) : batches.length === 0 ? (
+            <EmptyPanel
+              title="Belum ada batch"
+              description="Riwayat batch akan muncul setelah sesi pertama dibuat."
+            />
+          ) : (
+            <div className="space-y-2">
+              {batches.map((batch) => (
+                <Link
+                  key={batch.id}
+                  to={`/hr/batch/${batch.id}`}
+                  className="flex items-center gap-3 rounded-[20px] bg-slate-50/85 px-4 py-3 transition-colors hover:bg-slate-100"
+                >
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-700">
+                    <AppIcon name="checklist" size={16} />
                   </div>
-                  <div className="text-xs text-slate-500 mt-0.5">
-                    {fmtDate(b.batch_date)}
-                    {b.evaluator_name && ` · ${b.evaluator_name}`}
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-semibold text-slate-900">{batch.branches?.name || '-'}</div>
+                    <div className="truncate text-xs text-slate-500">
+                      {formatDate(batch.batch_date)} · {batch.evaluator_name || '-'}
+                    </div>
                   </div>
-                </div>
-                <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path d="m9 18 6-6-6-6" />
-                </svg>
-              </Link>
-            ))}
-          </div>
-        )}
-      </SectionPanel>
+                  <AppIcon name="chevronRight" size={16} className="text-slate-400" />
+                </Link>
+              ))}
+            </div>
+          )}
+        </SectionPanel>
+      </div>
 
       <SmartBottomNav />
-    </SubpageShell>
+    </div>
   )
 }

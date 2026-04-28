@@ -298,6 +298,14 @@ export default function HRBatchDetail() {
 
       {/* Nilai per peserta */}
       <SectionPanel title="Nilai Batch OJE" className="mx-4 mt-4">
+        {allUploaded && (
+          <div className="px-4 pt-3 pb-1">
+            <div className="rounded-xl bg-blue-50 px-4 py-2.5">
+              <p className="text-xs font-semibold text-blue-700">Batch selesai — penilaian dikunci</p>
+              <p className="text-xs text-blue-600 mt-0.5">Seleksi kandidat lanjut di bagian bawah halaman.</p>
+            </div>
+          </div>
+        )}
         {items.length === 0 ? (
           <EmptyPanel message="Belum ada peserta" />
         ) : (
@@ -346,8 +354,8 @@ export default function HRBatchDetail() {
                     </div>
                   )}
 
-                  {/* Toggle kehadiran — hanya jika belum advance */}
-                  {canUpload && !advanced && (
+                  {/* Toggle kehadiran — hanya jika belum advance dan batch belum dikunci */}
+                  {canUpload && !advanced && !allUploaded && (
                     <div className="flex items-center gap-2 mb-2">
                       <button
                         onClick={() => toggleHadir(item)}
@@ -363,8 +371,8 @@ export default function HRBatchDetail() {
                     </div>
                   )}
 
-                  {/* Nilai — hanya tampil kalau hadir dan belum advance */}
-                  {hadirFlag && !advanced && (
+                  {/* Nilai editable — hanya saat batch belum dikunci */}
+                  {hadirFlag && !advanced && !allUploaded && (
                     isEditing ? (
                       <div className="space-y-2">
                         <div className="grid grid-cols-2 gap-2">
@@ -415,6 +423,17 @@ export default function HRBatchDetail() {
                         )}
                       </div>
                     )
+                  )}
+
+                  {/* Nilai read-only — batch sudah dikunci, kandidat belum ke OJE in Store */}
+                  {hadirFlag && !advanced && allUploaded && (
+                    <div className="flex flex-wrap gap-1">
+                      {BATCH_CRITERIA.map((k, i) => (
+                        <span key={k} className="text-xs bg-slate-50 text-slate-400 rounded px-1.5 py-0.5">
+                          {BATCH_LABELS[i]}: <strong>{item[k] || 0}</strong>
+                        </span>
+                      ))}
+                    </div>
                   )}
 
                   {/* Nilai read-only untuk kandidat yang sudah advance */}
