@@ -31,26 +31,54 @@ if not SUPABASE_URL or not SUPABASE_KEY:
     print("ERROR: SUPABASE_URL dan SUPABASE_SERVICE_ROLE_KEY wajib di .env")
     sys.exit(1)
 
-HEADERS = {
+UPSERT_HEADERS = {
     "apikey": SUPABASE_KEY,
     "Authorization": f"Bearer {SUPABASE_KEY}",
     "Content-Type": "application/json",
     "Prefer": "resolution=merge-duplicates",
 }
+INSERT_HEADERS = {
+    "apikey": SUPABASE_KEY,
+    "Authorization": f"Bearer {SUPABASE_KEY}",
+    "Content-Type": "application/json",
+}
 
 BATCH = 500
 
 
-def supabase_upsert(table: str, rows: list[dict]):
+def supabase_upsert(table: str, rows: list[dict], on_conflict: str):
     url = f"{SUPABASE_URL}/rest/v1/{table}"
+    params = {"on_conflict": on_conflict}
     for i in range(0, len(rows), BATCH):
         chunk = rows[i : i + BATCH]
-        resp = httpx.post(url, json=chunk, headers=HEADERS, timeout=60)
+        resp = httpx.post(url, json=chunk, headers=UPSERT_HEADERS, params=params, timeout=60)
         if resp.status_code not in (200, 201):
             print(f"  ERROR batch {i}–{i+len(chunk)}: {resp.status_code} {resp.text[:300]}")
             sys.exit(1)
         print(f"  upsert {table}: {i+len(chunk)}/{len(rows)}", end="\r")
     print(f"  upsert {table}: {len(rows)} rows OK     ")
+
+
+def supabase_delete_all(table: str):
+    """Delete semua baris dari tabel (untuk table tanpa unique key)."""
+    url = f"{SUPABASE_URL}/rest/v1/{table}"
+    resp = httpx.delete(url, headers=INSERT_HEADERS, params={"id": "not.is.null"}, timeout=60)
+    if resp.status_code not in (200, 204):
+        print(f"  ERROR delete {table}: {resp.status_code} {resp.text[:300]}")
+        sys.exit(1)
+    print(f"  Cleared {table}")
+
+
+def supabase_insert(table: str, rows: list[dict]):
+    url = f"{SUPABASE_URL}/rest/v1/{table}"
+    for i in range(0, len(rows), BATCH):
+        chunk = rows[i : i + BATCH]
+        resp = httpx.post(url, json=chunk, headers=INSERT_HEADERS, timeout=60)
+        if resp.status_code not in (200, 201):
+            print(f"  ERROR batch {i}–{i+len(chunk)}: {resp.status_code} {resp.text[:300]}")
+            sys.exit(1)
+        print(f"  insert {table}: {i+len(chunk)}/{len(rows)}", end="\r")
+    print(f"  insert {table}: {len(rows)} rows OK     ")
 
 
 def fetch_branch_map(conn: sqlite3.Connection) -> dict[str, str | None]:
@@ -59,7 +87,7 @@ def fetch_branch_map(conn: sqlite3.Connection) -> dict[str, str | None]:
     resp = httpx.get(
         f"{SUPABASE_URL}/rest/v1/branches",
         params={"select": "id,name", "is_active": "eq.true"},
-        headers=HEADERS,
+        headers=INSERT_HEADERS,
         timeout=30,
     )
     branches = resp.json() if resp.status_code == 200 else []
@@ -100,12 +128,12 @@ def build_sales_rows(conn: sqlite3.Connection, branch_map: dict) -> list[dict]:
 
 def build_complaints_rows(conn: sqlite3.Connection, branch_map: dict) -> list[dict]:
     rows = conn.execute("""
-        SELECT complaint_date, year, month, app, outlet, area,
+        SELECT complaint_date, year, month, app, outlet,
                complaint_text, priority, topic, follow_up
         FROM complaints
     """).fetchall()
     result = []
-    for date, year, month, app, outlet, _area, text, priority, topic, follow_up in rows:
+    for date, year, month, app, outlet, text, priority, topic, follow_up in rows:
         result.append({
             "outlet_name": outlet or "",
             "branch_id": branch_map.get(outlet),
@@ -136,12 +164,13 @@ def main():
     print("\nBuilding pos_sales_monthly...")
     sales_rows = build_sales_rows(conn, branch_map)
     print(f"  {len(sales_rows)} rows")
-    supabase_upsert("pos_sales_monthly", sales_rows)
+    supabase_upsert("pos_sales_monthly", sales_rows, on_conflict="outlet_name,year,month")
 
     print("\nBuilding pos_complaints...")
     complaint_rows = build_complaints_rows(conn, branch_map)
     print(f"  {len(complaint_rows)} rows")
-    supabase_upsert("pos_complaints", complaint_rows)
+    supabase_delete_all("pos_complaints")
+    supabase_insert("pos_complaints", complaint_rows)
 
     conn.close()
     print("\nSync selesai.")

@@ -1,5 +1,5 @@
 BAGI KOPI OPS — PROGRESS SUMMARY
-Update: 2026-04-28 | Production: https://operationerp.pages.dev
+Update: 2026-04-28 (sesi 2) | Production: https://operationerp.pages.dev
 
 ═══════════════════════════════════════════
 STATUS PRODUCTION
@@ -31,6 +31,7 @@ FITUR AKTIF
 ═══════════════════════════════════════════
 COMMITS TERBARU (sesi 2026-04-28)
 ═══════════════════════════════════════════
+[terbaru]  fix(scripts): sync-pos-to-supabase — on_conflict UPSERT + delete-insert complaints
 ea29ac6  fix(hr): infinity loading + OJE in Store form + redesign Hub & StoreView
 aabc59f  fix(toast): tambah showToast ke ToastContext — BatchOJE & BatchDetail
 663ad0c  fix(batch): tambah type=submit pada LoadingButton — tombol Buat Batch tidak respond
@@ -125,6 +126,14 @@ node scripts/update-staff-shared-password.mjs     → sync shared pass semua sta
 node scripts/reset-head-store-passwords.mjs "X"  → reset semua head_store ke pass X
 node scripts/bulk-upload-staff.mjs                → upload data staff dari CSV
 python scripts/sync-pos-to-supabase.py            → sync SQLite POS ke Supabase (UPSERT)
+powershell scripts\update-pos-data.ps1            → ETL CSV/XLSX → bagikopi.db, lalu sync ke Supabase
+
+DATA SALES & KOMPLAIN — CARA UPDATE:
+  Ketika ada CSV baru di Data Sales/ atau XLSX baru di Data Komplain/:
+  1. powershell -ExecutionPolicy Bypass -File scripts\update-pos-data.ps1
+  2. Data langsung tersedia di Data Explorer ops_manager (Sales POS + Komplain)
+  Source: C:\Users\dksat\Project\2026-bagikopi-sales-complain\
+  Supabase: pos_sales_monthly (1022 rows), pos_complaints (3887 rows) — diisi 2026-04-28
 
 Apps Script: apps-script-bagikopi.txt → paste ke editor, new version, deploy
   Isi: listSops, getSopDoc, doPost (upload foto), testUpload, testSopDoc
