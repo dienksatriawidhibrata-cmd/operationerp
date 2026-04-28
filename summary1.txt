@@ -1,10 +1,10 @@
 BAGI KOPI OPS — PROGRESS SUMMARY
-Update: 2026-04-28 (sesi 2) | Production: https://operationerp.pages.dev
+Update: 2026-04-28 (sesi 3) | Production: https://operationerp.pages.dev
 
 ═══════════════════════════════════════════
 STATUS PRODUCTION
 ═══════════════════════════════════════════
-Build bersih, 33 unit test lulus. Auto-deploy dari GitHub main via Cloudflare Pages.
+Build bersih, auto-deploy dari GitHub main via Cloudflare Pages.
 Frontend-only (Supabase langsung) — backend FastAPI di backend/ tidak di-deploy.
 
 Roles aktif: staff, barista, kitchen, waitress, asst_head_store, head_store,
@@ -15,6 +15,20 @@ Login staff (shared pass): VITE_STAFF_PASS — role store + auditor
 Login manager/HR (individual): tab "Head Store & Manager"
 
 ═══════════════════════════════════════════
+PRIORITAS UTAMA SESI BERIKUTNYA
+═══════════════════════════════════════════
+  [ ] HAPUS fitur AI Analyst + Data Explorer dari web app:
+        - src/pages/ops/AskTheData.jsx → delete file
+        - Hapus route /ops/ask dari App.jsx / router
+        - Hapus entry "Data Explorer" dari dashboard ops_manager
+        - Hapus import/link ke AskTheData di semua file
+  [ ] HAPUS dari Supabase:
+        - Edge Function: ask-the-data (supabase/functions/ask-the-data/)
+        - Secret: GEMINI_API_KEY (sudah standby, belum dipakai)
+        - Tabel/view yang dibuat khusus untuk ask-the-data jika ada
+  [ ] Setelah hapus: commit + push + verifikasi build Cloudflare
+
+═══════════════════════════════════════════
 FITUR AKTIF
 ═══════════════════════════════════════════
 - Ceklis harian 3 shift + foto per item
@@ -23,20 +37,24 @@ FITUR AKTIF
 - Visit monitoring DM/Area + audit toko (110 poin)
 - Surat jalan supply chain: order → picking → QC → distribusi → penerimaan
 - KPI Toko, Personal, 360 — Leaderboard Top10/Bottom10
+- Leaderboard Operasional (baru sesi 3): semua dashboard kecuali HR, Audit, SC
 - SOP Center: SOP Umum (parsed) + SOP Produk (iframe)
-- Data Explorer (ops_manager): 8 kategori analitik query Supabase
 - Pengumuman: /ops/pengumuman → tampil di semua staff dashboard
-- Recruitment Module (/hr): pipeline 14 stage — BERJALAN, bug utama sudah diperbaiki
+- Recruitment Module (/hr): pipeline 14 stage — BERJALAN, Edge Function sudah deploy
+
+DIHAPUS (prioritas sesi 4):
+- Data Explorer (AI Analyst): 8 query analitik + Gemini → akan dihapus
 
 ═══════════════════════════════════════════
-COMMITS TERBARU (sesi 2026-04-28)
+COMMITS TERBARU (sesi 3 — 2026-04-28)
 ═══════════════════════════════════════════
-[terbaru]  fix(scripts): sync-pos-to-supabase — on_conflict UPSERT + delete-insert complaints
+46faba5  fix(edge-fn): recruitment-onboard — explicit profile upsert + validasi password
+48c2fa5  feat(hr): ganti form OJE in Store — 2 hari + 13 kriteria penilaian
+ac755c2  feat(hr): refactor recruitment flow — stage-based UI + batch lock
+b2b5983  feat(leaderboard): tambah leaderboard operasional ke semua dashboard kecuali HR, Audit, SC
+8a42860  feat(data-explorer): 7 query baru + date range filter di AskTheData
+e72d4c9  fix(scripts): sync POS data ke Supabase — on_conflict UPSERT + update-pos-data.ps1
 ea29ac6  fix(hr): infinity loading + OJE in Store form + redesign Hub & StoreView
-aabc59f  fix(toast): tambah showToast ke ToastContext — BatchOJE & BatchDetail
-663ad0c  fix(batch): tambah type=submit pada LoadingButton — tombol Buat Batch tidak respond
-ffeda7c  fix(batch): migration 027 konsolidasi RLS oje_batch_items + error handling insert
-a9561e6  fix(batch): defensive isHadir() check — input nilai tersembunyi karena hadir=undefined
 
 ═══════════════════════════════════════════
 RECRUITMENT MODULE — STATUS DETAIL
@@ -50,51 +68,64 @@ Routes: /hr, /hr/batch, /hr/batch/:id, /hr/candidates/:id,
         /hr/candidates/:id/ojt, /hr/store, /hr/kontrak
 
 Tabel: candidates, stage_history, stage_forms, ojt_checklists,
-       oje_batches, oje_batch_items (reused dari migration 010)
+       oje_batches, oje_batch_items
+
+Form OJE in Store (sesi 3): 2 hari hadir (toggle) + 13 kriteria skor 1–5
+  Kategori: Cara Order & Handling, Job Fit, Teamwork, Work Standards, Attitude
+  + catatan teks + rekomendasi (ya/tidak)
 
 OJT Checklist: 14 item, 3 kolom sign-off (Head Store | PIC Training | Staff)
 
 Edge Function: supabase/functions/recruitment-onboard/index.ts
-  → Dipanggil saat hr_legal submit kontrak → auto-create auth user + profile
-  → Butuh Secret: STAFF_SHARED_PASSWORD → BELUM di-deploy
+  → SUDAH di-deploy (npx supabase functions deploy recruitment-onboard)
+  → SUDAH set Secret STAFF_SHARED_PASSWORD di Supabase Dashboard
+  → Explicit profile upsert (tidak bergantung trigger handle_new_user)
+  → Rollback: deleteUser jika profile upsert gagal
 
-BUG YANG SUDAH DIPERBAIKI (sesi ini):
-  [x] Infinity loading saat submit aksi — submitAction sekarang pakai try/catch/finally
-  [x] stage_forms archive gagal untuk head_store — kini pakai RPC archive_stage_form()
-      dan next_form_version() (SECURITY DEFINER, bypass RLS)
-  [x] Form OJE in Store display pakai data lama — kini pakai latestInstoreForm
-      (support revisi dari stage revision_hs)
-  [x] HS salah mengisi batch OJE untuk OJE in Store — BatchDetail kini mengunci
-      edit/hadir untuk kandidat yg sudah advance, tampil link ke halaman kandidat
-  [x] Hub.jsx redesign — header sticky, stats cards, quick actions grid per role,
-      pipeline per grup warna, kandidat list modern (pola ops manager + trainer)
-  [x] StoreView.jsx redesign — header sticky, stats, batch shortcut, filter tabs
-      dengan icon & count badge
+BUG YANG SUDAH DIPERBAIKI (sesi 2–3):
+  [x] Profile tidak terbuat setelah Legal approve kontrak → explicit upsert
+  [x] Login gagal setelah aktivasi → STAFF_SHARED_PASSWORD kosong → validasi dini
+  [x] Infinity loading saat submit aksi → try/catch/finally di submitAction
+  [x] stage_forms archive gagal (head_store) → RPC archive_stage_form() SECURITY DEFINER
+  [x] Form OJE in Store pakai data lama → latestInstoreForm
+  [x] BatchDetail edit/hadir terbuka setelah upload → lock allUploaded + banner
+  [x] Hub.jsx & StoreView.jsx redesign (pola AppKit modern)
+  [x] CandidateDetail full rewrite — import shared dari recruitment.js,
+      banner amber (revision_hs) + rose (revision_hrstaff)
+
+═══════════════════════════════════════════
+ACCOUNT MANAGEMENT — STATUS SESI 3
+═══════════════════════════════════════════
+Dihapus (auth + profile):
+  - dksatriaw@gmail.com
+  - dienksatriawidhibrata@bagikopi.id
+
+Staff aktif di Supabase: 58 akun dari StaffBaru.xlsx — SEMUA sudah ada,
+  branch_id dan role terisi lengkap. Tidak ada yang perlu dibuat ulang.
+  (2 dikecualikan: Shella Rizky Damayanti + Dhea Putri — DROP/RESIGN=true)
+
+Total profiles di DB: 377 (termasuk semua role manager + HR + store staff)
 
 ═══════════════════════════════════════════
 MIGRATIONS — STATUS
 ═══════════════════════════════════════════
-[DONE]  001–022   semua migrasi dasar
-[DONE]  023       recruitment_module (candidates, stage_history, stage_forms, 4 HR roles)
-[DONE]  024       ojt_checklists
-[DONE]  025       hr_oje_access (HR roles ke RLS oje_batches/items — dijalankan manual)
-[DONE]  026       batch_hadir (ADD COLUMN hadir ke oje_batch_items — dijalankan manual)
-[TODO]  027       fix_oje_policies → JALANKAN di Supabase SQL Editor (konsolidasi RLS)
+[DONE]  001–027   semua migrasi aktif
+[DONE]  028       (jika ada — lihat supabase/migrations/)
+[TODO]  029       operational_leaderboards_rpc → JALANKAN di SQL Editor
 [TODO]  019       cron_email_alerts → tunggu DNS Resend verified, lalu jalankan
 [TODO]  021       security_hardening → belum dijalankan
 
 ═══════════════════════════════════════════
 YANG PERLU DIKERJAKAN
 ═══════════════════════════════════════════
-SEGERA:
-  [ ] Jalankan migration 027_fix_oje_policies.sql di Supabase SQL Editor
-  [ ] Test full flow: buat batch OJE → upload nilai → seleksi → OJE in Store → kontrak
-  [ ] Deploy Edge Function recruitment-onboard + set Secret STAFF_SHARED_PASSWORD
+PRIORITAS (sesi 4):
+  [ ] Hapus AI Analyst + Data Explorer (lihat bagian PRIORITAS di atas)
+  [ ] Jalankan 029_operational_leaderboards_rpc.sql di Supabase SQL Editor
+  [ ] Test full flow recruitment: batch OJE → OJE in Store → kontrak → login staff baru
 
 PENDING:
   [ ] Setup email: DNS Resend verified → jalankan step SQL + migration 019
   [ ] Jalankan migration 021_security_hardening.sql
-  [ ] Reset password head_store via scripts/reset-head-store-passwords.mjs
   [ ] Pastikan semua file SOP di Drive di-set "Anyone with link can view"
   [ ] Tabel work_schedules + jadwal shift otomatis pasca kontrak
 
@@ -116,8 +147,8 @@ Lokal saja (jangan ke Cloudflare):
 
 Supabase Secrets:
   RESEND_API_KEY, RESEND_FROM_EMAIL, CRON_SECRET  → send-deadline-alerts
-  STAFF_SHARED_PASSWORD                            → recruitment-onboard (BELUM di-set)
-  GEMINI_API_KEY                                   → ask-the-data (standby)
+  STAFF_SHARED_PASSWORD                            → recruitment-onboard (SUDAH di-set)
+  GEMINI_API_KEY                                   → ask-the-data (akan dihapus)
 
 ═══════════════════════════════════════════
 SCRIPTS
@@ -125,6 +156,7 @@ SCRIPTS
 node scripts/update-staff-shared-password.mjs     → sync shared pass semua staff
 node scripts/reset-head-store-passwords.mjs "X"  → reset semua head_store ke pass X
 node scripts/bulk-upload-staff.mjs                → upload data staff dari CSV
+node scripts/seed-staff-accounts.mjs              → seed akun dari StaffBaru.xlsx (sudah dipakai)
 python scripts/sync-pos-to-supabase.py            → sync SQLite POS ke Supabase (UPSERT)
 powershell scripts\update-pos-data.ps1            → ETL CSV/XLSX → bagikopi.db, lalu sync ke Supabase
 
