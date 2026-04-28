@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Fragment } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
@@ -11,7 +11,7 @@ import { useToast } from '../../contexts/ToastContext'
 import {
   STATUS_CONFIG, POSITION_LABELS, stageLabel, ACTION_LABELS,
   BATCH_CRITERIA, BATCH_LABELS,
-  OJE_INSTORE_SCHEMA, OJE_INSTORE_FORM_STAGES, OJE_INSTORE_FIELD_SUMMARY,
+  OJE_INSTORE_SCHEMA, OJE_INSTORE_FORM_STAGES, OJE_INSTORE_FIELD_SUMMARY, OJE_INSTORE_CATEGORIES,
   allowedActionsFor, nextStage,
   batchTotal, batchResult, formatInstoreValue,
 } from '../../lib/recruitment'
@@ -374,56 +374,97 @@ export default function HRCandidateDetail() {
               }
             </p>
 
-            {OJE_INSTORE_SCHEMA
-              .filter(f => stage !== 'revision_hs' || currentRevisionFields.includes(f.key))
-              .map(f => (
-                <div key={f.key}>
-                  <label className="text-xs font-medium text-slate-600 block mb-0.5">{f.label}</label>
-                  {f.type === 'attendance' && (
-                    <select
-                      value={formData[f.key] ?? ''}
-                      onChange={e => setFormData(prev => ({ ...prev, [f.key]: e.target.value }))}
-                      className="input"
-                    >
-                      <option value="">Pilih status hadir</option>
-                      <option value="hadir">Hadir</option>
-                      <option value="tidak_hadir">Tidak Hadir</option>
-                    </select>
-                  )}
-                  {f.type === 'score' && (
-                    <input
-                      type="number"
-                      min={f.min}
-                      max={f.max}
-                      value={formData[f.key] ?? ''}
-                      onChange={e => setFormData(prev => ({ ...prev, [f.key]: e.target.value }))}
-                      className="input"
-                      placeholder={`${f.label} (${f.min}–${f.max})`}
-                    />
-                  )}
-                  {f.type === 'textarea' && (
-                    <textarea
-                      value={formData[f.key] ?? ''}
-                      onChange={e => setFormData(prev => ({ ...prev, [f.key]: e.target.value }))}
-                      className="input resize-none"
-                      rows={f.rows ?? 3}
-                      placeholder={f.label}
-                    />
-                  )}
-                  {f.type === 'recommendation' && (
-                    <select
-                      value={formData[f.key] ?? ''}
-                      onChange={e => setFormData(prev => ({ ...prev, [f.key]: e.target.value }))}
-                      className="input"
-                    >
-                      <option value="">Pilih rekomendasi</option>
-                      <option value="lulus">Lulus</option>
-                      <option value="tidak_lulus">Tidak Lulus</option>
-                    </select>
-                  )}
-                </div>
-              ))
-            }
+            {(() => {
+              let lastCategory = null
+              return OJE_INSTORE_SCHEMA
+                .filter(f => stage !== 'revision_hs' || currentRevisionFields.includes(f.key))
+                .map(f => {
+                  const showHeader = f.category && f.category !== lastCategory
+                  lastCategory = f.category
+                  return (
+                    <Fragment key={f.key}>
+                      {showHeader && (
+                        <div className="mt-3 mb-1 text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
+                          {OJE_INSTORE_CATEGORIES.find(c => c.key === f.category)?.label}
+                        </div>
+                      )}
+                      <div>
+                        <label className="text-xs font-medium text-slate-700 block mb-0.5">{f.label}</label>
+                        {f.description && (
+                          <p className="text-[11px] text-slate-400 leading-relaxed mb-1">{f.description}</p>
+                        )}
+                        {f.type === 'attendance' && (
+                          <div className="flex gap-2">
+                            {['hadir', 'tidak_hadir'].map(val => (
+                              <button
+                                key={val}
+                                type="button"
+                                onClick={() => setFormData(prev => ({ ...prev, [f.key]: val }))}
+                                className={`flex-1 py-2 rounded-xl border text-sm font-semibold transition-colors ${
+                                  formData[f.key] === val
+                                    ? val === 'hadir'
+                                      ? 'bg-green-100 text-green-700 border-green-300'
+                                      : 'bg-rose-100 text-rose-700 border-rose-300'
+                                    : 'bg-white text-slate-500 border-slate-200'
+                                }`}
+                              >
+                                {val === 'hadir' ? 'Hadir' : 'Tidak Hadir'}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        {f.type === 'score' && (
+                          <div className="flex gap-1.5">
+                            {[1, 2, 3, 4, 5].map(n => (
+                              <button
+                                key={n}
+                                type="button"
+                                onClick={() => setFormData(prev => ({ ...prev, [f.key]: n }))}
+                                className={`flex-1 py-2 rounded-xl border text-sm font-bold transition-colors ${
+                                  Number(formData[f.key]) === n
+                                    ? 'bg-primary-600 text-white border-primary-600'
+                                    : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
+                                }`}
+                              >
+                                {n}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        {f.type === 'textarea' && (
+                          <textarea
+                            value={formData[f.key] ?? ''}
+                            onChange={e => setFormData(prev => ({ ...prev, [f.key]: e.target.value }))}
+                            className="input resize-none"
+                            rows={f.rows ?? 3}
+                            placeholder={f.label}
+                          />
+                        )}
+                        {f.type === 'recommendation' && (
+                          <div className="flex gap-2">
+                            {['lulus', 'tidak_lulus'].map(val => (
+                              <button
+                                key={val}
+                                type="button"
+                                onClick={() => setFormData(prev => ({ ...prev, [f.key]: val }))}
+                                className={`flex-1 py-2 rounded-xl border text-sm font-semibold transition-colors ${
+                                  formData[f.key] === val
+                                    ? val === 'lulus'
+                                      ? 'bg-emerald-100 text-emerald-700 border-emerald-300'
+                                      : 'bg-rose-100 text-rose-700 border-rose-300'
+                                    : 'bg-white text-slate-500 border-slate-200'
+                                }`}
+                              >
+                                {val === 'lulus' ? 'Lulus' : 'Tidak Lulus'}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </Fragment>
+                  )
+                })
+            })()}
 
             <LoadingButton
               loading={actionLoading}
@@ -509,7 +550,7 @@ export default function HRCandidateDetail() {
                     Field yang Perlu Direvisi
                   </label>
                   <div className="flex flex-wrap gap-2">
-                    {OJE_INSTORE_SCHEMA.map(f => (
+                    {OJE_INSTORE_SCHEMA.filter(f => f.type !== 'attendance').map(f => (
                       <button
                         key={f.key}
                         type="button"

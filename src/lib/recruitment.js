@@ -174,17 +174,39 @@ export const BATCH_LABELS = {
   subjektif: 'Subjektif',
 }
 
+export const OJE_INSTORE_CATEGORIES = [
+  { key: 'CUSTOMER_ORIENTED', label: 'Customer Oriented' },
+  { key: 'JOB_FIT',           label: 'Job Fit' },
+  { key: 'TEAM_WORK',         label: 'Team Work' },
+  { key: 'WORK_STANDARD',     label: 'Work Standard' },
+  { key: 'ATTITUDE',          label: 'Attitude' },
+]
+
 export const OJE_INSTORE_SCHEMA = [
+  // Kehadiran (2 hari)
   { key: 'hari_1_hadir', label: 'Hari 1', type: 'attendance', required: true },
   { key: 'hari_2_hadir', label: 'Hari 2', type: 'attendance', required: true },
-  { key: 'hari_3_hadir', label: 'Hari 3', type: 'attendance', required: true },
-  { key: 'hari_4_hadir', label: 'Hari 4', type: 'attendance', required: true },
-  { key: 'hari_5_hadir', label: 'Hari 5', type: 'attendance', required: true },
-  { key: 'penilaian_sikap', label: 'Penilaian Sikap', type: 'score', min: 1, max: 5, required: true },
-  { key: 'penilaian_skill', label: 'Penilaian Skill', type: 'score', min: 1, max: 5, required: true },
-  { key: 'penilaian_disiplin', label: 'Penilaian Disiplin', type: 'score', min: 1, max: 5, required: true },
-  { key: 'catatan', label: 'Catatan Head Store', type: 'textarea', rows: 3, required: true },
-  { key: 'rekomendasi', label: 'Rekomendasi', type: 'recommendation', required: true },
+  // Customer Oriented
+  { key: 'co_ramah_sopan',    label: 'Ramah & Sopan',   description: 'Selalu tersenyum, bersikap ramah, dan sopan kepada pelanggan.', category: 'CUSTOMER_ORIENTED', type: 'score', min: 1, max: 5, required: true },
+  { key: 'co_customer_first', label: 'Customer First',  description: 'Bersikap dan bertindak dengan mendahulukan kepuasan pelanggan.', category: 'CUSTOMER_ORIENTED', type: 'score', min: 1, max: 5, required: true },
+  // Job Fit
+  { key: 'jf_motivasi',   label: 'Motivasi Kerja', description: 'Rasa ingin tahu terhadap dunia kerja lebih besar dibanding sekadar hitung-hitungan hak/kewajiban.', category: 'JOB_FIT', type: 'score', min: 1, max: 5, required: true },
+  { key: 'jf_inisiatif',  label: 'Inisiatif',      description: 'Memiliki inisiatif kerja yang tinggi (melakukan pekerjaan tanpa harus diminta).', category: 'JOB_FIT', type: 'score', min: 1, max: 5, required: true },
+  { key: 'jf_ketahanan',  label: 'Ketahanan',      description: 'Rajin, sigap, tidak mudah mengeluh, serta ikhlas dan tulus dalam bertugas.', category: 'JOB_FIT', type: 'score', min: 1, max: 5, required: true },
+  // Team Work
+  { key: 'tw_respect',  label: 'Respect',  description: 'Bersikap sopan, tidak rendah diri/tinggi hati, dan hormat terhadap rekan kerja.', category: 'TEAM_WORK', type: 'score', min: 1, max: 5, required: true },
+  { key: 'tw_goodwill', label: 'Goodwill', description: 'Bersedia membantu pekerjaan tim dan kooperatif dalam mencapai tujuan bersama.', category: 'TEAM_WORK', type: 'score', min: 1, max: 5, required: true },
+  // Work Standard
+  { key: 'ws_kualitas',   label: 'Kualitas Kerja',  description: 'Bekerja sesuai dengan prosedur (SOP) dan standar yang diinstruksikan.', category: 'WORK_STANDARD', type: 'score', min: 1, max: 5, required: true },
+  { key: 'ws_kebersihan', label: 'Kebersihan',       description: 'Menunjukkan standar kebersihan tinggi dengan prinsip Clean-As-You-Go.', category: 'WORK_STANDARD', type: 'score', min: 1, max: 5, required: true },
+  { key: 'ws_kecepatan',  label: 'Kecepatan Kerja', description: 'Mampu menyelesaikan pekerjaan tepat waktu dengan hasil yang akurat.', category: 'WORK_STANDARD', type: 'score', min: 1, max: 5, required: true },
+  // Attitude
+  { key: 'att_kepatuhan', label: 'Kepatuhan', description: 'Mampu menyerap instruksi dengan baik tanpa banyak alasan/berkelit.', category: 'ATTITUDE', type: 'score', min: 1, max: 5, required: true },
+  { key: 'att_disiplin',  label: 'Disiplin',  description: 'Ketepatan waktu kehadiran dan kepatuhan pada jadwal.', category: 'ATTITUDE', type: 'score', min: 1, max: 5, required: true },
+  { key: 'att_grooming',  label: 'Grooming',  description: 'Kerapihan dan kebersihan diri (baju rapi, tidak bau badan, penampilan profesional).', category: 'ATTITUDE', type: 'score', min: 1, max: 5, required: true },
+  // Penutup
+  { key: 'catatan',     label: 'Catatan Head Store', type: 'textarea', rows: 3, required: true },
+  { key: 'rekomendasi', label: 'Rekomendasi',        type: 'recommendation', required: true },
 ]
 
 export const OJE_INSTORE_FORM_STAGES = ['oje_instore_issued', 'oje_instore_submitted', 'review_hrstaff', 'revision_hs']
@@ -192,13 +214,20 @@ export const OJE_INSTORE_FORM_STAGES = ['oje_instore_issued', 'oje_instore_submi
 export const OJE_INSTORE_FIELD_SUMMARY = [
   { key: 'hari_1_hadir', label: 'Hari 1 - Hadir' },
   { key: 'hari_2_hadir', label: 'Hari 2 - Hadir' },
-  { key: 'hari_3_hadir', label: 'Hari 3 - Hadir' },
-  { key: 'hari_4_hadir', label: 'Hari 4 - Hadir' },
-  { key: 'hari_5_hadir', label: 'Hari 5 - Hadir' },
-  { key: 'penilaian_sikap', label: 'Penilaian Sikap (1-5)' },
-  { key: 'penilaian_skill', label: 'Penilaian Skill (1-5)' },
-  { key: 'penilaian_disiplin', label: 'Penilaian Disiplin (1-5)' },
-  { key: 'catatan', label: 'Catatan HS' },
+  { key: 'co_ramah_sopan',    label: 'Ramah & Sopan (1-5)' },
+  { key: 'co_customer_first', label: 'Customer First (1-5)' },
+  { key: 'jf_motivasi',   label: 'Motivasi Kerja (1-5)' },
+  { key: 'jf_inisiatif',  label: 'Inisiatif (1-5)' },
+  { key: 'jf_ketahanan',  label: 'Ketahanan (1-5)' },
+  { key: 'tw_respect',  label: 'Respect (1-5)' },
+  { key: 'tw_goodwill', label: 'Goodwill (1-5)' },
+  { key: 'ws_kualitas',   label: 'Kualitas Kerja (1-5)' },
+  { key: 'ws_kebersihan', label: 'Kebersihan (1-5)' },
+  { key: 'ws_kecepatan',  label: 'Kecepatan Kerja (1-5)' },
+  { key: 'att_kepatuhan', label: 'Kepatuhan (1-5)' },
+  { key: 'att_disiplin',  label: 'Disiplin (1-5)' },
+  { key: 'att_grooming',  label: 'Grooming (1-5)' },
+  { key: 'catatan',     label: 'Catatan HS' },
   { key: 'rekomendasi', label: 'Rekomendasi' },
 ]
 
