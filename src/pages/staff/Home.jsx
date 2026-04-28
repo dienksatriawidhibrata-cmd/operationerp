@@ -5,8 +5,10 @@ import { supabase } from '../../lib/supabase'
 import { StaffBottomNav } from '../../components/BottomNav'
 import { canViewKPI, canViewSupplyChain, isStoreRole } from '../../lib/access'
 import { AppIcon } from '../../components/ui/AppKit'
-import { fmtRp, todayWIB, yesterdayWIB, sisaWaktuLaporan } from '../../lib/utils'
+import { currentPeriodWIB, fmtRp, todayWIB, yesterdayWIB, sisaWaktuLaporan } from '../../lib/utils'
 import ReminderBanner from '../../components/ReminderBanner'
+import LeaderboardSection from '../../components/LeaderboardSection'
+import { fetchOperationalLeaderboards, EMPTY_LEADERBOARDS } from '../../lib/opsLeaderboards'
 
 function StatusItem({ icon, label, done, loading, statusLabel }) {
   const tone = loading ? 'loading' : done ? 'done' : 'pending'
@@ -31,12 +33,17 @@ function StatusItem({ icon, label, done, loading, statusLabel }) {
   )
 }
 
+const HIDDEN_HEAD_STORE_ROLES = ['staff', 'barista', 'kitchen', 'waitress']
+
 export default function StaffHome() {
   const { profile, signOut } = useAuth()
   const [status, setStatus] = useState(null)
   const [loading, setLoading] = useState(true)
   const [announcements, setAnnouncements] = useState([])
   const [tasks, setTasks] = useState([])
+  const [leaderboardPeriod, setLeaderboardPeriod] = useState(currentPeriodWIB())
+  const [leaderboardView, setLeaderboardView] = useState('staff')
+  const [leaderboards, setLeaderboards] = useState(EMPTY_LEADERBOARDS)
 
   const today = todayWIB()
   const yesterday = yesterdayWIB()
@@ -50,6 +57,12 @@ export default function StaffHome() {
     }
     fetchStatus()
   }, [profile])
+
+  useEffect(() => {
+    fetchOperationalLeaderboards({ supabase, period: leaderboardPeriod, today })
+      .then(setLeaderboards)
+      .catch(() => setLeaderboards(EMPTY_LEADERBOARDS))
+  }, [leaderboardPeriod])
 
   const fetchSopAndAnnouncements = async () => {
     const [annRes] = await Promise.all([
@@ -447,6 +460,19 @@ export default function StaffHome() {
             </div>
           </div>
         )}
+
+        {/* Leaderboard */}
+        <div className="mb-6">
+          <LeaderboardSection
+            selectedPeriod={leaderboardPeriod}
+            onPeriodChange={setLeaderboardPeriod}
+            leaderboardView={leaderboardView}
+            onViewChange={setLeaderboardView}
+            leaderboards={leaderboards}
+            profile={profile}
+            showHeadStore={!HIDDEN_HEAD_STORE_ROLES.includes(profile?.role)}
+          />
+        </div>
 
         {/* Notice Board */}
         <div className="bg-slate-900 p-5 rounded-[2.5rem] text-white relative overflow-hidden mb-2">

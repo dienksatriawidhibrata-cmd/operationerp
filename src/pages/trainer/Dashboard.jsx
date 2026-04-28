@@ -4,7 +4,9 @@ import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { SmartBottomNav } from '../../components/BottomNav'
 import { AppIcon } from '../../components/ui/AppKit'
-import { todayWIB } from '../../lib/utils'
+import { currentPeriodWIB, todayWIB } from '../../lib/utils'
+import LeaderboardSection from '../../components/LeaderboardSection'
+import { fetchOperationalLeaderboards, EMPTY_LEADERBOARDS } from '../../lib/opsLeaderboards'
 
 const QUADRANT_COLORS = {
   'Consistent Star': 'emerald', 'Future Star': 'emerald', 'Rough Diamond': 'primary',
@@ -21,8 +23,17 @@ export default function TrainerDashboard() {
     totalExisting: 0, byQuadrant: {},
   })
   const [loading, setLoading] = useState(true)
+  const [leaderboardPeriod, setLeaderboardPeriod] = useState(currentPeriodWIB())
+  const [leaderboardView, setLeaderboardView] = useState('store')
+  const [leaderboards, setLeaderboards] = useState(EMPTY_LEADERBOARDS)
 
   useEffect(() => { fetchStats() }, [])
+
+  useEffect(() => {
+    fetchOperationalLeaderboards({ supabase, period: leaderboardPeriod, today })
+      .then(setLeaderboards)
+      .catch(() => setLeaderboards(EMPTY_LEADERBOARDS))
+  }, [leaderboardPeriod])
 
   const fetchStats = async () => {
     const [newRes, existingRes] = await Promise.all([
@@ -174,6 +185,18 @@ export default function TrainerDashboard() {
             </div>
           </div>
         )}
+
+        {/* Leaderboard */}
+        <div className="mb-6">
+          <LeaderboardSection
+            selectedPeriod={leaderboardPeriod}
+            onPeriodChange={setLeaderboardPeriod}
+            leaderboardView={leaderboardView}
+            onViewChange={setLeaderboardView}
+            leaderboards={leaderboards}
+            showHeadStore={true}
+          />
+        </div>
 
         {/* Notice Board */}
         <div className="bg-gradient-to-r from-indigo-700 to-blue-500 p-5 rounded-[2rem] text-white relative overflow-hidden shadow-lg">

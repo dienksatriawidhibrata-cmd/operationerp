@@ -5,7 +5,9 @@ import { supabase } from '../../lib/supabase'
 import { OpsBottomNav } from '../../components/BottomNav'
 import { AppIcon } from '../../components/ui/AppKit'
 import AskTheData from '../../components/AskTheData'
-import { currentPeriodWIB, fmtRp, lastNPeriods, periodBounds, periodLabel, roleLabel, todayWIB } from '../../lib/utils'
+import LeaderboardSection from '../../components/LeaderboardSection'
+import { fetchOperationalLeaderboards, EMPTY_LEADERBOARDS } from '../../lib/opsLeaderboards'
+import { currentPeriodWIB, fmtRp, todayWIB } from '../../lib/utils'
 
 function fmtSetoranDate(dateStr) {
   return new Date(dateStr).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -16,8 +18,6 @@ function shiftDateStr(dateStr, days) {
   d.setUTCDate(d.getUTCDate() + days)
   return d.toISOString().split('T')[0]
 }
-
-const WIB_OFFSET_MS = 7 * 60 * 60 * 1000
 
 export default function OpsHub() {
   const { profile, signOut } = useAuth()
@@ -39,14 +39,7 @@ export default function OpsHub() {
     total: 0,
   })
   const [loadingSetoran, setLoadingSetoran] = useState(true)
-  const [leaderboards, setLeaderboards] = useState({
-    staffTop: [],
-    staffBottom: [],
-    storesTop: [],
-    storesBottom: [],
-    headStoresTop: [],
-    headStoresBottom: [],
-  })
+  const [leaderboards, setLeaderboards] = useState(EMPTY_LEADERBOARDS)
   const [leaderboardView, setLeaderboardView] = useState('store')
   const [loading, setLoading] = useState(true)
 
@@ -55,7 +48,9 @@ export default function OpsHub() {
   }, [])
 
   useEffect(() => {
-    fetchLeaderboards()
+    fetchOperationalLeaderboards({ supabase, period: selectedPeriod, today })
+      .then(setLeaderboards)
+      .catch(() => setLeaderboards(EMPTY_LEADERBOARDS))
   }, [selectedPeriod])
 
   useEffect(() => {
@@ -101,276 +96,7 @@ export default function OpsHub() {
     setLoading(false)
   }
 
-  const fetchLeaderboards = async () => {
-    const { startDate, endDate } = periodBounds(selectedPeriod)
-    const elapsedDays = getElapsedDaysInPeriod(selectedPeriod, today)
-    const expectedChecklistDays = elapsedDays * 3
-    const expectedPreparationDays = elapsedDays * 3
-    const expectedHeadStoreReportDays = Math.max(elapsedDays - 1, 0)
-    const expectedHeadStoreDepositDays = Math.max(elapsedDays - 1, 0)
-    const expectedHeadStoreOpexDays = elapsedDays
-
-    const [
-      branchesRes,
-      storeProfilesRes,
-      headStoresRes,
-      checklistsRes,
-      preparationRes,
-      reportsRes,
-      depositsRes,
-      opexRes,
-    ] = await Promise.all([
-      supabase.from('branches')
-        .select('id, name, store_id')
-        .eq('is_active', true)
-        .order('name'),
-      supabase.from('profiles')
-        .select('id, full_name, role, branch_id')
-        .eq('is_active', true)
-        .in('role', ['staff', 'barista', 'kitchen', 'waitress', 'asst_head_store'])
-        .not('branch_id', 'is', null)
-        .order('full_name'),
-      supabase.from('profiles')
-        .select('id, full_name, branch_id')
-        .eq('is_active', true)
-        .eq('role', 'head_store')
-        .not('branch_id', 'is', null)
-        .order('full_name'),
-      supabase.from('daily_checklists')
-        .select('branch_id, submitted_by, is_late')
-        .gte('tanggal', startDate)
-        .lte('tanggal', endDate),
-      supabase.from('daily_preparation')
-        .select('branch_id, shift, tanggal, created_at, updated_at')
-        .gte('tanggal', startDate)
-        .lte('tanggal', endDate),
-      supabase.from('daily_reports')
-        .select('branch_id, submitted_by, tanggal, submitted_at')
-        .gte('tanggal', startDate)
-        .lte('tanggal', endDate),
-      supabase.from('daily_deposits')
-        .select('branch_id, submitted_by, tanggal, submitted_at')
-        .gte('tanggal', startDate)
-        .lte('tanggal', endDate),
-      supabase.from('operational_expenses')
-        .select('branch_id, submitted_by, tanggal, created_at')
-        .gte('tanggal', startDate)
-        .lte('tanggal', endDate),
-    ])
-
-    if (
-      branchesRes.error ||
-      storeProfilesRes.error ||
-      headStoresRes.error ||
-      checklistsRes.error ||
-      preparationRes.error ||
-      reportsRes.error ||
-      depositsRes.error ||
-      opexRes.error
-    ) {
-      setLeaderboards({
-        staffTop: [],
-        staffBottom: [],
-        storesTop: [],
-        storesBottom: [],
-        headStoresTop: [],
-        headStoresBottom: [],
-      })
-      return
-    }
-
-    const branches = branchesRes.data || []
-    const storeProfiles = storeProfilesRes.data || []
-    const headStores = headStoresRes.data || []
-    const branchMap = Object.fromEntries(branches.map((branch) => [branch.id, branch]))
-    const staffBase = Object.fromEntries(
-      storeProfiles.map((person) => [
-        person.id,
-        {
-          id: person.id,
-          name: person.full_name,
-          role: person.role,
-          branchId: person.branch_id,
-          checklistCount: 0,
-          checklistOnTime: 0,
-        },
-      ])
-    )
-
-    const storeBase = Object.fromEntries(
-      branches.map((branch) => [
-        branch.id,
-        {
-          id: branch.id,
-          name: branch.name?.replace(/^Bagi Kopi\s+/i, '') || '-',
-          storeId: branch.store_id || '-',
-          checklistCount: 0,
-          checklistOnTime: 0,
-          preparationCount: 0,
-          preparationOnTime: 0,
-        },
-      ])
-    )
-
-    ;(checklistsRes.data || []).forEach((row) => {
-      const current = storeBase[row.branch_id]
-      if (!current) return
-      current.checklistCount += 1
-      if (!row.is_late) current.checklistOnTime += 1
-
-      const staff = staffBase[row.submitted_by]
-      if (staff) {
-        staff.checklistCount += 1
-        if (!row.is_late) staff.checklistOnTime += 1
-      }
-    })
-
-    ;(preparationRes.data || []).forEach((row) => {
-      const current = storeBase[row.branch_id]
-      if (!current) return
-      current.preparationCount += 1
-      if (isPreparationOnTime(row)) current.preparationOnTime += 1
-    })
-
-    const storeRows = Object.values(storeBase).map((row) => {
-      const completionPct = pct(row.checklistCount + row.preparationCount, expectedChecklistDays + expectedPreparationDays)
-      const onTimePct = pct(
-        row.checklistOnTime + row.preparationOnTime,
-        expectedChecklistDays + expectedPreparationDays
-      )
-      const score = weightedScore(completionPct, onTimePct)
-
-      return {
-        id: row.id,
-        title: row.name,
-        subtitle: `${row.storeId} · Ceklis ${row.checklistCount}/${expectedChecklistDays} · Prep ${row.preparationCount}/${expectedPreparationDays}`,
-        score,
-        metrics: `On time ${onTimePct}%`,
-        note: `${row.checklistOnTime}/${row.checklistCount || 0} ceklis · ${row.preparationOnTime}/${row.preparationCount || 0} prep tepat waktu`,
-      }
-    })
-
-    const staffRows = Object.values(staffBase).map((row) => {
-      const branch = branchMap[row.branchId] || null
-      const completionPct = pct(row.checklistCount, expectedChecklistDays)
-      const onTimePct = pct(row.checklistOnTime, expectedChecklistDays)
-      const score = weightedScore(completionPct, onTimePct)
-
-      return {
-        id: row.id,
-        title: row.name,
-        subtitle: `${roleLabel(row.role)} · ${branch?.store_id || '-'} · ${branch?.name?.replace(/^Bagi Kopi\s+/i, '') || '-'}`,
-        score,
-        metrics: `On time ${onTimePct}%`,
-        note: `${row.checklistCount}/${expectedChecklistDays} checklist · ${row.checklistOnTime}/${row.checklistCount || 0} tepat waktu`,
-      }
-    })
-
-    const headStoreBase = Object.fromEntries(
-      headStores.map((person) => [
-        person.id,
-        {
-          id: person.id,
-          name: person.full_name,
-          branchId: person.branch_id,
-          reportDays: new Map(),
-          depositDays: new Map(),
-          opexDays: new Map(),
-        },
-      ])
-    )
-
-    ;(reportsRes.data || []).forEach((row) => {
-      const current = headStoreBase[row.submitted_by]
-      if (!current) return
-      const previous = current.reportDays.get(row.tanggal)
-      const next = {
-        submittedAt: row.submitted_at,
-        onTime: isReportLikeOnTime(row.tanggal, row.submitted_at),
-      }
-      if (!previous || new Date(row.submitted_at) < new Date(previous.submittedAt)) {
-        current.reportDays.set(row.tanggal, next)
-      }
-    })
-
-    ;(depositsRes.data || []).forEach((row) => {
-      const current = headStoreBase[row.submitted_by]
-      if (!current) return
-      const previous = current.depositDays.get(row.tanggal)
-      const next = {
-        submittedAt: row.submitted_at,
-        onTime: isReportLikeOnTime(row.tanggal, row.submitted_at),
-      }
-      if (!previous || new Date(row.submitted_at) < new Date(previous.submittedAt)) {
-        current.depositDays.set(row.tanggal, next)
-      }
-    })
-
-    ;(opexRes.data || []).forEach((row) => {
-      const current = headStoreBase[row.submitted_by]
-      if (!current) return
-      const previous = current.opexDays.get(row.tanggal)
-      const next = {
-        createdAt: row.created_at,
-        onTime: isOpexOnTime(row.tanggal, row.created_at),
-      }
-      if (!previous || new Date(row.created_at) < new Date(previous.createdAt)) {
-        current.opexDays.set(row.tanggal, next)
-      }
-    })
-
-    const headStoreRows = Object.values(headStoreBase).map((row) => {
-      const branch = branchMap[row.branchId] || null
-      const reportCount = row.reportDays.size
-      const depositCount = row.depositDays.size
-      const opexCount = row.opexDays.size
-      const reportOnTime = [...row.reportDays.values()].filter((item) => item.onTime).length
-      const depositOnTime = [...row.depositDays.values()].filter((item) => item.onTime).length
-      const opexOnTime = [...row.opexDays.values()].filter((item) => item.onTime).length
-      const completionPct = pct(
-        reportCount + depositCount + opexCount,
-        expectedHeadStoreReportDays + expectedHeadStoreDepositDays + expectedHeadStoreOpexDays
-      )
-      const onTimePct = pct(
-        reportOnTime + depositOnTime + opexOnTime,
-        expectedHeadStoreReportDays + expectedHeadStoreDepositDays + expectedHeadStoreOpexDays
-      )
-      const score = weightedScore(completionPct, onTimePct)
-
-      return {
-        id: row.id,
-        title: row.name,
-        subtitle: `${branch?.store_id || '-'} · ${branch?.name?.replace(/^Bagi Kopi\s+/i, '') || '-'}`,
-        score,
-        metrics: `On time ${onTimePct}%`,
-        note: `Laporan ${reportCount}/${expectedHeadStoreReportDays} · Setoran ${depositCount}/${expectedHeadStoreDepositDays} · Opex ${opexCount}/${expectedHeadStoreOpexDays}`,
-      }
-    })
-
-    setLeaderboards({
-      staffTop: [...staffRows]
-        .sort((a, b) => (b.score - a.score) || b.metrics.localeCompare(a.metrics) || a.title.localeCompare(b.title, 'id-ID'))
-        .slice(0, 10),
-      staffBottom: [...staffRows]
-        .sort((a, b) => (a.score - b.score) || a.metrics.localeCompare(b.metrics) || a.title.localeCompare(b.title, 'id-ID'))
-        .slice(0, 10),
-      storesTop: [...storeRows]
-        .sort((a, b) => (b.score - a.score) || b.metrics.localeCompare(a.metrics) || a.title.localeCompare(b.title, 'id-ID'))
-        .slice(0, 10),
-      storesBottom: [...storeRows]
-        .sort((a, b) => (a.score - b.score) || a.metrics.localeCompare(b.metrics) || a.title.localeCompare(b.title, 'id-ID'))
-        .slice(0, 10),
-      headStoresTop: [...headStoreRows]
-        .sort((a, b) => (b.score - a.score) || b.metrics.localeCompare(a.metrics) || a.title.localeCompare(b.title, 'id-ID'))
-        .slice(0, 10),
-      headStoresBottom: [...headStoreRows]
-        .sort((a, b) => (a.score - b.score) || a.metrics.localeCompare(b.metrics) || a.title.localeCompare(b.title, 'id-ID'))
-        .slice(0, 10),
-    })
-  }
-
   const shortName = profile?.full_name?.split(' ')[0] ?? 'Manager'
-  const periodText = periodLabel(selectedPeriod)
 
   const isSetoranToday = setoranDate === today
   const setoranDateParam = isSetoranToday ? '' : `date=${setoranDate}`
@@ -546,85 +272,15 @@ export default function OpsHub() {
           ))}
         </div>
 
-        <h2 className="mb-4 text-sm font-extrabold text-gray-800">Leaderboard Operasional</h2>
-        <div className="mb-4">
-          <select
-            value={selectedPeriod}
-            onChange={(event) => setSelectedPeriod(event.target.value)}
-            className="w-full rounded-[1.25rem] border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm"
-          >
-            {lastNPeriods(6).map((period) => (
-              <option key={period} value={period}>{periodLabel(period)}</option>
-            ))}
-          </select>
-        </div>
-        <div className="mb-4 flex gap-2 rounded-[1.25rem] bg-white p-1 shadow-sm">
-          <LeaderboardTab label="Toko" active={leaderboardView === 'store'} onClick={() => setLeaderboardView('store')} />
-          <LeaderboardTab label="Staff" active={leaderboardView === 'staff'} onClick={() => setLeaderboardView('staff')} />
-          <LeaderboardTab label="Head Store" active={leaderboardView === 'head_store'} onClick={() => setLeaderboardView('head_store')} />
-        </div>
-
-        <div className="mb-6 grid gap-4 xl:grid-cols-2">
-          {leaderboardView === 'store' && (
-            <>
-              <LeaderboardCard
-                title="Top 10 Toko"
-                subtitle={`${periodText} · Ceklis + Preparation`}
-                tone="emerald"
-                countLabel="toko"
-                rows={leaderboards.storesTop}
-                emptyText="Belum ada data toko untuk periode ini."
-              />
-              <LeaderboardCard
-                title="Bottom 10 Toko"
-                subtitle={`${periodText} · Ceklis + Preparation`}
-                tone="rose"
-                countLabel="toko"
-                rows={leaderboards.storesBottom}
-                emptyText="Belum ada data toko untuk periode ini."
-              />
-            </>
-          )}
-          {leaderboardView === 'staff' && (
-            <>
-              <LeaderboardCard
-                title="Top 10 Staff"
-                subtitle={`${periodText} · Checklist`}
-                tone="emerald"
-                countLabel="staff"
-                rows={leaderboards.staffTop}
-                emptyText="Belum ada data staff untuk periode ini."
-              />
-              <LeaderboardCard
-                title="Bottom 10 Staff"
-                subtitle={`${periodText} · Checklist`}
-                tone="rose"
-                countLabel="staff"
-                rows={leaderboards.staffBottom}
-                emptyText="Belum ada data staff untuk periode ini."
-              />
-            </>
-          )}
-          {leaderboardView === 'head_store' && (
-            <>
-              <LeaderboardCard
-                title="Top 10 Head Store"
-                subtitle={`${periodText} · Opex + Setoran + Laporan`}
-                tone="blue"
-                countLabel="head store"
-                rows={leaderboards.headStoresTop}
-                emptyText="Belum ada data head store untuk periode ini."
-              />
-              <LeaderboardCard
-                title="Bottom 10 Head Store"
-                subtitle={`${periodText} · Opex + Setoran + Laporan`}
-                tone="rose"
-                countLabel="head store"
-                rows={leaderboards.headStoresBottom}
-                emptyText="Belum ada data head store untuk periode ini."
-              />
-            </>
-          )}
+        <div className="mb-6">
+          <LeaderboardSection
+            selectedPeriod={selectedPeriod}
+            onPeriodChange={setSelectedPeriod}
+            leaderboardView={leaderboardView}
+            onViewChange={setLeaderboardView}
+            leaderboards={leaderboards}
+            showHeadStore={true}
+          />
         </div>
 
         <h2 className="mb-4 text-sm font-extrabold text-gray-800">AI Analyst</h2>
@@ -646,125 +302,3 @@ export default function OpsHub() {
   )
 }
 
-function LeaderboardCard({ title, subtitle, tone, countLabel, rows, emptyText }) {
-  const toneClasses = {
-    emerald: {
-      badge: 'bg-emerald-50 text-emerald-600',
-      rank: 'bg-emerald-50 text-emerald-600',
-      score: 'text-emerald-700',
-    },
-    rose: {
-      badge: 'bg-rose-50 text-rose-600',
-      rank: 'bg-rose-50 text-rose-600',
-      score: 'text-rose-700',
-    },
-    blue: {
-      badge: 'bg-sky-50 text-sky-600',
-      rank: 'bg-sky-50 text-sky-600',
-      score: 'text-sky-700',
-    },
-  }[tone]
-
-  return (
-    <div className="rounded-[2rem] border border-slate-100 bg-white p-4 shadow-sm">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <div>
-          <div className="text-sm font-extrabold text-slate-900">{title}</div>
-          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">{subtitle}</div>
-        </div>
-        <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${toneClasses.badge}`}>
-          {rows.length} {countLabel}
-        </span>
-      </div>
-
-      {rows.length === 0 ? (
-        <div className="rounded-2xl bg-slate-50 px-4 py-6 text-sm text-slate-500">{emptyText}</div>
-      ) : (
-        <div className="space-y-2">
-          {rows.map((row, index) => (
-            <div key={row.id} className="flex items-center gap-3 rounded-2xl bg-slate-50 px-3 py-3">
-              <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl text-xs font-black ${toneClasses.rank}`}>
-                #{index + 1}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-semibold text-slate-900">{row.title}</div>
-                <div className="truncate text-[11px] text-slate-500">{row.subtitle}</div>
-                <div className="mt-1 truncate text-[10px] font-medium text-slate-400">{row.note}</div>
-              </div>
-              <div className="text-right">
-                <div className={`text-sm font-black ${toneClasses.score}`}>{row.score}</div>
-                <div className="text-[10px] font-semibold text-slate-400">{row.metrics}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function LeaderboardTab({ label, active, onClick }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex-1 rounded-[1rem] px-3 py-2 text-sm font-bold transition-colors ${
-        active ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50'
-      }`}
-    >
-      {label}
-    </button>
-  )
-}
-
-function weightedScore(completionPct, onTimePct) {
-  return Math.round((completionPct * 0.7) + (onTimePct * 0.3))
-}
-
-function pct(value, total) {
-  if (!total || total <= 0) return 0
-  return Math.round((value / total) * 100)
-}
-
-function getElapsedDaysInPeriod(period, today) {
-  if (!period || !today) return 0
-  if (today.startsWith(period)) {
-    return Number(today.slice(8, 10))
-  }
-
-  return periodBounds(period).daysInMonth
-}
-
-function toWibDate(timestamp) {
-  return new Date(new Date(timestamp).getTime() + WIB_OFFSET_MS)
-}
-
-function isReportLikeOnTime(tanggal, submittedAt) {
-  if (!tanggal || !submittedAt) return false
-  const [year, month, day] = tanggal.split('-').map(Number)
-  const deadline = new Date(Date.UTC(year, month - 1, day + 1, 7, 0, 0))
-  return new Date(submittedAt) <= deadline
-}
-
-function isOpexOnTime(tanggal, createdAt) {
-  if (!tanggal || !createdAt) return false
-  return toWibDate(createdAt).toISOString().slice(0, 10) === tanggal
-}
-
-function isPreparationOnTime(row) {
-  const timestamp = row?.updated_at || row?.created_at
-  if (!row?.tanggal || !timestamp || !row?.shift) return false
-
-  const [year, month, day] = row.tanggal.split('-').map(Number)
-  const utcHourByShift = {
-    pagi: 1,
-    middle: 7,
-    malam: 20,
-  }
-
-  const deadlineHour = utcHourByShift[row.shift]
-  if (deadlineHour == null) return false
-
-  const deadline = new Date(Date.UTC(year, month - 1, day, deadlineHour, 0, 0))
-  return new Date(timestamp) <= deadline
-}

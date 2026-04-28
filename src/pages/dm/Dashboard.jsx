@@ -213,6 +213,9 @@ export default function DMDashboard() {
     storesBottom: [],
     headStoresTop: [],
     headStoresBottom: [],
+    staffAll: [],
+    headStoresAll: [],
+    storesAll: [],
   })
 
   const isOpsManager = isOpsLikeRole(profile?.role)
@@ -244,12 +247,10 @@ export default function DMDashboard() {
   useEffect(() => {
     if (!scopedBranchIds.length) {
       setOperationalLeaderboards({
-        staffTop: [],
-        staffBottom: [],
-        storesTop: [],
-        storesBottom: [],
-        headStoresTop: [],
-        headStoresBottom: [],
+        staffTop: [], staffBottom: [],
+        storesTop: [], storesBottom: [],
+        headStoresTop: [], headStoresBottom: [],
+        staffAll: [], headStoresAll: [], storesAll: [],
       })
       return
     }
@@ -263,12 +264,10 @@ export default function DMDashboard() {
       .then(setOperationalLeaderboards)
       .catch(() => {
         setOperationalLeaderboards({
-          staffTop: [],
-          staffBottom: [],
-          storesTop: [],
-          storesBottom: [],
-          headStoresTop: [],
-          headStoresBottom: [],
+          staffTop: [], staffBottom: [],
+          storesTop: [], storesBottom: [],
+          headStoresTop: [], headStoresBottom: [],
+          staffAll: [], headStoresAll: [], storesAll: [],
         })
       })
   }, [leaderboardPeriod, scopedBranchIds, today])
@@ -1021,6 +1020,8 @@ export default function DMDashboard() {
                 leaderboardView={leaderboardView}
                 onViewChange={setLeaderboardView}
                 leaderboards={operationalLeaderboards}
+                profile={profile}
+                showHeadStore={true}
               />
             </SectionPanel>
 

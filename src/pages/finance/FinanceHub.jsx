@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
-import { roleLabel, todayWIB, yesterdayWIB } from '../../lib/utils'
+import { currentPeriodWIB, roleLabel, todayWIB, yesterdayWIB } from '../../lib/utils'
 import { SmartBottomNav } from '../../components/BottomNav'
+import LeaderboardSection from '../../components/LeaderboardSection'
+import { fetchOperationalLeaderboards, EMPTY_LEADERBOARDS } from '../../lib/opsLeaderboards'
 import {
   AppIcon,
   EmptyPanel,
@@ -100,10 +102,19 @@ export default function FinanceHub({
   const [error, setError] = useState('')
   const [areaFilter, setAreaFilter] = useState('all')
   const [districtFilter, setDistrictFilter] = useState('all')
+  const [leaderboardPeriod, setLeaderboardPeriod] = useState(currentPeriodWIB())
+  const [leaderboardView, setLeaderboardView] = useState('store')
+  const [leaderboards, setLeaderboards] = useState(EMPTY_LEADERBOARDS)
 
   const setoranDate = yesterdayWIB()
   const opexDate = todayWIB()
   const laporanDate = yesterdayWIB()
+
+  useEffect(() => {
+    fetchOperationalLeaderboards({ supabase, period: leaderboardPeriod, today: todayWIB() })
+      .then(setLeaderboards)
+      .catch(() => setLeaderboards(EMPTY_LEADERBOARDS))
+  }, [leaderboardPeriod])
 
   useEffect(() => {
     const load = async () => {
@@ -404,6 +415,15 @@ export default function FinanceHub({
             </div>
           </SectionPanel>
         )}
+
+        <LeaderboardSection
+          selectedPeriod={leaderboardPeriod}
+          onPeriodChange={setLeaderboardPeriod}
+          leaderboardView={leaderboardView}
+          onViewChange={setLeaderboardView}
+          leaderboards={leaderboards}
+          showHeadStore={true}
+        />
       </div>
     </SubpageShell>
   )

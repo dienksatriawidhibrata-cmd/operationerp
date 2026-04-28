@@ -253,6 +253,8 @@ export async function fetchOperationalLeaderboards({ supabase, period, today, br
     }
   })
 
+  const topSort = (a, b) => (b.score - a.score) || b.metrics.localeCompare(a.metrics) || a.title.localeCompare(b.title, 'id-ID')
+
   return {
     staffTop: buildTopRows(staffRows),
     staffBottom: buildBottomRows(staffRows),
@@ -260,7 +262,17 @@ export async function fetchOperationalLeaderboards({ supabase, period, today, br
     storesBottom: buildBottomRows(storeRows),
     headStoresTop: buildTopRows(headStoreRows),
     headStoresBottom: buildBottomRows(headStoreRows),
+    staffAll: [...staffRows].sort(topSort),
+    headStoresAll: [...headStoreRows].sort(topSort),
+    storesAll: [...storeRows].sort(topSort),
   }
+}
+
+export const EMPTY_LEADERBOARDS = {
+  staffTop: [], staffBottom: [],
+  storesTop: [], storesBottom: [],
+  headStoresTop: [], headStoresBottom: [],
+  staffAll: [], headStoresAll: [], storesAll: [],
 }
 
 function buildTopRows(rows) {
