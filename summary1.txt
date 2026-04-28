@@ -1,5 +1,5 @@
 BAGI KOPI OPS — PROGRESS SUMMARY
-Update: 2026-04-27 | Production: https://operationerp.pages.dev
+Update: 2026-04-28 | Production: https://operationerp.pages.dev
 
 ═══════════════════════════════════════════
 STATUS PRODUCTION
@@ -26,12 +26,12 @@ FITUR AKTIF
 - SOP Center: SOP Umum (parsed) + SOP Produk (iframe)
 - Data Explorer (ops_manager): 8 kategori analitik query Supabase
 - Pengumuman: /ops/pengumuman → tampil di semua staff dashboard
-- Recruitment Module (/hr): pipeline 14 stage — BERJALAN, RLS masih diperbaiki
+- Recruitment Module (/hr): pipeline 14 stage — BERJALAN, bug utama sudah diperbaiki
 
 ═══════════════════════════════════════════
 COMMITS TERBARU (sesi 2026-04-28)
 ═══════════════════════════════════════════
-[WIP]    fix(hr): infinity loading + OJE in Store form vs batch OJE — sesi ini
+ea29ac6  fix(hr): infinity loading + OJE in Store form + redesign Hub & StoreView
 aabc59f  fix(toast): tambah showToast ke ToastContext — BatchOJE & BatchDetail
 663ad0c  fix(batch): tambah type=submit pada LoadingButton — tombol Buat Batch tidak respond
 ffeda7c  fix(batch): migration 027 konsolidasi RLS oje_batch_items + error handling insert
@@ -57,6 +57,19 @@ Edge Function: supabase/functions/recruitment-onboard/index.ts
   → Dipanggil saat hr_legal submit kontrak → auto-create auth user + profile
   → Butuh Secret: STAFF_SHARED_PASSWORD → BELUM di-deploy
 
+BUG YANG SUDAH DIPERBAIKI (sesi ini):
+  [x] Infinity loading saat submit aksi — submitAction sekarang pakai try/catch/finally
+  [x] stage_forms archive gagal untuk head_store — kini pakai RPC archive_stage_form()
+      dan next_form_version() (SECURITY DEFINER, bypass RLS)
+  [x] Form OJE in Store display pakai data lama — kini pakai latestInstoreForm
+      (support revisi dari stage revision_hs)
+  [x] HS salah mengisi batch OJE untuk OJE in Store — BatchDetail kini mengunci
+      edit/hadir untuk kandidat yg sudah advance, tampil link ke halaman kandidat
+  [x] Hub.jsx redesign — header sticky, stats cards, quick actions grid per role,
+      pipeline per grup warna, kandidat list modern (pola ops manager + trainer)
+  [x] StoreView.jsx redesign — header sticky, stats, batch shortcut, filter tabs
+      dengan icon & count badge
+
 ═══════════════════════════════════════════
 MIGRATIONS — STATUS
 ═══════════════════════════════════════════
@@ -74,7 +87,7 @@ YANG PERLU DIKERJAKAN
 ═══════════════════════════════════════════
 SEGERA:
   [ ] Jalankan migration 027_fix_oje_policies.sql di Supabase SQL Editor
-  [ ] Test buat batch OJE sebagai hr_staff setelah 027 dijalankan
+  [ ] Test full flow: buat batch OJE → upload nilai → seleksi → OJE in Store → kontrak
   [ ] Deploy Edge Function recruitment-onboard + set Secret STAFF_SHARED_PASSWORD
 
 PENDING:
