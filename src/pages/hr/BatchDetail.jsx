@@ -270,6 +270,12 @@ export default function HRBatchDetail() {
   )
   const tidakHadirCount = items.filter(it => !it.hadir).length
 
+  // Kandidat yang sudah melewati fase batch (lanjut ke OJE in Store atau lebih jauh)
+  const BATCH_STAGES = new Set(['batch_oje_issued', 'batch_oje_uploaded', 'batch_oje_reviewed'])
+  function isAdvancedToOjeInstore(cand) {
+    return cand && cand.status !== 'terminated' && !BATCH_STAGES.has(cand.current_stage)
+  }
+
   return (
     <SubpageShell
       title={batch.branches?.name ?? 'Batch Detail'}
@@ -302,6 +308,8 @@ export default function HRBatchDetail() {
               const total = calcTotal(current)
               const hadirFlag = isHadir(item)
               const { label, tone } = hasil(total, hadirFlag)
+              const linkedCand = candidates.find(c => c.full_name === item.nama_peserta)
+              const advanced = isAdvancedToOjeInstore(linkedCand)
 
               return (
                 <div key={item.id} className={`px-4 py-3 ${!hadirFlag ? 'opacity-60' : ''}`}>
@@ -313,15 +321,33 @@ export default function HRBatchDetail() {
                       )}
                     </div>
                     <div className="flex items-center gap-2">
-                      {hadirFlag && (
+                      {hadirFlag && !advanced && (
                         <span className="text-xs font-bold text-slate-700">{total}/30</span>
                       )}
                       <ToneBadge tone={tone} label={label} />
                     </div>
                   </div>
 
-                  {/* Toggle kehadiran */}
-                  {canUpload && (
+                  {/* Kandidat yang sudah lanjut ke OJE in Store — form ini tidak berlaku lagi */}
+                  {advanced && linkedCand && (
+                    <div className="bg-blue-50 rounded-lg px-3 py-2 mb-2">
+                      <p className="text-xs text-blue-700 font-semibold mb-1">
+                        Penilaian dilanjutkan ke OJE in Store
+                      </p>
+                      <p className="text-xs text-blue-600 mb-1">
+                        Form batch ini sudah dikunci. Gunakan halaman kandidat untuk penilaian OJE in Store.
+                      </p>
+                      <Link
+                        to={`/hr/candidates/${linkedCand.id}`}
+                        className="text-xs text-primary-600 font-semibold underline"
+                      >
+                        Buka Form OJE in Store →
+                      </Link>
+                    </div>
+                  )}
+
+                  {/* Toggle kehadiran — hanya jika belum advance */}
+                  {canUpload && !advanced && (
                     <div className="flex items-center gap-2 mb-2">
                       <button
                         onClick={() => toggleHadir(item)}
@@ -337,8 +363,8 @@ export default function HRBatchDetail() {
                     </div>
                   )}
 
-                  {/* Nilai — hanya tampil kalau hadir */}
-                  {hadirFlag && (
+                  {/* Nilai — hanya tampil kalau hadir dan belum advance */}
+                  {hadirFlag && !advanced && (
                     isEditing ? (
                       <div className="space-y-2">
                         <div className="grid grid-cols-2 gap-2">
@@ -389,6 +415,17 @@ export default function HRBatchDetail() {
                         )}
                       </div>
                     )
+                  )}
+
+                  {/* Nilai read-only untuk kandidat yang sudah advance */}
+                  {hadirFlag && advanced && (
+                    <div className="flex flex-wrap gap-1">
+                      {BATCH_CRITERIA.map((k, i) => (
+                        <span key={k} className="text-xs bg-slate-50 text-slate-400 rounded px-1.5 py-0.5">
+                          {BATCH_LABELS[i]}: <strong>{item[k] || 0}</strong>
+                        </span>
+                      ))}
+                    </div>
                   )}
 
                   {/* Peserta tidak hadir — tampil keterangan */}

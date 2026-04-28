@@ -29,15 +29,13 @@ FITUR AKTIF
 - Recruitment Module (/hr): pipeline 14 stage — BERJALAN, RLS masih diperbaiki
 
 ═══════════════════════════════════════════
-COMMITS TERBARU (sesi 2026-04-27)
+COMMITS TERBARU (sesi 2026-04-28)
 ═══════════════════════════════════════════
+[WIP]    fix(hr): infinity loading + OJE in Store form vs batch OJE — sesi ini
+aabc59f  fix(toast): tambah showToast ke ToastContext — BatchOJE & BatchDetail
 663ad0c  fix(batch): tambah type=submit pada LoadingButton — tombol Buat Batch tidak respond
 ffeda7c  fix(batch): migration 027 konsolidasi RLS oje_batch_items + error handling insert
 a9561e6  fix(batch): defensive isHadir() check — input nilai tersembunyi karena hadir=undefined
-2da1728  feat(recruitment): HR-HS-DM pipeline fix + batch OJE hadir/tidak hadir
-e81df7d  feat: Recruitment Module pipeline and OJT checklists
-cf084d7  fix(sop): tampilkan file .docx di SOP Umum + iframe embed SOP Produk
-15ffa86  refactor(ai): ganti AI chat ke Data Explorer tabel langsung
 
 ═══════════════════════════════════════════
 RECRUITMENT MODULE — STATUS DETAIL

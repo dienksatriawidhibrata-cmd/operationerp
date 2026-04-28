@@ -94,12 +94,66 @@ const OJE_INSTORE_FIELDS = [
   { key: 'rekomendasi',       label: 'Rekomendasi (Lulus/Tidak Lulus)' },
 ]
 
+const BATCH_CRITERIA = ['disiplin','sikap','behavior','nyapu_ngepel','layout','toilet','stamina','kerja_sama','fokus','subjektif']
+const BATCH_LABELS = {
+  disiplin: 'Disiplin',
+  sikap: 'Sikap',
+  behavior: 'Behavior',
+  nyapu_ngepel: 'Nyapu/Ngepel',
+  layout: 'Layout',
+  toilet: 'Toilet',
+  stamina: 'Stamina',
+  kerja_sama: 'Kerja Sama',
+  fokus: 'Fokus',
+  subjektif: 'Subjektif',
+}
+
+const OJE_INSTORE_SCHEMA = [
+  { key: 'hari_1_hadir', label: 'Hari 1', type: 'attendance', required: true },
+  { key: 'hari_2_hadir', label: 'Hari 2', type: 'attendance', required: true },
+  { key: 'hari_3_hadir', label: 'Hari 3', type: 'attendance', required: true },
+  { key: 'hari_4_hadir', label: 'Hari 4', type: 'attendance', required: true },
+  { key: 'hari_5_hadir', label: 'Hari 5', type: 'attendance', required: true },
+  { key: 'penilaian_sikap', label: 'Penilaian Sikap', type: 'score', min: 1, max: 5, required: true },
+  { key: 'penilaian_skill', label: 'Penilaian Skill', type: 'score', min: 1, max: 5, required: true },
+  { key: 'penilaian_disiplin', label: 'Penilaian Disiplin', type: 'score', min: 1, max: 5, required: true },
+  { key: 'catatan', label: 'Catatan Head Store', type: 'textarea', rows: 3, required: true },
+  { key: 'rekomendasi', label: 'Rekomendasi', type: 'recommendation', required: true },
+]
+
+const OJE_INSTORE_FORM_STAGES = ['oje_instore_issued', 'oje_instore_submitted', 'review_hrstaff', 'revision_hs']
+
+function batchTotal(item) {
+  return BATCH_CRITERIA.reduce((sum, key) => sum + (Number(item?.[key]) || 0), 0)
+}
+
+function batchResult(item) {
+  if (item?.hadir === false) return { label: 'Tidak Hadir', tone: 'danger' }
+  const total = batchTotal(item)
+  if (total >= 24) return { label: 'Lulus', tone: 'ok' }
+  if (total >= 18) return { label: 'Dipertimbangkan', tone: 'warn' }
+  return { label: 'Gagal', tone: 'danger' }
+}
+
+function isFilled(value) {
+  return !(value === undefined || value === null || value === '')
+}
+
+function formatInstoreValue(field, value) {
+  if (!isFilled(value)) return '-'
+  if (field.type === 'attendance') return String(value) === 'hadir' ? 'Hadir' : 'Tidak Hadir'
+  if (field.type === 'score') return `${value}/5`
+  if (field.type === 'recommendation') return value === 'lulus' ? 'Lulus' : 'Tidak Lulus'
+  return value
+}
+
 export default function HRCandidateDetail() {
   const { id } = useParams()
   const { profile } = useAuth()
   const { showToast } = useToast()
 
   const [candidate, setCandidate] = useState(null)
+  const [batchItem, setBatchItem] = useState(null)
   const [history, setHistory] = useState([])
   const [currentForm, setCurrentForm] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -135,7 +189,17 @@ export default function HRCandidateDetail() {
         .eq('is_current', true)
         .order('submitted_at', { ascending: false }),
     ])
+    let batchEval = null
+    if (c?.batch_id && c?.full_name) {
+      const { data } = await supabase.from('oje_batch_items')
+        .select('*')
+        .eq('batch_id', c.batch_id)
+        .eq('nama_peserta', c.full_name)
+        .maybeSingle()
+      batchEval = data ?? null
+    }
     setCandidate(c)
+    setBatchItem(batchEval)
     setHistory(h ?? [])
     // form terbaru per stage
     const formsByStage = {}
@@ -156,8 +220,16 @@ export default function HRCandidateDetail() {
     if (selectedAction === 'revise' && revisionFields.length === 0) {
       return showToast('Pilih setidaknya 1 field yang perlu direvisi', 'error')
     }
+    if (
+      selectedAction === 'resubmit' &&
+      ['oje_instore_issued','revision_hs'].includes(candidate.current_stage)
+    ) {
+      const requiredField = OJE_INSTORE_SCHEMA.find(f => f.required && !isFilled(formData[f.key]))
+      if (requiredField) {
+        return showToast(`Field "${requiredField.label}" wajib diisi`, 'error')
+      }
+    }
 
-    // Aksi 'activate' → panggil Edge Function
     if (selectedAction === 'activate') {
       if (!kontrakEmail.trim()) return showToast('Email kandidat wajib diisi', 'error')
       setActionLoading(true)
@@ -192,73 +264,66 @@ export default function HRCandidateDetail() {
     }
 
     setActionLoading(true)
-    const to = nextStage(candidate.current_stage, selectedAction)
+    try {
+      const to = nextStage(candidate.current_stage, selectedAction)
 
-    // Submit form jika diperlukan (oje_instore upload)
-    if (selectedAction === 'resubmit' && Object.keys(formData).length > 0) {
-      // Archive versi sebelumnya
-      await supabase.from('stage_forms')
-        .update({ is_current: false })
-        .eq('candidate_id', id)
-        .eq('stage', candidate.current_stage)
-        .eq('is_current', true)
+      if (selectedAction === 'resubmit' && Object.keys(formData).length > 0) {
+        // archive_stage_form adalah SECURITY DEFINER → bypass RLS untuk semua role
+        await supabase.rpc('archive_stage_form', {
+          p_candidate_id: id,
+          p_stage: candidate.current_stage,
+        })
+        const { data: nextVer } = await supabase.rpc('next_form_version', {
+          p_candidate_id: id,
+          p_stage: candidate.current_stage,
+        })
+        const { error: formErr } = await supabase.from('stage_forms').insert({
+          candidate_id: id,
+          stage: candidate.current_stage,
+          version: nextVer ?? 1,
+          form_data: formData,
+          is_current: true,
+          submitted_by: profile?.id,
+        })
+        if (formErr) throw new Error('Gagal simpan form: ' + formErr.message)
+      }
 
-      const { data: prevMax } = await supabase.from('stage_forms')
-        .select('version')
-        .eq('candidate_id', id)
-        .eq('stage', candidate.current_stage)
-        .order('version', { ascending: false })
-        .limit(1)
-        .single()
+      const updatePayload = { current_stage: to }
+      if (selectedAction === 'terminate') updatePayload.status = 'terminated'
+      if (selectedAction === 'hold')      updatePayload.status = 'on_hold'
+      if (to === 'on_duty')               updatePayload.status = 'on_duty'
 
-      await supabase.from('stage_forms').insert({
+      const { error: updErr } = await supabase
+        .from('candidates')
+        .update(updatePayload)
+        .eq('id', id)
+      if (updErr) throw new Error('Gagal update kandidat: ' + updErr.message)
+
+      const { error: histErr } = await supabase.from('stage_history').insert({
         candidate_id: id,
-        stage: candidate.current_stage,
-        version: (prevMax?.version ?? 0) + 1,
-        form_data: formData,
-        is_current: true,
-        submitted_by: profile?.id,
+        from_stage: candidate.current_stage,
+        to_stage: to,
+        action: selectedAction,
+        notes: actionNotes.trim() || null,
+        revision_fields: revisionFields.length > 0
+          ? { fields: revisionFields, reason: actionNotes.trim() }
+          : null,
+        performed_by: profile?.id,
       })
-    }
+      if (histErr) throw new Error('Gagal simpan riwayat: ' + histErr.message)
 
-    // Update candidates
-    const updatePayload = { current_stage: to }
-    if (selectedAction === 'terminate') updatePayload.status = 'terminated'
-    if (selectedAction === 'hold')      updatePayload.status = 'on_hold'
-    if (to === 'on_duty')               updatePayload.status = 'on_duty'
-
-    const { error: updErr } = await supabase
-      .from('candidates')
-      .update(updatePayload)
-      .eq('id', id)
-
-    if (updErr) {
-      showToast('Gagal update: ' + updErr.message, 'error')
+      showToast('Aksi berhasil disimpan', 'success')
+      setShowAction(false)
+      setSelectedAction(null)
+      setActionNotes('')
+      setRevisionFields([])
+      setFormData({})
+      await load()
+    } catch (err) {
+      showToast(err.message, 'error')
+    } finally {
       setActionLoading(false)
-      return
     }
-
-    // Insert stage_history
-    await supabase.from('stage_history').insert({
-      candidate_id: id,
-      from_stage: candidate.current_stage,
-      to_stage: to,
-      action: selectedAction,
-      notes: actionNotes.trim() || null,
-      revision_fields: revisionFields.length > 0
-        ? { fields: revisionFields, reason: actionNotes.trim() }
-        : null,
-      performed_by: profile?.id,
-    })
-
-    showToast('Aksi berhasil disimpan', 'success')
-    setShowAction(false)
-    setSelectedAction(null)
-    setActionNotes('')
-    setRevisionFields([])
-    setFormData({})
-    await load()
-    setActionLoading(false)
   }
 
   if (loading) {
@@ -279,6 +344,11 @@ export default function HRCandidateDetail() {
 
   const statusCfg = STATUS_CONFIG[candidate.status] ?? {}
   const currentRevisionFields = history.find(h => h.action === 'revise')?.revision_fields?.fields ?? []
+  const latestInstoreForm = OJE_INSTORE_FORM_STAGES
+    .map(stage => currentForm?.[stage])
+    .filter(Boolean)
+    .sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at))[0] ?? null
+  const batchSummary = batchItem ? batchResult(batchItem) : null
 
   return (
     <SubpageShell title={candidate.full_name} eyebrow="Detail Kandidat" backTo={backFor(role)}>
@@ -313,6 +383,32 @@ export default function HRCandidateDetail() {
           )}
         </div>
       </SectionPanel>
+
+      {batchItem && (
+        <SectionPanel title="Ringkasan Batch OJE" className="mx-4 mt-4">
+          <div className="px-4 py-3 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-xs text-slate-500">Hasil seleksi batch</div>
+                <div className="text-lg font-bold text-slate-800">
+                  {batchItem.hadir === false ? 'Tidak dinilai' : `${batchTotal(batchItem)}/30`}
+                </div>
+              </div>
+              <ToneBadge tone={batchSummary?.tone ?? 'info'} label={batchSummary?.label ?? 'Belum ada hasil'} />
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {BATCH_CRITERIA.map(key => (
+                <span key={key} className="text-xs bg-slate-50 text-slate-600 rounded px-2 py-1">
+                  {BATCH_LABELS[key]}: <strong>{Number(batchItem[key]) || 0}</strong>
+                </span>
+              ))}
+            </div>
+            <p className="text-xs text-slate-400">
+              Scorecard batch dipisah dari form OJE in Store supaya evaluasi massal dan evaluasi toko tidak tercampur.
+            </p>
+          </div>
+        </SectionPanel>
+      )}
 
       {/* Action panel */}
       {allowedActions.length > 0 && candidate.status === 'active' && (
@@ -353,18 +449,56 @@ export default function HRCandidateDetail() {
                 ['oje_instore_issued','revision_hs'].includes(candidate.current_stage) && (
                 <div className="space-y-2">
                   <label className="text-xs font-semibold text-slate-600 block">Form OJE in Store</label>
-                  {OJE_INSTORE_FIELDS
+                  <p className="text-xs text-slate-500">
+                    Form ini khusus evaluasi kandidat selama observasi di toko, terpisah dari scorecard Batch OJE.
+                  </p>
+                  {OJE_INSTORE_SCHEMA
                     .filter(f => candidate.current_stage !== 'revision_hs' || currentRevisionFields.includes(f.key))
                     .map(f => (
                       <div key={f.key}>
                         <label className="text-xs text-slate-500 block mb-0.5">{f.label}</label>
-                        <input
-                          type="text"
-                          value={formData[f.key] ?? ''}
-                          onChange={e => setFormData(prev => ({ ...prev, [f.key]: e.target.value }))}
-                          className="input-field"
-                          placeholder={f.label}
-                        />
+                        {f.type === 'attendance' && (
+                          <select
+                            value={formData[f.key] ?? ''}
+                            onChange={e => setFormData(prev => ({ ...prev, [f.key]: e.target.value }))}
+                            className="input-field"
+                          >
+                            <option value="">Pilih status hadir</option>
+                            <option value="hadir">Hadir</option>
+                            <option value="tidak_hadir">Tidak Hadir</option>
+                          </select>
+                        )}
+                        {f.type === 'score' && (
+                          <input
+                            type="number"
+                            min={f.min}
+                            max={f.max}
+                            value={formData[f.key] ?? ''}
+                            onChange={e => setFormData(prev => ({ ...prev, [f.key]: e.target.value }))}
+                            className="input-field"
+                            placeholder={`${f.label} (${f.min}-${f.max})`}
+                          />
+                        )}
+                        {f.type === 'textarea' && (
+                          <textarea
+                            value={formData[f.key] ?? ''}
+                            onChange={e => setFormData(prev => ({ ...prev, [f.key]: e.target.value }))}
+                            className="input-field"
+                            rows={f.rows ?? 3}
+                            placeholder={f.label}
+                          />
+                        )}
+                        {f.type === 'recommendation' && (
+                          <select
+                            value={formData[f.key] ?? ''}
+                            onChange={e => setFormData(prev => ({ ...prev, [f.key]: e.target.value }))}
+                            className="input-field"
+                          >
+                            <option value="">Pilih rekomendasi</option>
+                            <option value="lulus">Lulus</option>
+                            <option value="tidak_lulus">Tidak Lulus</option>
+                          </select>
+                        )}
                       </div>
                     ))
                   }
@@ -383,7 +517,7 @@ export default function HRCandidateDetail() {
                     Field yang Perlu Direvisi
                   </label>
                   <div className="flex flex-wrap gap-2">
-                    {OJE_INSTORE_FIELDS.map(f => (
+                    {OJE_INSTORE_SCHEMA.map(f => (
                       <button
                         key={f.key}
                         type="button"
@@ -461,18 +595,24 @@ export default function HRCandidateDetail() {
       )}
 
       {/* Form OJE in Store terbaru */}
-      {currentForm?.oje_instore_issued && (
+      {latestInstoreForm && (
         <SectionPanel title="Form OJE in Store" className="mx-4 mt-4">
           <div className="px-4 py-3 space-y-1">
             {OJE_INSTORE_FIELDS.map(f => (
               <InfoRow
                 key={f.key}
                 label={f.label}
-                value={currentForm.oje_instore_issued?.form_data?.[f.key] ?? '-'}
+                value={formatInstoreValue(
+                  OJE_INSTORE_SCHEMA.find(s => s.key === f.key) ?? {},
+                  latestInstoreForm.form_data?.[f.key]
+                )}
               />
             ))}
             <div className="text-xs text-slate-400 pt-1">
-              Versi {currentForm.oje_instore_issued?.version} · {fmtDate(currentForm.oje_instore_issued?.submitted_at)}
+              Versi {latestInstoreForm.version} · {fmtDate(latestInstoreForm.submitted_at)}
+              {latestInstoreForm.stage !== 'oje_instore_issued' && (
+                <span className="ml-1 text-amber-500">(revisi)</span>
+              )}
             </div>
           </div>
         </SectionPanel>
