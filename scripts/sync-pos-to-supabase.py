@@ -1,7 +1,13 @@
 #!/usr/bin/env python3
 """
-Sync SQLite POS data (bagikopi.db) → Supabase pos_sales_monthly + pos_complaints.
+Sync SQLite POS data (bagikopi.db) → Supabase.
 UPSERT-safe: aman dijalankan berulang.
+
+Tables synced:
+  pos_sales_monthly  — monthly outlet-level totals
+  pos_sales_items    — monthly item+size-level breakdown (untuk rasio Small/Large, Oatmilk, item trend)
+  pos_sales_hourly   — daily hour-bucket breakdown (untuk analisis per jam)
+  pos_complaints     — individual complaints
 
 Usage:
     python scripts/sync-pos-to-supabase.py
@@ -60,7 +66,6 @@ def supabase_upsert(table: str, rows: list[dict], on_conflict: str):
 
 
 def supabase_delete_all(table: str):
-    """Delete semua baris dari tabel (untuk table tanpa unique key)."""
     url = f"{SUPABASE_URL}/rest/v1/{table}"
     resp = httpx.delete(url, headers=INSERT_HEADERS, params={"id": "not.is.null"}, timeout=60)
     if resp.status_code not in (200, 204):
@@ -82,7 +87,6 @@ def supabase_insert(table: str, rows: list[dict]):
 
 
 def fetch_branch_map(conn: sqlite3.Connection) -> dict[str, str | None]:
-    """outlet_name → branch_id from Supabase branches (name matching)."""
     outlets = [row[0] for row in conn.execute("SELECT DISTINCT name FROM outlets")]
     resp = httpx.get(
         f"{SUPABASE_URL}/rest/v1/branches",
@@ -126,6 +130,56 @@ def build_sales_rows(conn: sqlite3.Connection, branch_map: dict) -> list[dict]:
     return result
 
 
+def build_pos_sales_items_rows(conn: sqlite3.Connection, branch_map: dict) -> list[dict]:
+    rows = conn.execute("""
+        SELECT outlet, year, month, category, item, size, sales_type,
+               SUM(total_net)      AS net_sales,
+               SUM(total_quantity) AS quantity,
+               SUM(txn_count)      AS txn_count
+        FROM sales_agg
+        GROUP BY outlet, year, month, category, item, size, sales_type
+    """).fetchall()
+    result = []
+    for outlet, year, month, category, item, size, sales_type, net, qty, txns in rows:
+        result.append({
+            "outlet_name": outlet,
+            "branch_id": branch_map.get(outlet),
+            "year": year,
+            "month": month,
+            "category": category or "",
+            "item": item or "",
+            "size": size or "",
+            "sales_type": sales_type or "",
+            "net_sales": round(float(net or 0), 2),
+            "quantity": round(float(qty or 0), 2),
+            "txn_count": int(txns or 0),
+        })
+    return result
+
+
+def build_pos_sales_hourly_rows(conn: sqlite3.Connection, branch_map: dict) -> list[dict]:
+    rows = conn.execute("""
+        SELECT outlet, sale_date, year, month, hour_bucket,
+               SUM(total_net)  AS net_sales,
+               SUM(txn_count)  AS txn_count
+        FROM sales_hourly
+        GROUP BY outlet, sale_date, year, month, hour_bucket
+    """).fetchall()
+    result = []
+    for outlet, sale_date, year, month, hour_bucket, net, txns in rows:
+        result.append({
+            "outlet_name": outlet,
+            "branch_id": branch_map.get(outlet),
+            "sale_date": sale_date,
+            "year": year,
+            "month": month,
+            "hour_bucket": hour_bucket or "other",
+            "net_sales": round(float(net or 0), 2),
+            "txn_count": int(txns or 0),
+        })
+    return result
+
+
 def build_complaints_rows(conn: sqlite3.Connection, branch_map: dict) -> list[dict]:
     rows = conn.execute("""
         SELECT complaint_date, year, month, app, outlet,
@@ -165,6 +219,18 @@ def main():
     sales_rows = build_sales_rows(conn, branch_map)
     print(f"  {len(sales_rows)} rows")
     supabase_upsert("pos_sales_monthly", sales_rows, on_conflict="outlet_name,year,month")
+
+    print("\nBuilding pos_sales_items...")
+    items_rows = build_pos_sales_items_rows(conn, branch_map)
+    print(f"  {len(items_rows)} rows")
+    supabase_delete_all("pos_sales_items")
+    supabase_insert("pos_sales_items", items_rows)
+
+    print("\nBuilding pos_sales_hourly...")
+    hourly_rows = build_pos_sales_hourly_rows(conn, branch_map)
+    print(f"  {len(hourly_rows)} rows")
+    supabase_delete_all("pos_sales_hourly")
+    supabase_insert("pos_sales_hourly", hourly_rows)
 
     print("\nBuilding pos_complaints...")
     complaint_rows = build_complaints_rows(conn, branch_map)
