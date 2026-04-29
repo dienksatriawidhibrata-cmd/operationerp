@@ -4,7 +4,6 @@ import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { OpsBottomNav } from '../../components/BottomNav'
 import { AppIcon } from '../../components/ui/AppKit'
-import AskTheData from '../../components/AskTheData'
 import LeaderboardSection from '../../components/LeaderboardSection'
 import { fetchOperationalLeaderboards, EMPTY_LEADERBOARDS } from '../../lib/opsLeaderboards'
 import { currentPeriodWIB, fmtRp, todayWIB } from '../../lib/utils'
@@ -281,11 +280,6 @@ export default function OpsHub() {
             leaderboards={leaderboards}
             showHeadStore={true}
           />
-        </div>
-
-        <h2 className="mb-4 text-sm font-extrabold text-gray-800">AI Analyst</h2>
-        <div className="mb-6">
-          <AskTheData />
         </div>
 
         <div className="relative overflow-hidden rounded-[2.5rem] bg-slate-900 p-5 text-white">

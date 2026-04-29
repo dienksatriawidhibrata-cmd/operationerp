@@ -17,16 +17,15 @@ Login manager/HR (individual): tab "Head Store & Manager"
 ═══════════════════════════════════════════
 PRIORITAS UTAMA SESI BERIKUTNYA
 ═══════════════════════════════════════════
-  [ ] HAPUS fitur AI Analyst + Data Explorer dari web app:
-        - src/pages/ops/AskTheData.jsx → delete file
-        - Hapus route /ops/ask dari App.jsx / router
-        - Hapus entry "Data Explorer" dari dashboard ops_manager
-        - Hapus import/link ke AskTheData di semua file
-  [ ] HAPUS dari Supabase:
-        - Edge Function: ask-the-data (supabase/functions/ask-the-data/)
-        - Secret: GEMINI_API_KEY (sudah standby, belum dipakai)
-        - Tabel/view yang dibuat khusus untuk ask-the-data jika ada
-  [ ] Setelah hapus: commit + push + verifikasi build Cloudflare
+  [x] HAPUS fitur AI Analyst + Data Explorer dari web app:
+        - src/components/AskTheData.jsx → DIHAPUS
+        - import + section AI Analyst di Hub.jsx → DIHAPUS
+        - supabase/functions/ask-the-data/ → DIHAPUS (lokal)
+  [ ] HAPUS dari Supabase (manual via dashboard):
+        - Edge Function: ask-the-data → delete di Supabase Dashboard
+        - Secret: GEMINI_API_KEY → delete di Supabase Dashboard > Settings > Secrets
+        - Tabel/view khusus ask-the-data: tidak ada
+  [x] Commit + push → tunggu verifikasi build Cloudflare
 
 ═══════════════════════════════════════════
 FITUR AKTIF
@@ -42,8 +41,9 @@ FITUR AKTIF
 - Pengumuman: /ops/pengumuman → tampil di semua staff dashboard
 - Recruitment Module (/hr): pipeline 14 stage — BERJALAN, Edge Function sudah deploy
 
-DIHAPUS (prioritas sesi 4):
-- Data Explorer (AI Analyst): 8 query analitik + Gemini → akan dihapus
+DIHAPUS (sesi 4):
+- Data Explorer (AI Analyst): komponen + edge function lokal → sudah dihapus sesi 4
+  Masih perlu: hapus Edge Function + Secret GEMINI_API_KEY di Supabase Dashboard (manual)
 
 ═══════════════════════════════════════════
 COMMITS TERBARU (sesi 3 — 2026-04-28)
@@ -119,7 +119,7 @@ MIGRATIONS — STATUS
 YANG PERLU DIKERJAKAN
 ═══════════════════════════════════════════
 PRIORITAS (sesi 4):
-  [ ] Hapus AI Analyst + Data Explorer (lihat bagian PRIORITAS di atas)
+  [x] Hapus AI Analyst + Data Explorer — SELESAI (sesi 4)
   [ ] Jalankan 029_operational_leaderboards_rpc.sql di Supabase SQL Editor
   [ ] Test full flow recruitment: batch OJE → OJE in Store → kontrak → login staff baru
 
