@@ -44,11 +44,12 @@ function notifikasiBeluSetoran() {
   const { baseUrl, apiKey, webhook } = getConfig()
   if (!baseUrl) return
 
-  const today    = getTodayWIB()
+  // Setoran = tanggal operasional kemarin (disetorkan hari ini)
+  const tanggal  = getYesterdayWIB()
   const branches = fetchBranches(baseUrl, apiKey)
   if (!branches) { Logger.log('ERROR: Gagal fetch branches'); return }
 
-  const deposits = fetchJson(baseUrl + '/rest/v1/daily_deposits?tanggal=eq.' + today + '&select=branch_id,status', apiKey)
+  const deposits = fetchJson(baseUrl + '/rest/v1/daily_deposits?tanggal=eq.' + tanggal + '&select=branch_id,status', apiKey)
   if (deposits === null) { Logger.log('ERROR: Gagal fetch deposits'); return }
 
   const submitted = new Set()
@@ -68,11 +69,11 @@ function notifikasiBeluSetoran() {
 
   const totalBelum = belumSama.length + perluRevisi.length
   if (totalBelum === 0) {
-    sendToGChat(webhook, { text: '✅ *Semua toko sudah setoran* — ' + formatTanggal(today) + '\n' + branches.length + ' toko ✔️' })
+    sendToGChat(webhook, { text: '✅ *Semua toko sudah setoran* — ' + formatTanggal(tanggal) + '\n' + branches.length + ' toko ✔️' })
     return
   }
 
-  var lines = ['🔴 *Toko Belum Setoran* — ' + formatTanggal(today) + ' (' + getJamWIBNow() + ' WIB)', '']
+  var lines = ['🔴 *Toko Belum Setoran* — ' + formatTanggal(tanggal) + ' (' + getJamWIBNow() + ' WIB)', '']
   lines.push('*' + totalBelum + ' dari ' + branches.length + ' toko* belum setor:')
   if (belumSama.length > 0) {
     lines.push('', '📋 *Belum submit (' + belumSama.length + '):*')
@@ -247,7 +248,7 @@ function notifCompliance() {
 
   // Fetch semua data sekaligus (sequential, Apps Script tidak punya Promise.all)
   const ceklisData  = fetchJson(baseUrl + '/rest/v1/daily_checklists?tanggal=eq.' + today + '&select=branch_id,shift', apiKey)
-  const setoranData = fetchJson(baseUrl + '/rest/v1/daily_deposits?tanggal=eq.' + today + '&status=in.(submitted,approved)&select=branch_id', apiKey)
+  const setoranData = fetchJson(baseUrl + '/rest/v1/daily_deposits?tanggal=eq.' + yesterday + '&status=in.(submitted,approved)&select=branch_id', apiKey)
   const laporanData = fetchJson(baseUrl + '/rest/v1/daily_reports?tanggal=eq.' + yesterday + '&select=branch_id', apiKey)
   const opexData    = fetchJson(
     baseUrl + '/rest/v1/operational_expenses?tanggal=eq.' + today +
