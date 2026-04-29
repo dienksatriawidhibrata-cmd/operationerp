@@ -21,6 +21,10 @@
  *   17:00 → Visit DM/AM          (siapa sudah visit + di toko mana)
  *   20:00 → Preparation Malam    (shift malam, tanggal hari ini)
  *   21:00 → Setoran              (daily_deposits, tanggal hari ini)
+ *   23:00 → Rekap SC             (surat_jalan tanggal hari ini)
+ *   23:00 → Rekap Opex BOH       (operational_expenses, kategori BOH)
+ *   23:00 → Rekap Laporan Harian (daily_reports, tanggal kemarin)
+ *   23:00 → Compliance Harian    (ceklis + laporan + setoran + opex)
  *   04:00 → Ceklis Malam         (shift malam, tanggal KEMARIN WIB)
  */
 
@@ -82,6 +86,231 @@ function notifikasiBeluSetoran() {
   sendToGChat(webhook, { text: lines.join('\n') })
 }
 
+// ─── Rekap 23:00 WIB ────────────────────────────────────────
+
+function notifSC() {
+  const { baseUrl, apiKey, webhook } = getConfig()
+  if (!baseUrl) return
+
+  const today = getTodayWIB()
+
+  const sjs = fetchJson(
+    baseUrl + '/rest/v1/surat_jalan?tanggal_kirim=eq.' + today +
+    '&status=not.eq.draft&select=sj_number,status,issued_at,received_at,branch_id,branches(name)&order=issued_at',
+    apiKey
+  )
+  if (sjs === null) { Logger.log('ERROR: Gagal fetch surat_jalan'); return }
+
+  var lines = ['📦 *Rekap Pengiriman SC* — ' + formatTanggal(today) + ' (' + getJamWIBNow() + ' WIB)', '']
+
+  if (sjs.length === 0) {
+    lines.push('_Tidak ada pengiriman hari ini._')
+    sendToGChat(webhook, { text: lines.join('\n') })
+    return
+  }
+
+  lines.push('*' + sjs.length + ' Surat Jalan* dikirim hari ini')
+
+  const delivered = sjs.filter(function(sj) { return sj.status === 'delivered' })
+  const pending   = sjs.filter(function(sj) { return sj.status !== 'delivered' })
+
+  if (delivered.length > 0) {
+    lines.push('', '✅ *Sudah diterima (' + delivered.length + '):*')
+    delivered.forEach(function(sj) {
+      var nama = sj.branches ? shortName(sj.branches.name) : '-'
+      lines.push('  • ' + nama + ' [' + sj.sj_number + '] — Kirim ' + fmtJamWIB(sj.issued_at) + ', Terima ' + fmtJamWIB(sj.received_at))
+    })
+  }
+
+  if (pending.length > 0) {
+    lines.push('', '⏳ *Belum diterima (' + pending.length + '):*')
+    pending.forEach(function(sj) {
+      var nama        = sj.branches ? shortName(sj.branches.name) : '-'
+      var statusLabel = { issued: 'Diterbitkan', shipped: 'Dalam perjalanan' }[sj.status] || sj.status
+      lines.push('  • ' + nama + ' [' + sj.sj_number + '] — Kirim ' + fmtJamWIB(sj.issued_at) + ' (' + statusLabel + ')')
+    })
+  }
+
+  sendToGChat(webhook, { text: lines.join('\n') })
+}
+
+function notifOpex() {
+  const { baseUrl, apiKey, webhook } = getConfig()
+  if (!baseUrl) return
+
+  const today    = getTodayWIB()
+  const branches = fetchBranches(baseUrl, apiKey)
+  if (!branches) { Logger.log('ERROR: Gagal fetch branches'); return }
+
+  const opexRows = fetchJson(
+    baseUrl + '/rest/v1/operational_expenses?tanggal=eq.' + today +
+    '&category=eq.' + encodeURIComponent('Beban Operasional Harian') +
+    '&select=branch_id,total',
+    apiKey
+  )
+  if (opexRows === null) { Logger.log('ERROR: Gagal fetch opex'); return }
+
+  var totalByBranch = {}
+  opexRows.forEach(function(row) {
+    totalByBranch[row.branch_id] = (totalByBranch[row.branch_id] || 0) + Number(row.total || 0)
+  })
+
+  var sudah = []
+  var belum = []
+  branches.forEach(function(b) {
+    if (totalByBranch[b.id] !== undefined) {
+      sudah.push({ name: b.name, district: b.district, total: totalByBranch[b.id] })
+    } else {
+      belum.push(b)
+    }
+  })
+
+  var lines = ['💰 *Rekap Opex Harian (BOH)* — ' + formatTanggal(today) + ' (' + getJamWIBNow() + ' WIB)', '']
+
+  if (sudah.length > 0) {
+    lines.push('✅ *Sudah input (' + sudah.length + ' toko):*')
+    sudah.forEach(function(b) {
+      lines.push('  • ' + shortName(b.name) + ' — ' + fmtRp(b.total))
+    })
+  }
+
+  if (belum.length > 0) {
+    lines.push('', '❌ *Belum input (' + belum.length + ' toko):*')
+    belum.forEach(function(b) {
+      lines.push('  • ' + shortName(b.name) + ' _[' + b.district + ']_')
+    })
+  }
+
+  sendToGChat(webhook, { text: lines.join('\n') })
+}
+
+function notifLaporan() {
+  const { baseUrl, apiKey, webhook } = getConfig()
+  if (!baseUrl) return
+
+  // Laporan harian = tanggal operasional kemarin, deadline submit H+1 14:00 WIB
+  const yesterday = getYesterdayWIB()
+  const branches  = fetchBranches(baseUrl, apiKey)
+  if (!branches) { Logger.log('ERROR: Gagal fetch branches'); return }
+
+  const reports = fetchJson(
+    baseUrl + '/rest/v1/daily_reports?tanggal=eq.' + yesterday + '&select=branch_id,net_sales,is_late',
+    apiKey
+  )
+  if (reports === null) { Logger.log('ERROR: Gagal fetch daily_reports'); return }
+
+  var reportMap = {}
+  reports.forEach(function(r) { reportMap[r.branch_id] = r })
+
+  var sudah = []
+  var belum = []
+  branches.forEach(function(b) {
+    if (reportMap[b.id]) {
+      sudah.push({ name: b.name, district: b.district, report: reportMap[b.id] })
+    } else {
+      belum.push(b)
+    }
+  })
+
+  var lines = ['📝 *Rekap Laporan Harian* — ' + formatTanggal(yesterday) + ' (' + getJamWIBNow() + ' WIB)', '']
+
+  if (sudah.length > 0) {
+    lines.push('✅ *Sudah laporan (' + sudah.length + ' toko):*')
+    sudah.forEach(function(item) {
+      var late = item.report.is_late ? ' ⚠️ terlambat' : ''
+      lines.push('  • ' + shortName(item.name) + ' — ' + fmtRp(item.report.net_sales) + late)
+    })
+  }
+
+  if (belum.length > 0) {
+    lines.push('', '❌ *Belum laporan (' + belum.length + ' toko):*')
+    belum.forEach(function(b) {
+      lines.push('  • ' + shortName(b.name) + ' _[' + b.district + ']_')
+    })
+  }
+
+  if (belum.length === 0 && sudah.length === branches.length) {
+    lines.push('', '🎉 Semua toko sudah submit laporan!')
+  }
+
+  sendToGChat(webhook, { text: lines.join('\n') })
+}
+
+function notifCompliance() {
+  const { baseUrl, apiKey, webhook } = getConfig()
+  if (!baseUrl) return
+
+  const today     = getTodayWIB()
+  const yesterday = getYesterdayWIB()
+  const branches  = fetchBranches(baseUrl, apiKey)
+  if (!branches) { Logger.log('ERROR: Gagal fetch branches'); return }
+
+  // Fetch semua data sekaligus (sequential, Apps Script tidak punya Promise.all)
+  const ceklisData  = fetchJson(baseUrl + '/rest/v1/daily_checklists?tanggal=eq.' + today + '&select=branch_id,shift', apiKey)
+  const setoranData = fetchJson(baseUrl + '/rest/v1/daily_deposits?tanggal=eq.' + today + '&status=in.(submitted,approved)&select=branch_id', apiKey)
+  const laporanData = fetchJson(baseUrl + '/rest/v1/daily_reports?tanggal=eq.' + yesterday + '&select=branch_id', apiKey)
+  const opexData    = fetchJson(
+    baseUrl + '/rest/v1/operational_expenses?tanggal=eq.' + today +
+    '&category=eq.' + encodeURIComponent('Beban Operasional Harian') +
+    '&select=branch_id',
+    apiKey
+  )
+
+  if (!ceklisData || !setoranData || !laporanData || !opexData) {
+    Logger.log('ERROR: Gagal fetch data compliance')
+    return
+  }
+
+  var pagiSet   = new Set()
+  var middleSet = new Set()
+  var malamSet  = new Set()
+  ceklisData.forEach(function(r) {
+    if (r.shift === 'pagi')   pagiSet.add(r.branch_id)
+    if (r.shift === 'middle') middleSet.add(r.branch_id)
+    if (r.shift === 'malam')  malamSet.add(r.branch_id)
+  })
+
+  var setoranSet = new Set(setoranData.map(function(r) { return r.branch_id }))
+  var laporanSet = new Set(laporanData.map(function(r) { return r.branch_id }))
+  var opexSet    = new Set(opexData.map(function(r) { return r.branch_id }))
+
+  var fullComply = []
+  var partial    = []
+
+  branches.forEach(function(b) {
+    var missing = []
+    if (!pagiSet.has(b.id))    missing.push('Pkl Pagi')
+    if (!middleSet.has(b.id))  missing.push('Pkl Mid')
+    if (!malamSet.has(b.id))   missing.push('Pkl Mlm')
+    if (!laporanSet.has(b.id)) missing.push('Laporan')
+    if (!setoranSet.has(b.id)) missing.push('Setoran')
+    if (!opexSet.has(b.id))    missing.push('Opex BOH')
+
+    if (missing.length === 0) {
+      fullComply.push(b)
+    } else {
+      partial.push({ name: b.name, district: b.district, missing: missing })
+    }
+  })
+
+  // Urutkan partial: terbanyak missing dulu
+  partial.sort(function(a, b) { return b.missing.length - a.missing.length })
+
+  var lines = ['📊 *Compliance Harian* — ' + formatTanggal(today) + ' (' + getJamWIBNow() + ' WIB)', '']
+  lines.push('🏆 *Full comply: ' + fullComply.length + ' / ' + branches.length + ' toko*')
+
+  if (partial.length > 0) {
+    lines.push('', '⚠️ *Perlu perhatian (' + partial.length + ' toko):*')
+    partial.forEach(function(item) {
+      lines.push('  • ' + shortName(item.name) + ' _[' + item.district + ']_ — ❌ ' + item.missing.join(', ❌ '))
+    })
+  } else {
+    lines.push('', '🎉 Semua toko full comply hari ini!')
+  }
+
+  sendToGChat(webhook, { text: lines.join('\n') })
+}
+
 // ═══════════════════════════════════════════════════════════════
 // LOGIKA UTAMA
 // ═══════════════════════════════════════════════════════════════
@@ -103,7 +332,6 @@ function notifCeklis(shift, tanggal) {
   const belum   = branches.filter(function(b) { return !doneSet.has(b.id) })
 
   const LABEL = { pagi: 'Pagi ☀️', middle: 'Middle 🌤', malam: 'Malam 🌙' }
-  const EMOJI = { pagi: '📋', middle: '📋', malam: '📋' }
 
   if (belum.length === 0) {
     sendToGChat(webhook, { text: '✅ *Ceklis ' + LABEL[shift] + ' — semua sudah submit* — ' + formatTanggal(tanggal) })
@@ -111,7 +339,7 @@ function notifCeklis(shift, tanggal) {
   }
 
   var lines = [
-    EMOJI[shift] + ' *Ceklis ' + LABEL[shift] + ' Belum Submit* — ' + formatTanggal(tanggal) + ' (' + getJamWIBNow() + ' WIB)',
+    '📋 *Ceklis ' + LABEL[shift] + ' Belum Submit* — ' + formatTanggal(tanggal) + ' (' + getJamWIBNow() + ' WIB)',
     '',
     '*' + belum.length + ' dari ' + branches.length + ' toko* belum submit:',
   ]
@@ -159,26 +387,22 @@ function notifVisit() {
   const branches = fetchBranches(baseUrl, apiKey)
   if (!branches) { Logger.log('ERROR: Gagal fetch branches'); return }
 
-  // Ambil semua DM + AM
   const managers = fetchJson(
     baseUrl + '/rest/v1/profiles?role=in.(district_manager,area_manager)&select=id,full_name,role',
     apiKey
   )
   if (!managers) { Logger.log('ERROR: Gagal fetch managers'); return }
 
-  // Ambil visit hari ini
   const visits = fetchJson(
     baseUrl + '/rest/v1/daily_visits?tanggal=eq.' + today + '&select=auditor_id,branch_id',
     apiKey
   )
   if (visits === null) { Logger.log('ERROR: Gagal fetch visits'); return }
 
-  // Map branch_id → nama
   const branchMap = {}
   branches.forEach(function(b) { branchMap[b.id] = shortName(b.name) })
 
-  // Kelompokkan visit per auditor
-  const visitMap = {} // auditor_id → [branch names]
+  const visitMap = {}
   visits.forEach(function(v) {
     if (!visitMap[v.auditor_id]) visitMap[v.auditor_id] = []
     if (branchMap[v.branch_id]) visitMap[v.auditor_id].push(branchMap[v.branch_id])
@@ -287,8 +511,19 @@ function formatTanggal(iso) {
   return parseInt(p[2]) + ' ' + m[parseInt(p[1]) - 1] + ' ' + p[0]
 }
 
+function fmtJamWIB(isoStr) {
+  if (!isoStr) return '-'
+  var d   = new Date(isoStr)
+  var wib = new Date(d.getTime() + 7 * 3600000)
+  return String(wib.getUTCHours()).padStart(2, '0') + ':' + String(wib.getUTCMinutes()).padStart(2, '0')
+}
+
+function fmtRp(amount) {
+  return 'Rp ' + Math.round(Number(amount) || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+}
+
 function shortName(name) {
-  return name.replace(/^Bagi Kopi\s+/i, '')
+  return (name || '').replace(/^Bagi Kopi\s+/i, '')
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -308,9 +543,9 @@ function shortName(name) {
  *   17:00 WIB = 10:00 UTC  → Visit DM/AM
  *   20:00 WIB = 13:00 UTC  → Preparation Malam
  *   21:00 WIB = 14:00 UTC  → Setoran
+ *   23:00 WIB = 16:00 UTC  → Rekap SC, Opex, Laporan, Compliance
  */
 function setupTrigger() {
-  // Hapus semua trigger lama milik script ini
   ScriptApp.getProjectTriggers().forEach(function(t) { ScriptApp.deleteTrigger(t) })
 
   var schedule = [
@@ -321,6 +556,10 @@ function setupTrigger() {
     { fn: 'notifVisit',               hour: 10 },   // 17:00–18:00 WIB
     { fn: 'notifPrepMalam',           hour: 13 },   // 20:00–21:00 WIB
     { fn: 'notifikasiBeluSetoran',    hour: 14 },   // 21:00–22:00 WIB
+    { fn: 'notifSC',                  hour: 16 },   // 23:00–00:00 WIB
+    { fn: 'notifOpex',                hour: 16 },   // 23:00–00:00 WIB
+    { fn: 'notifLaporan',             hour: 16 },   // 23:00–00:00 WIB
+    { fn: 'notifCompliance',          hour: 16 },   // 23:00–00:00 WIB
     { fn: 'notifCeklisMalam',         hour: 21 },   // 04:00–05:00 WIB (besok)
   ]
 
@@ -342,8 +581,20 @@ function setupTrigger() {
 
 function testManual() {
   // Ganti fungsi yang ingin ditest:
-  notifVisit()
+  notifCompliance()
+  // notifSC()
+  // notifOpex()
+  // notifLaporan()
+  // notifVisit()
   // notifCeklisPagi()
   // notifPrepPagi()
   // notifikasiBeluSetoran()
+}
+
+// ─── Diagnostik key (jalankan jika ada error 401) ─────────────
+function debugKey() {
+  var key = PropertiesService.getScriptProperties().getProperty('SUPABASE_SERVICE_KEY') || ''
+  Logger.log('Panjang key : ' + key.length)
+  Logger.log('Awal        : [' + key.substring(0, 20) + ']')
+  Logger.log('Akhir       : [' + key.substring(key.length - 20) + ']')
 }
