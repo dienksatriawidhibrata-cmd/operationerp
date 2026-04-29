@@ -229,11 +229,11 @@ export default function BebanOperasional() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className="label">Qty</label>
-                <input className="input" type="number" step="any" value={qty} onChange={(event) => setQty(event.target.value)} placeholder="0" />
+                <input className="input" type="number" step="any" value={qty} onChange={(event) => setQty(event.target.value)} onWheel={(e) => e.target.blur()} placeholder="0" />
               </div>
               <div>
                 <label className="label">Harga Satuan (Rp)</label>
-                <input className="input" type="number" value={harga} onChange={(event) => setHarga(event.target.value)} placeholder="0" />
+                <input className="input" type="number" value={harga} onChange={(event) => setHarga(event.target.value)} onWheel={(e) => e.target.blur()} placeholder="0" />
               </div>
             </div>
 
