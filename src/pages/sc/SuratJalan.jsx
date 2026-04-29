@@ -531,6 +531,18 @@ function SJList() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
   const [pendingAction, setPending] = useState(null)
+  const [downloadingId, setDownloadingId] = useState(null)
+
+  const handleDownloadPenerimaan = async (sj) => {
+    setDownloadingId(sj.id)
+    const { data: items } = await supabase
+      .from('surat_jalan_items')
+      .select('*')
+      .eq('sj_id', sj.id)
+      .order('sku_name')
+    setDownloadingId(null)
+    downloadReceiveCsv(sj, items || [])
+  }
 
   const fetchList = async () => {
     let query = supabase
@@ -692,6 +704,15 @@ function SJList() {
                     className="rounded-xl bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200"
                   >
                     {isStoreOnly ? 'Edit Penerimaan' : isWarehouseAdmin ? 'Lihat Penerimaan' : 'Review Penerimaan'}
+                  </button>
+                )}
+                {sj.status === 'delivered' && isWarehouseAdmin && (
+                  <button
+                    onClick={() => handleDownloadPenerimaan(sj)}
+                    disabled={downloadingId === sj.id}
+                    className="rounded-xl bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+                  >
+                    {downloadingId === sj.id ? 'Mengunduh...' : 'Download CSV'}
                   </button>
                 )}
               </div>
