@@ -22,7 +22,10 @@ export default function Login() {
       const role = profile.role
       if (role === 'auditor') navigate('/dm/stores', { replace: true })
       else if (['head_store', ...STAFF_EMAIL_ONLY_ROLES].includes(role)) navigate('/staff', { replace: true })
-      else if (role === 'ops_manager' || ['support_spv', 'support_admin'].includes(role)) navigate('/ops', { replace: true })
+      else if (role === 'ops_manager') navigate('/ops', { replace: true })
+      else if (role === 'support_spv') navigate('/ops/support/people', { replace: true })
+      else if (role === 'support_admin') navigate('/ops/support/finance', { replace: true })
+      else if (role === 'super_administrator') navigate('/support/staff', { replace: true })
       else if (['district_manager', 'area_manager'].includes(role)) navigate('/dm', { replace: true })
       else if (role === 'finance_supervisor') navigate('/finance', { replace: true })
       else if (role === 'trainer') navigate('/trainer', { replace: true })

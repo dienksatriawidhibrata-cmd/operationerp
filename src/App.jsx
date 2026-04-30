@@ -15,6 +15,9 @@ import {
   STORE_ROLES,
   SUPPLY_CHAIN_VIEW_ROLES,
   SUPPORT_ROLES,
+  SUPPORT_PEOPLE_ROLES,
+  SUPPORT_FINANCE_ROLES,
+  SUPER_ADMIN_ROLES,
   TASK_ASSIGNEE_ROLES,
   TRAINER_ROLES,
 } from './lib/access'
@@ -36,6 +39,7 @@ const OpsOpexApproval  = lazy(() => import('./pages/ops/OpexApproval'))
 const FinanceOpexView  = lazy(() => import('./pages/finance/OpexView'))
 const AuditSetoran   = lazy(() => import('./pages/finance/AuditSetoran'))
 const FinanceHub     = lazy(() => import('./pages/finance/FinanceHub'))
+const ManagerFinanceHub = lazy(() => import('./pages/dm/FinanceHub'))
 const OpexOverview   = lazy(() => import('./pages/OpexOverview'))
 const KPIHub         = lazy(() => import('./pages/kpi/KPIHub'))
 const KPIReport      = lazy(() => import('./pages/kpi/KPIReport'))
@@ -58,6 +62,9 @@ const SCDistribution = lazy(() => import('./pages/sc/DistributionPage'))
 const SCSuratJalan   = lazy(() => import('./pages/sc/SuratJalan'))
 const AnnouncementsPage  = lazy(() => import('./pages/ops/Announcements'))
 const StaffManagement    = lazy(() => import('./pages/support/StaffManagement'))
+const SupportHub = lazy(() => import('./pages/support/SupportHub'))
+const SupportPeopleDashboard = lazy(() => import('./pages/support/SupportPeopleDashboard'))
+const SupportFinanceDashboard = lazy(() => import('./pages/support/SupportFinanceDashboard'))
 const Preparation        = lazy(() => import('./pages/staff/Preparation'))
 const KPIPersonalPage    = lazy(() => import('./pages/kpi/KPIPersonalPage'))
 const KPIPersonalInput   = lazy(() => import('./pages/kpi/KPIPersonalInputPage'))
@@ -73,6 +80,8 @@ const HRKontrakPage      = lazy(() => import('./pages/hr/KontrakPage'))
 const HROjtChecklist     = lazy(() => import('./pages/hr/OjtChecklist'))
 
 const PeopleHub   = lazy(() => import('./pages/staff/PeopleHub'))
+const ManagerPeopleHub = lazy(() => import('./pages/dm/PeopleHub'))
+const ManagerTaskHub = lazy(() => import('./pages/dm/TaskHub'))
 const LaporanHub  = lazy(() => import('./pages/staff/LaporanHub'))
 const JadwalShift = lazy(() => import('./pages/staff/JadwalShift'))
 const QualityControl = lazy(() => import('./pages/staff/QualityControl'))
@@ -89,7 +98,10 @@ function RootRedirect() {
   if (STORE_ROLES.includes(role)) return <Navigate to="/staff" replace />
   if (AUDITOR_ROLES.includes(role)) return <Navigate to="/dm/stores" replace />
   if (['district_manager', 'area_manager'].includes(role)) return <Navigate to="/dm" replace />
-  if (role === 'ops_manager' || SUPPORT_ROLES.includes(role)) return <Navigate to="/ops" replace />
+  if (role === 'ops_manager') return <Navigate to="/ops" replace />
+  if (role === 'support_spv') return <Navigate to="/ops/support/people" replace />
+  if (role === 'support_admin') return <Navigate to="/ops/support/finance" replace />
+  if (SUPER_ADMIN_ROLES.includes(role)) return <Navigate to="/support/staff" replace />
   if (role === 'trainer') return <Navigate to="/trainer" replace />
   if (role === 'finance_supervisor') return <Navigate to="/finance" replace />
   if (HR_ROLES.includes(role)) return <Navigate to="/hr" replace />
@@ -261,14 +273,29 @@ export default function App() {
         </RequireAuth>
       } />
       <Route path="/people/jadwal" element={
-        <RequireAuth roles={['head_store']}>
+        <RequireAuth roles={['head_store', 'district_manager', 'area_manager', ...SUPPORT_PEOPLE_ROLES]}>
           <JadwalShift />
         </RequireAuth>
       } />
 
       <Route path="/ops" element={
-        <RequireAuth roles={['ops_manager', ...SUPPORT_ROLES]}>
+        <RequireAuth roles={['ops_manager']}>
           <OpsHub />
+        </RequireAuth>
+      } />
+      <Route path="/ops/support/people" element={
+        <RequireAuth roles={['ops_manager', ...SUPPORT_PEOPLE_ROLES]}>
+          <SupportPeopleDashboard />
+        </RequireAuth>
+      } />
+      <Route path="/ops/support" element={
+        <RequireAuth roles={['ops_manager', ...SUPPORT_ROLES]}>
+          <SupportHub />
+        </RequireAuth>
+      } />
+      <Route path="/ops/support/finance" element={
+        <RequireAuth roles={['ops_manager', ...SUPPORT_FINANCE_ROLES]}>
+          <SupportFinanceDashboard />
         </RequireAuth>
       } />
       <Route path="/ops/visits" element={
@@ -290,6 +317,21 @@ export default function App() {
       <Route path="/dm/visits" element={
         <RequireAuth roles={ALL_MANAGER}>
           <VisitHub />
+        </RequireAuth>
+      } />
+      <Route path="/dm/finance" element={
+        <RequireAuth roles={['district_manager', 'area_manager', ...SUPPORT_FINANCE_ROLES]}>
+          <ManagerFinanceHub />
+        </RequireAuth>
+      } />
+      <Route path="/dm/people" element={
+        <RequireAuth roles={['district_manager', 'area_manager', ...SUPPORT_PEOPLE_ROLES]}>
+          <ManagerPeopleHub />
+        </RequireAuth>
+      } />
+      <Route path="/dm/tasks" element={
+        <RequireAuth roles={['district_manager', 'area_manager']}>
+          <ManagerTaskHub />
         </RequireAuth>
       } />
       <Route path="/dm/visit" element={
@@ -314,7 +356,7 @@ export default function App() {
       } />
 
       <Route path="/finance" element={
-        <RequireAuth roles={[...FINANCE_ROLES, 'ops_manager', ...SUPPORT_ROLES]}>
+        <RequireAuth roles={[...FINANCE_ROLES, 'ops_manager', ...SUPPORT_FINANCE_ROLES]}>
           <FinanceHub />
         </RequireAuth>
       } />
@@ -324,27 +366,27 @@ export default function App() {
         </RequireAuth>
       } />
       <Route path="/ops/laporan" element={
-        <RequireAuth roles={['ops_manager', ...SUPPORT_ROLES]}>
+        <RequireAuth roles={['ops_manager', ...SUPPORT_FINANCE_ROLES]}>
           <FinanceHub pageTitle="Laporan Harian" pageEyebrow="Ops Monitoring" showAuditAction={false} />
         </RequireAuth>
       } />
       <Route path="/ops/setoran" element={
-        <RequireAuth roles={['ops_manager', ...SUPPORT_ROLES]}>
+        <RequireAuth roles={['ops_manager', ...SUPPORT_FINANCE_ROLES]}>
           <OpsSetoranDetail />
         </RequireAuth>
       } />
       <Route path="/ops/opex-approval" element={
-        <RequireAuth roles={['ops_manager', ...SUPPORT_ROLES]}>
+        <RequireAuth roles={['ops_manager', ...SUPPORT_FINANCE_ROLES]}>
           <OpsOpexApproval />
         </RequireAuth>
       } />
       <Route path="/finance/opex" element={
-        <RequireAuth roles={FINANCE_ROLES}>
+        <RequireAuth roles={[...FINANCE_ROLES, ...SUPPORT_FINANCE_ROLES]}>
           <FinanceOpexView />
         </RequireAuth>
       } />
       <Route path="/finance/audit" element={
-        <RequireAuth roles={[...FINANCE_ROLES, 'ops_manager', ...SUPPORT_ROLES]}>
+        <RequireAuth roles={[...FINANCE_ROLES, 'ops_manager', ...SUPPORT_FINANCE_ROLES]}>
           <AuditSetoran />
         </RequireAuth>
       } />
@@ -404,40 +446,40 @@ export default function App() {
       } />
 
       <Route path="/support/staff" element={
-        <RequireAuth roles={['ops_manager', ...SUPPORT_ROLES]}>
+        <RequireAuth roles={['ops_manager', ...SUPER_ADMIN_ROLES]}>
           <StaffManagement />
         </RequireAuth>
       } />
 
       <Route path="/ops/pengumuman" element={
-        <RequireAuth roles={['ops_manager', 'support_spv']}>
+        <RequireAuth roles={['ops_manager', ...SUPPORT_PEOPLE_ROLES]}>
           <AnnouncementsPage />
         </RequireAuth>
       } />
 
       {/* ── HR Recruitment ── */}
       <Route path="/hr" element={
-        <RequireAuth roles={[...HR_ROLES, 'ops_manager']}>
+        <RequireAuth roles={[...HR_ROLES, 'ops_manager', ...SUPPORT_PEOPLE_ROLES]}>
           <HRHub />
         </RequireAuth>
       } />
       <Route path="/hr/batch" element={
-        <RequireAuth roles={['hr_staff', 'hr_administrator', 'ops_manager']}>
+        <RequireAuth roles={['hr_staff', 'hr_administrator', 'ops_manager', ...SUPPORT_PEOPLE_ROLES]}>
           <HRBatchOJE />
         </RequireAuth>
       } />
       <Route path="/hr/batch/:id" element={
-        <RequireAuth roles={[...HR_ROLES, 'head_store', 'district_manager', 'ops_manager']}>
+        <RequireAuth roles={[...HR_ROLES, 'head_store', 'district_manager', 'ops_manager', ...SUPPORT_PEOPLE_ROLES]}>
           <HRBatchDetail />
         </RequireAuth>
       } />
       <Route path="/hr/candidates/:id" element={
-        <RequireAuth roles={[...HR_ROLES, 'head_store', 'district_manager', 'trainer', 'ops_manager']}>
+        <RequireAuth roles={[...HR_ROLES, 'head_store', 'district_manager', 'trainer', 'ops_manager', ...SUPPORT_PEOPLE_ROLES]}>
           <HRCandidateDetail />
         </RequireAuth>
       } />
       <Route path="/hr/store" element={
-        <RequireAuth roles={['head_store', 'district_manager', ...HR_ROLES, 'ops_manager']}>
+        <RequireAuth roles={['head_store', 'district_manager', ...HR_ROLES, 'ops_manager', ...SUPPORT_PEOPLE_ROLES]}>
           <HRStoreView />
         </RequireAuth>
       } />
@@ -448,7 +490,7 @@ export default function App() {
       } />
       <Route path="/hr/candidates/:id/ojt" element={
         <RequireAuth roles={[...HR_ROLES, 'head_store', 'district_manager', 'trainer', 'ops_manager',
-                             'staff', 'barista', 'kitchen', 'waitress', 'asst_head_store']}>
+                             ...SUPPORT_PEOPLE_ROLES, 'staff', 'barista', 'kitchen', 'waitress', 'asst_head_store']}>
           <HROjtChecklist />
         </RequireAuth>
       } />

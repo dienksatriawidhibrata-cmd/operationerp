@@ -25,7 +25,7 @@ import {
 } from '../../lib/recruitment'
 import { fmtDate } from '../../lib/utils'
 
-const HR_ROLES = ['hr_staff', 'hr_spv', 'hr_legal', 'hr_administrator']
+const HR_ROLES = ['hr_staff', 'hr_spv', 'hr_legal', 'hr_administrator', 'support_spv']
 
 function homeFor(role) {
   if (HR_ROLES.includes(role) || role === 'ops_manager') return '/hr'
@@ -40,6 +40,7 @@ function roleTitle(role) {
     district_manager: 'District Manager',
     trainer: 'Trainer',
     ops_manager: 'Operations Manager',
+    support_spv: 'Support Supervisor',
   }[role] || role
 }
 

@@ -838,15 +838,20 @@ export default function DMDashboard() {
           {(() => {
             const myActions = [
               { to: '/dm/visits', icon: 'map', label: 'Daily\nVisit' },
+              { to: '/dm/visit', icon: 'store', label: 'Input\nVisit' },
               { to: '/dm/approval', icon: 'approval', label: 'Approval\nSetoran', badge: summary.pendingSetoran > 0 },
               ...(['district_manager', 'area_manager'].includes(profile?.role)
                 ? [{ to: '/dm/opex-approval', icon: 'finance', label: 'Approval\nOpex' }]
                 : []),
               { to: '/kpi/personal/input', icon: 'checklist', label: 'Input\nKPI' },
-              { to: '/staff/laporan', icon: 'chart', label: 'Laporan\nHarian' },
+              { to: '/dm/finance', icon: 'opex', label: 'Finance\nHub' },
+              { to: '/dm/people', icon: 'users', label: 'People\nHub' },
+              { to: '/hr/store', icon: 'calendar', label: 'Rekrutmen' },
+              { to: '/dm/tasks', icon: 'bell', label: 'Tugas &\nNotif' },
+              { to: '/sop', icon: 'book', label: 'Panduan\nSOP' },
             ]
             return (
-              <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${myActions.length}, 1fr)` }}>
+              <div className="grid grid-cols-4 gap-4 sm:grid-cols-5 xl:grid-cols-6">
                 {myActions.map((action) => (
                   <Link key={action.to} to={action.to} className="flex flex-col items-center gap-2">
                     <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl border border-blue-100 bg-white text-blue-600 shadow-sm transition-transform active:scale-95">

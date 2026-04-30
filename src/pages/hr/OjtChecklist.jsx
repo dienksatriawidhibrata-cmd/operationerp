@@ -15,7 +15,7 @@ function signerKeyForRole(role) {
   if (role === 'head_store') return 'hs'
   if (role === 'trainer')    return 'trainer'
   if (['staff','barista','kitchen','waitress','asst_head_store'].includes(role)) return 'staff'
-  if (['hr_staff','hr_spv','hr_legal','hr_administrator','ops_manager'].includes(role)) return null // HR bisa lihat semua, tidak bisa sign
+  if (['hr_staff','hr_spv','hr_legal','hr_administrator','ops_manager','support_spv'].includes(role)) return null // HR bisa lihat semua, tidak bisa sign
   return null
 }
 
@@ -42,7 +42,7 @@ export default function OjtChecklist() {
 
   const role = profile?.role
   const myKey = signerKeyForRole(role)
-  const isHR = ['hr_staff','hr_spv','hr_legal','hr_administrator','ops_manager'].includes(role)
+  const isHR = ['hr_staff','hr_spv','hr_legal','hr_administrator','ops_manager','support_spv'].includes(role)
 
   useEffect(() => {
     load()

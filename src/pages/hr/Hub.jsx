@@ -72,7 +72,7 @@ export default function HRHub() {
   const onDutyCount = candidates.filter((candidate) => candidate.current_stage === 'on_duty').length
 
   const quickActions = [
-    ...(['hr_staff', 'hr_administrator', 'ops_manager'].includes(role)
+    ...(['hr_staff', 'hr_administrator', 'ops_manager', 'support_spv'].includes(role)
       ? [{
           title: 'Batch OJE',
           description: 'Buat batch baru dan masuk ke layar penilaian massal kandidat.',

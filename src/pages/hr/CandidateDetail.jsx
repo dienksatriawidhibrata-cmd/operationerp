@@ -16,7 +16,7 @@ import {
   batchTotal, batchResult, formatInstoreValue,
 } from '../../lib/recruitment'
 
-const HR_ROLES = ['hr_staff', 'hr_spv', 'hr_legal', 'hr_administrator']
+const HR_ROLES = ['hr_staff', 'hr_spv', 'hr_legal', 'hr_administrator', 'support_spv']
 
 function backFor(role) {
   return (HR_ROLES.includes(role) || role === 'ops_manager') ? '/hr' : '/hr/store'

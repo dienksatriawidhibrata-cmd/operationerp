@@ -10,7 +10,8 @@ import { roleLabel } from '../../lib/utils'
 const ALL_ROLES = [
   'staff', 'barista', 'kitchen', 'waitress', 'asst_head_store', 'head_store',
   'district_manager', 'area_manager', 'ops_manager',
-  'support_spv', 'support_admin', 'finance_supervisor', 'trainer',
+  'support_spv', 'support_admin', 'super_administrator', 'finance_supervisor', 'trainer',
+  'hr_staff', 'hr_spv', 'hr_legal', 'hr_administrator',
   'sc_supervisor', 'purchasing_admin', 'warehouse_admin',
   'picking_spv', 'qc_spv', 'distribution_spv', 'warehouse_spv',
 ]

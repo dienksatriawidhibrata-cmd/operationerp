@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { AppIcon } from './ui/AppKit'
-import { isManagerRole, isOpsLikeRole, isStoreRole, isFinanceRole, canAccessTasks, HR_ROLES } from '../lib/access'
+import { isManagerRole, isOpsLikeRole, isStoreRole, isFinanceRole, canAccessTasks, HR_ROLES, SUPER_ADMIN_ROLES } from '../lib/access'
 
 function NavItem({ to, icon, label, active, badgeCount = 0 }) {
   return (
@@ -185,11 +185,11 @@ export function DMBottomNav() {
 
   return (
     <Dock>
-      <NavItem to="/dm"         icon="home"      label="Dashboard"     active={pathname === '/dm'} />
-      <NavItem to="/dm/stores"  icon="checklist" label="Toko"          active={pathname.startsWith('/dm/stores')} />
-      <NavItem to="/dm/laporan" icon="finance"   label="Laporan Harian" active={pathname.startsWith('/dm/laporan') || pathname.startsWith('/ops/laporan') || pathname.startsWith('/finance')} />
-      <NavItem to="/kpi"        icon="chart"     label="KPI"           active={pathname.startsWith('/kpi')} />
-      <NavItem to="/sop"        icon="book"      label="SOP"           active={pathname.startsWith('/sop')} />
+      <NavItem to="/dm"         icon="home"    label="Dashboard" active={pathname === '/dm'} />
+      <NavItem to="/dm/finance" icon="finance" label="Finance"   active={pathname.startsWith('/dm/finance') || pathname.startsWith('/dm/laporan') || pathname.startsWith('/dm/approval') || pathname.startsWith('/dm/opex-approval') || pathname.startsWith('/opex')} />
+      <NavItem to="/dm/people"  icon="users"   label="People"    active={pathname.startsWith('/dm/people') || pathname.startsWith('/people/jadwal') || pathname.startsWith('/kpi') || pathname.startsWith('/hr')} />
+      <NavItem to="/sop"        icon="book"    label="SOP"       active={pathname.startsWith('/sop')} />
+      <NavItem to="/dm/tasks"   icon="bell"    label="Tugas"     active={pathname.startsWith('/dm/tasks') || pathname.startsWith('/tasks')} />
     </Dock>
   )
 }
@@ -257,22 +257,33 @@ export function FinanceBottomNav() {
 
 export function OpsBottomNav() {
   const { pathname } = useLocation()
+  const { profile } = useAuth()
   const taskCount = usePendingTaskCount()
+  const homePath = profile?.role === 'support_spv'
+    ? '/ops/support/people'
+    : profile?.role === 'support_admin'
+      ? '/ops/support/finance'
+      : '/ops'
+  const supportPath = profile?.role === 'support_spv'
+    ? '/ops/support/people'
+    : profile?.role === 'support_admin'
+      ? '/ops/support/finance'
+      : '/ops/support'
 
-  const dashActive = pathname === '/ops'
+  const dashActive = pathname === homePath || pathname.startsWith('/ops/support/')
   const retailActive = pathname.startsWith('/dm') || pathname.startsWith('/kpi') ||
     pathname.startsWith('/opex') || pathname.startsWith('/ops/visits') || pathname.startsWith('/finance') || pathname.startsWith('/ops/laporan')
   const scActive = pathname.startsWith('/sc')
   const trainerActive = pathname.startsWith('/trainer')
-  const supportActive = pathname.startsWith('/tasks')
+  const supportActive = pathname.startsWith('/tasks') || pathname.startsWith('/ops/support') || pathname.startsWith('/ops/pengumuman') || pathname.startsWith('/support/staff')
 
   return (
     <Dock>
-      <NavItem to="/ops"     icon="home"      label="Dashboard"     active={dashActive} />
+      <NavItem to={homePath} icon="home"      label="Dashboard"     active={dashActive} />
       <NavItem to="/dm"      icon="store"     label="Retail"        active={retailActive} />
       <NavItem to="/sc"      icon="finance"   label="Supply Chain"  active={scActive} />
       <NavItem to="/trainer" icon="users"     label="Trainer"       active={trainerActive} />
-      <NavItem to="/tasks"   icon="checklist" label="Support"       active={supportActive} badgeCount={taskCount} />
+      <NavItem to={supportPath} icon="checklist" label="Support"    active={supportActive} badgeCount={taskCount} />
     </Dock>
   )
 }
@@ -312,6 +323,7 @@ export function HRBottomNav() {
 export function SmartBottomNav() {
   const { profile } = useAuth()
   const role = profile?.role
+  if (SUPER_ADMIN_ROLES.includes(role)) return <OpsBottomNav />
   if (isOpsLikeRole(role))       return <OpsBottomNav />
   if (isManagerRole(role))       return <DMBottomNav />
   if (isStoreRole(role))         return <StaffBottomNav />
