@@ -16,16 +16,16 @@ export default function VisitMonitor() {
   const [loading, setLoading] = useState(true)
   const [managerCards, setManagerCards] = useState([])
   const [expandedManagerId, setExpandedManagerId] = useState(null)
+  const [selectedDate, setSelectedDate] = useState(todayWIB())
 
   useEffect(() => {
-    fetchMonitor()
-  }, [])
+    fetchMonitor(selectedDate)
+  }, [selectedDate])
 
-  const fetchMonitor = async () => {
+  const fetchMonitor = async (date) => {
     setLoading(true)
     setExpandedManagerId(null)
 
-    const today = todayWIB()
     const [managerRes, branchRes, visitRes] = await Promise.all([
       supabase
         .from('profiles')
@@ -42,7 +42,7 @@ export default function VisitMonitor() {
       supabase
         .from('daily_visits')
         .select('*, branch:branches(id,name,store_id,district,area), auditor:profiles!auditor_id(id,full_name,role), visit_scores(*)')
-        .eq('tanggal', today)
+        .eq('tanggal', date)
         .order('created_at', { ascending: false }),
     ])
 
@@ -99,10 +99,12 @@ export default function VisitMonitor() {
     }
   }, [managerCards])
 
+  const isToday = selectedDate === todayWIB()
+
   return (
     <SubpageShell
       title="Monitoring Visit"
-      subtitle={`Status submit audit manager per ${fmtDateShort(todayWIB())}`}
+      subtitle={`Status submit audit manager per ${fmtDateShort(selectedDate)}`}
       eyebrow="Retail Visit Control"
       footer={<OpsBottomNav />}
     >
@@ -111,25 +113,34 @@ export default function VisitMonitor() {
           <div className="rounded-[33px] bg-white/95 px-5 py-6 backdrop-blur sm:px-7">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <div className="text-[11px] font-black uppercase tracking-[0.22em] text-blue-700">Monitoring Hari Ini</div>
+                <div className="text-[11px] font-black uppercase tracking-[0.22em] text-blue-700">{isToday ? 'Monitoring Hari Ini' : 'Monitoring Historis'}</div>
                 <h2 className="mt-2 text-[1.9rem] font-black leading-none text-slate-950">Visit per Manager</h2>
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">
-                  Target monitoringnya 1 hari 1 toko. Jadi di sini langsung kelihatan siapa yang sudah submit audit hari ini dan siapa yang belum.
+                  Target monitoringnya 1 hari 1 toko. Pilih tanggal untuk melihat data historis.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={fetchMonitor}
-                className="flex h-14 w-14 items-center justify-center rounded-[22px] border border-blue-100 bg-blue-50 text-blue-600 transition-colors hover:bg-blue-100"
-              >
-                <AppIcon name="refresh" size={22} />
-              </button>
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={selectedDate}
+                  max={todayWIB()}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="h-14 rounded-[22px] border border-blue-100 bg-blue-50 px-4 text-sm font-semibold text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300"
+                />
+                <button
+                  type="button"
+                  onClick={() => fetchMonitor(selectedDate)}
+                  className="flex h-14 w-14 items-center justify-center rounded-[22px] border border-blue-100 bg-blue-50 text-blue-600 transition-colors hover:bg-blue-100"
+                >
+                  <AppIcon name="refresh" size={22} />
+                </button>
+              </div>
             </div>
 
             <div className="mt-6 grid gap-4 md:grid-cols-3">
-              <StatCard label="Manager Submit" value={`${summary.submittedManagers}/${managerCards.length || 0}`} helper="Manager yang sudah kirim audit hari ini." />
+              <StatCard label="Manager Submit" value={`${summary.submittedManagers}/${managerCards.length || 0}`} helper={`Manager yang sudah kirim audit ${isToday ? 'hari ini' : 'tanggal ini'}.`} />
               <StatCard label="Coverage Toko" value={`${summary.coveragePct}%`} helper={`${summary.totalCovered}/${summary.totalTargets || 0} toko sudah divisit.`} tone="blue" />
-              <StatCard label="Total Audit" value={summary.totalVisits} helper="Jumlah form audit yang masuk hari ini." />
+              <StatCard label="Total Audit" value={summary.totalVisits} helper={`Jumlah form audit yang masuk ${isToday ? 'hari ini' : 'tanggal ini'}.`} />
             </div>
 
             <button
@@ -137,7 +148,7 @@ export default function VisitMonitor() {
               className="mt-6 flex w-full items-center justify-center gap-3 rounded-[24px] bg-blue-600 px-5 py-4 text-sm font-bold text-white shadow-[0_18px_42px_-24px_rgba(37,99,235,0.7)]"
             >
               <AppIcon name="users" size={18} />
-              Status Submit 5 District Manager + 1 Area Manager
+              {managerCards.length} Manager Terpantau — {fmtDateShort(selectedDate)}
             </button>
           </div>
         </section>
