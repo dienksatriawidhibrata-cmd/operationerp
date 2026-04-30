@@ -104,6 +104,7 @@ export default function OpsHub() {
 
   const quickActions = [
     { to: '/dm/approval', icon: 'approval', label: 'Approval\nSetoran', bg: 'bg-amber-50 border-amber-100 text-amber-600' },
+    { to: '/ops/opex-approval', icon: 'finance', label: 'Approval\nOpex', bg: 'bg-orange-50 border-orange-100 text-orange-600' },
     { to: '/dm', icon: 'home', label: 'DM\nDashboard', bg: 'bg-blue-50 border-blue-100 text-blue-600' },
     { to: '/kpi/personal/input', icon: 'checklist', label: 'Input\nKPI', bg: 'bg-sky-50 border-sky-100 text-sky-600' },
     { to: '/tasks', icon: 'checklist', label: 'Manajemen\nTugas', bg: 'bg-emerald-50 border-emerald-100 text-emerald-600' },

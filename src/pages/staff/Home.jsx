@@ -169,11 +169,12 @@ export default function StaffHome() {
   const opexStatus = (status?.totalOpex || 0) > 0 ? 'Sudah ada input' : 'Belum ada input'
 
   const quickActions = isHeadStore ? [
-    { to: '/staff/laporan',      icon: 'chart',     label: 'Laporan\nHarian' },
-    { to: '/kpi/personal/input', icon: 'checklist', label: 'Input\nKPI Team' },
-    { to: '/kpi/360',            icon: 'spark',     label: 'Penilaian\n360°' },
-    { to: '/sc/sj',              icon: 'finance',   label: 'Terima\nBarang' },
-    { to: '/sop',                icon: 'checklist', label: 'Panduan\nSOP' },
+    { to: '/staff/laporan',         icon: 'chart',     label: 'Laporan\nHarian' },
+    { to: '/staff/pengajuan-opex',  icon: 'finance',   label: 'Pengajuan\nDana' },
+    { to: '/kpi/personal/input',    icon: 'checklist', label: 'Input\nKPI Team' },
+    { to: '/kpi/360',               icon: 'spark',     label: 'Penilaian\n360°' },
+    { to: '/sc/sj',                 icon: 'finance',   label: 'Terima\nBarang' },
+    { to: '/sop',                   icon: 'checklist', label: 'Panduan\nSOP' },
   ] : isStoreLevel ? [
     { to: '/staff/preparation',  icon: 'approval',  label: 'Prep\nHarian' },
     { to: '/kpi/personal',       icon: 'chart',     label: 'KPI\nPersonal' },

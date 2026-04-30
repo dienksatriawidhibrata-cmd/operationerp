@@ -25,11 +25,15 @@ const StaffHome = lazy(() => import('./pages/staff/Home'))
 const CeklisHarian = lazy(() => import('./pages/staff/CeklisHarian'))
 const LaporanHarian = lazy(() => import('./pages/staff/LaporanHarian'))
 const BebanOperasional = lazy(() => import('./pages/staff/BebanOperasional'))
+const PengajuanOpex    = lazy(() => import('./pages/staff/PengajuanOpex'))
 const DMDashboard = lazy(() => import('./pages/dm/Dashboard'))
 const DailyVisit = lazy(() => import('./pages/dm/DailyVisit'))
 const VisitHub   = lazy(() => import('./pages/dm/VisitHub'))
 const ApprovalSetoran = lazy(() => import('./pages/dm/ApprovalSetoran'))
 const StoreStatus = lazy(() => import('./pages/dm/StoreStatus'))
+const DMOpexApproval   = lazy(() => import('./pages/dm/OpexApproval'))
+const OpsOpexApproval  = lazy(() => import('./pages/ops/OpexApproval'))
+const FinanceOpexView  = lazy(() => import('./pages/finance/OpexView'))
 const AuditSetoran   = lazy(() => import('./pages/finance/AuditSetoran'))
 const FinanceHub     = lazy(() => import('./pages/finance/FinanceHub'))
 const OpexOverview   = lazy(() => import('./pages/OpexOverview'))
@@ -228,6 +232,11 @@ export default function App() {
           <Preparation />
         </RequireAuth>
       } />
+      <Route path="/staff/pengajuan-opex" element={
+        <RequireAuth roles={['head_store']}>
+          <PengajuanOpex />
+        </RequireAuth>
+      } />
 
       <Route path="/ops" element={
         <RequireAuth roles={['ops_manager', ...SUPPORT_ROLES]}>
@@ -265,6 +274,11 @@ export default function App() {
           <ApprovalSetoran />
         </RequireAuth>
       } />
+      <Route path="/dm/opex-approval" element={
+        <RequireAuth roles={['district_manager', 'area_manager']}>
+          <DMOpexApproval />
+        </RequireAuth>
+      } />
       <Route path="/dm/stores" element={
         <RequireAuth roles={[...ALL_MANAGER, ...AUDITOR_ROLES]}>
           <StoreStatus />
@@ -289,6 +303,16 @@ export default function App() {
       <Route path="/ops/setoran" element={
         <RequireAuth roles={['ops_manager', ...SUPPORT_ROLES]}>
           <OpsSetoranDetail />
+        </RequireAuth>
+      } />
+      <Route path="/ops/opex-approval" element={
+        <RequireAuth roles={['ops_manager', ...SUPPORT_ROLES]}>
+          <OpsOpexApproval />
+        </RequireAuth>
+      } />
+      <Route path="/finance/opex" element={
+        <RequireAuth roles={FINANCE_ROLES}>
+          <FinanceOpexView />
         </RequireAuth>
       } />
       <Route path="/finance/audit" element={

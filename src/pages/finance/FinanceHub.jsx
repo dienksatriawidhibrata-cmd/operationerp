@@ -342,6 +342,23 @@ export default function FinanceHub({
       </HeroCard>
 
       <div className="mt-6 space-y-6">
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { to: '/finance/audit',  icon: 'approval', label: 'Audit\nSetoran',  bg: 'bg-primary-50 border-primary-100 text-primary-600' },
+            { to: '/finance/opex',   icon: 'finance',  label: 'Pengajuan\nOpex', bg: 'bg-orange-50 border-orange-100 text-orange-600'  },
+            { to: '/opex',           icon: 'chart',    label: 'Opex\nOverview',  bg: 'bg-slate-50 border-slate-200 text-slate-600'      },
+          ].map((action) => (
+            <Link key={action.to} to={action.to} className="flex flex-col items-center gap-2">
+              <div className={`flex h-14 w-14 items-center justify-center rounded-2xl border shadow-sm transition-transform active:scale-95 ${action.bg}`}>
+                <AppIcon name={action.icon} size={22} />
+              </div>
+              <span className="text-center text-[9px] font-bold leading-tight text-gray-700">
+                {action.label.split('\n').map((l, i) => <span key={i}>{l}{i === 0 ? <br /> : ''}</span>)}
+              </span>
+            </Link>
+          ))}
+        </div>
+
         <SectionPanel
           eyebrow="Filter Wilayah"
           title="Scope Monitoring"

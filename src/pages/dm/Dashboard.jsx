@@ -902,13 +902,19 @@ export default function DMDashboard() {
         )}
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-4 gap-4 mb-5">
-          {[
+        {(() => {
+          const dmActions = [
             { to: '/staff/laporan', icon: 'chart', label: 'Laporan\nHarian' },
             { to: '/kpi/personal/input', icon: 'checklist', label: 'Input\nKPI' },
             { to: '/dm/approval', icon: 'approval', label: 'Approval\nSetoran', badge: summary.pendingSetoran > 0 },
+            ...(['district_manager','area_manager'].includes(profile?.role)
+              ? [{ to: '/dm/opex-approval', icon: 'finance', label: 'Approval\nOpex' }]
+              : []),
             { to: '/dm/visits', icon: 'map', label: 'Daily\nVisit' },
-          ].map((action) => (
+          ]
+          return (
+        <div className={`grid gap-4 mb-5 ${dmActions.length <= 4 ? 'grid-cols-4' : 'grid-cols-5'}`}>
+          {dmActions.map((action) => (
             <Link key={action.to} to={action.to} className="flex flex-col items-center gap-2">
               <div className="w-14 h-14 bg-white border border-blue-100 rounded-2xl flex items-center justify-center text-blue-600 shadow-sm active:scale-95 transition-transform relative">
                 <AppIcon name={action.icon} size={22} />
@@ -920,6 +926,8 @@ export default function DMDashboard() {
             </Link>
           ))}
         </div>
+          )
+        })()}
 
         {/* Performance Snapshot */}
         <div className="flex gap-3 mb-5">
