@@ -157,8 +157,16 @@ export default function Preparation() {
     setSaving(true)
     setError('')
 
+    const missingQty = PREPARATION_ITEMS.filter(
+      (item) => qtyMap[item.key] === '' || qtyMap[item.key] == null,
+    )
+    if (missingQty.length > 0) {
+      setError(`Jumlah wajib diisi untuk semua item. Lengkapi: ${missingQty.slice(0, 3).map((item) => item.label).join(', ')}${missingQty.length > 3 ? ` dan ${missingQty.length - 3} lainnya` : ''}.`)
+      setSaving(false)
+      return
+    }
+
     const missingPhotos = PREPARATION_ITEMS
-      .filter((item) => qtyMap[item.key] !== '' && qtyMap[item.key] != null)
       .filter((item) => (photoMap[item.key] || []).length === 0)
 
     if (missingPhotos.length > 0) {
