@@ -73,7 +73,9 @@ const HRKontrakPage      = lazy(() => import('./pages/hr/KontrakPage'))
 const HROjtChecklist     = lazy(() => import('./pages/hr/OjtChecklist'))
 
 const PeopleHub   = lazy(() => import('./pages/staff/PeopleHub'))
+const LaporanHub  = lazy(() => import('./pages/staff/LaporanHub'))
 const JadwalShift = lazy(() => import('./pages/staff/JadwalShift'))
+const QualityControl = lazy(() => import('./pages/staff/QualityControl'))
 
 function RootRedirect() {
   const { user, profile, loading, profileError, signOut } = useAuth()
@@ -238,6 +240,17 @@ export default function App() {
       <Route path="/staff/pengajuan-opex" element={
         <RequireAuth roles={['head_store']}>
           <PengajuanOpex />
+        </RequireAuth>
+      } />
+
+      <Route path="/laporan" element={
+        <RequireAuth roles={['head_store', 'asst_head_store']}>
+          <LaporanHub />
+        </RequireAuth>
+      } />
+      <Route path="/laporan/quality-control" element={
+        <RequireAuth roles={['head_store', 'asst_head_store']}>
+          <QualityControl />
         </RequireAuth>
       } />
 

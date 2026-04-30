@@ -10,14 +10,15 @@ import ReminderBanner from '../../components/ReminderBanner'
 import LeaderboardSection from '../../components/LeaderboardSection'
 import { fetchOperationalLeaderboards, EMPTY_LEADERBOARDS } from '../../lib/opsLeaderboards'
 
-function StatusItem({ icon, label, done, loading, statusLabel }) {
+function StatusItem({ icon, label, done, loading, statusLabel, to }) {
   const tone = loading ? 'loading' : done ? 'done' : 'pending'
   const styles = {
     loading: { card: 'bg-slate-50',  iconBg: '#cbd5e1', track: 'bg-slate-100', fill: 'w-0' },
     done:    { card: 'bg-blue-50',   iconBg: '#2563eb', track: 'bg-blue-100',  fill: 'bg-blue-600 w-full' },
     pending: { card: 'bg-rose-50',   iconBg: '#ef4444', track: 'bg-rose-100',  fill: 'w-0' },
   }[tone]
-  return (
+
+  const content = (
     <div className={`${styles.card} rounded-2xl p-3 text-center`}>
       <div className="w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center" style={{ background: styles.iconBg }}>
         <AppIcon name={icon} size={14} className="text-white" />
@@ -31,6 +32,16 @@ function StatusItem({ icon, label, done, loading, statusLabel }) {
       </p>
     </div>
   )
+
+  if (to) {
+    return (
+      <Link to={to} className="block transition-transform active:scale-[0.98]">
+        {content}
+      </Link>
+    )
+  }
+
+  return content
 }
 
 const HIDDEN_HEAD_STORE_ROLES = ['staff', 'barista', 'kitchen', 'waitress']
@@ -158,6 +169,7 @@ export default function StaffHome() {
 
   const isStoreLevel = isStoreRole(profile?.role)
   const isHeadStore = profile?.role === 'head_store'
+  const isAsstHeadStore = profile?.role === 'asst_head_store'
   const kpiEnabled = canViewKPI(profile?.role)
   const supplyChainEnabled = canViewSupplyChain(profile?.role)
   const shortName = profile?.full_name?.split(' ')[0] || '-'
@@ -169,12 +181,19 @@ export default function StaffHome() {
   const opexStatus = (status?.totalOpex || 0) > 0 ? 'Sudah ada input' : 'Belum ada input'
 
   const quickActions = isHeadStore ? [
-    { to: '/staff/laporan',         icon: 'chart',     label: 'Laporan\nHarian' },
+    { to: '/laporan',               icon: 'chart',     label: 'Hub\nLaporan' },
     { to: '/staff/pengajuan-opex',  icon: 'finance',   label: 'Pengajuan\nDana' },
     { to: '/kpi/personal/input',    icon: 'checklist', label: 'Input\nKPI Team' },
     { to: '/kpi/360',               icon: 'spark',     label: 'Penilaian\n360°' },
     { to: '/sc/sj',                 icon: 'finance',   label: 'Terima\nBarang' },
     { to: '/sop',                   icon: 'checklist', label: 'Panduan\nSOP' },
+  ] : isAsstHeadStore ? [
+    { to: '/laporan',                 icon: 'chart',     label: 'Hub\nLaporan' },
+    { to: '/laporan/quality-control', icon: 'checklist', label: 'Quality\nControl' },
+    { to: '/kpi/personal',            icon: 'chart',     label: 'KPI\nPersonal' },
+    { to: '/kpi/360',                 icon: 'spark',     label: 'Penilaian\n360°' },
+    { to: '/sc/sj',                   icon: 'finance',   label: 'Terima\nBarang' },
+    { to: '/sop',                     icon: 'checklist', label: 'Panduan\nSOP' },
   ] : isStoreLevel ? [
     { to: '/staff/preparation',  icon: 'approval',  label: 'Prep\nHarian' },
     { to: '/kpi/personal',       icon: 'chart',     label: 'KPI\nPersonal' },
@@ -234,6 +253,7 @@ export default function StaffHome() {
                   done={!loading && !!status?.laporan}
                   loading={loading}
                   statusLabel={laporanStatus}
+                  to="/staff/laporan#laporan-form"
                 />
                 <StatusItem
                   icon="opex"
@@ -241,6 +261,7 @@ export default function StaffHome() {
                   done={!loading && (status?.totalOpex || 0) > 0}
                   loading={loading}
                   statusLabel={opexStatus}
+                  to="/staff/opex"
                 />
                 <StatusItem
                   icon="finance"
@@ -248,16 +269,17 @@ export default function StaffHome() {
                   done={!loading && !!status?.setoran}
                   loading={loading}
                   statusLabel={loading ? '...' : status?.setoran ? 'Sudah' : 'Belum'}
+                  to="/staff/laporan#setoran-form"
                 />
               </div>
             </div>
 
             <Link
-              to="/staff/laporan"
+              to="/laporan"
               className="flex items-center justify-center gap-2 w-full py-3.5 bg-amber-500 text-white font-bold text-sm text-center hover:bg-amber-600 transition-colors active:scale-[0.98]"
             >
               <AppIcon name="chart" size={16} />
-              Buka Laporan Harian
+              Buka Hub Laporan
             </Link>
           </div>
         )}
@@ -277,6 +299,7 @@ export default function StaffHome() {
                 done={!!status?.ceklisPagi}
                 loading={loading}
                 statusLabel={status?.ceklisPagi ? (status.ceklisPagi.is_late ? 'Terlambat' : 'Selesai') : 'Belum'}
+                to="/staff/ceklis"
               />
               <StatusItem
                 icon="checklist"
@@ -284,6 +307,7 @@ export default function StaffHome() {
                 done={!!status?.ceklisMiddle}
                 loading={loading}
                 statusLabel={status?.ceklisMiddle ? (status.ceklisMiddle.is_late ? 'Terlambat' : 'Selesai') : 'Belum'}
+                to="/staff/ceklis"
               />
               <StatusItem
                 icon="checklist"
@@ -291,6 +315,7 @@ export default function StaffHome() {
                 done={!!status?.ceklisMalam}
                 loading={loading}
                 statusLabel={status?.ceklisMalam ? 'Selesai' : 'Belum'}
+                to="/staff/ceklis"
               />
             </div>
           </div>
@@ -321,6 +346,7 @@ export default function StaffHome() {
                 done={!!status?.prepPagi}
                 loading={loading}
                 statusLabel={status?.prepPagi ? 'Selesai' : 'Belum'}
+                to="/staff/preparation"
               />
               <StatusItem
                 icon="checklist"
@@ -328,6 +354,7 @@ export default function StaffHome() {
                 done={!!status?.prepMiddle}
                 loading={loading}
                 statusLabel={status?.prepMiddle ? 'Selesai' : 'Belum'}
+                to="/staff/preparation"
               />
               <StatusItem
                 icon="approval"
@@ -335,6 +362,7 @@ export default function StaffHome() {
                 done={!!status?.prepMalam}
                 loading={loading}
                 statusLabel={status?.prepMalam ? 'Selesai' : 'Belum'}
+                to="/staff/preparation"
               />
             </div>
           </div>
@@ -395,7 +423,7 @@ export default function StaffHome() {
 
         {/* Status & Achievement */}
         <div className="flex gap-3 mb-5">
-          <div className="flex-1 bg-gradient-to-br from-blue-600 to-blue-800 p-4 rounded-3xl text-white relative overflow-hidden shadow-md">
+          <Link to="/staff/ceklis" className="flex-1 block bg-gradient-to-br from-blue-600 to-blue-800 p-4 rounded-3xl text-white relative overflow-hidden shadow-md transition-transform active:scale-[0.98]">
             <div className="relative z-10">
               <p className="text-[9px] font-bold opacity-80 uppercase mb-1">Target Ceklis</p>
               <p className="text-2xl font-black">{loading ? '-' : `${ceklisPct}%`}</p>
@@ -408,7 +436,7 @@ export default function StaffHome() {
               <p className="text-[8px] opacity-70 mt-1">{loading ? '...' : `${ceklisDone} dari 3 ceklis`}</p>
             </div>
             <AppIcon name="spark" size={52} className="absolute -right-2 -bottom-2 opacity-10" />
-          </div>
+          </Link>
           <Link to="/staff/opex" className="flex-1 bg-white border border-blue-100 p-4 rounded-3xl shadow-sm flex flex-col justify-between hover:border-blue-300 transition-colors">
             <p className="text-[9px] font-bold text-gray-400 uppercase">Opex Hari Ini</p>
             <p className="text-base font-black text-gray-900 leading-tight mt-1">

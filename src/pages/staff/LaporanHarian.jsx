@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { fmtRp, sisaWaktuLaporan, yesterdayWIB } from '../../lib/utils'
@@ -17,6 +18,7 @@ import {
 export default function LaporanHarian() {
   const { profile } = useAuth()
   const { toastSuccess, toastError } = useToast()
+  const location = useLocation()
   const yesterday = yesterdayWIB()
   const branchId = profile?.branch_id
 
@@ -45,6 +47,17 @@ export default function LaporanHarian() {
     }
     fetchData()
   }, [branchId])
+
+  useEffect(() => {
+    if (loading || !location.hash) return
+
+    const element = document.querySelector(location.hash)
+    if (!element) return
+
+    window.requestAnimationFrame(() => {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }, [loading, location.hash])
 
   const fetchData = async () => {
     const [lapRes, setRes] = await Promise.all([
@@ -214,27 +227,28 @@ export default function LaporanHarian() {
         )}
         {error && <Alert variant="error">{error}</Alert>}
 
-        <SectionPanel
-          eyebrow="Daily Report"
-          title="Form Laporan Harian"
-          description={`Laporan ini untuk operasional tanggal ${reportDateLabel} (kemarin). Deadline hari ini jam 14.00 WIB.`}
-          actions={
-            <div className="flex items-center gap-2">
-              {laporan && !isEditingLaporan && (
-                <button
-                  onClick={() => setIsEditingLaporan(true)}
-                  className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
-                >
-                  Edit
-                </button>
-              )}
-              <ToneBadge tone={laporan ? (isEditingLaporan ? 'warn' : 'ok') : 'warn'}>
-                {laporan ? (isEditingLaporan ? 'Mode edit' : 'Sudah submit') : `Sisa ${sisaWaktuLaporan(yesterday)}`}
-              </ToneBadge>
-            </div>
-          }
-        >
-          <div className="space-y-4">
+        <div id="laporan-form" className="scroll-mt-24">
+          <SectionPanel
+            eyebrow="Daily Report"
+            title="Form Laporan Harian"
+            description={`Laporan ini untuk operasional tanggal ${reportDateLabel} (kemarin). Deadline hari ini jam 14.00 WIB.`}
+            actions={
+              <div className="flex items-center gap-2">
+                {laporan && !isEditingLaporan && (
+                  <button
+                    onClick={() => setIsEditingLaporan(true)}
+                    className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                  >
+                    Edit
+                  </button>
+                )}
+                <ToneBadge tone={laporan ? (isEditingLaporan ? 'warn' : 'ok') : 'warn'}>
+                  {laporan ? (isEditingLaporan ? 'Mode edit' : 'Sudah submit') : `Sisa ${sisaWaktuLaporan(yesterday)}`}
+                </ToneBadge>
+              </div>
+            }
+          >
+            <div className="space-y-4">
             <div>
               <label className="label">Net Sales (Rp)</label>
               <input
@@ -307,16 +321,18 @@ export default function LaporanHarian() {
                 </button>
               </div>
             )}
-          </div>
-        </SectionPanel>
+            </div>
+          </SectionPanel>
+        </div>
 
-        <SectionPanel
-          eyebrow="Cash Deposit"
-          title="Form Setoran Cash"
-          description="Pastikan nominal, alasan selisih, dan bukti setoran lengkap sebelum dikirim."
-          actions={setoran && <StatusPill status={setoran.status} />}
-        >
-          <div className="space-y-4">
+        <div id="setoran-form" className="scroll-mt-24">
+          <SectionPanel
+            eyebrow="Cash Deposit"
+            title="Form Setoran Cash"
+            description="Pastikan nominal, alasan selisih, dan bukti setoran lengkap sebelum dikirim."
+            actions={setoran && <StatusPill status={setoran.status} />}
+          >
+            <div className="space-y-4">
             <div>
               <label className="label">Cash POS / Mesin Kasir (Rp)</label>
               <input
@@ -415,8 +431,9 @@ export default function LaporanHarian() {
                 {setoran?.status === 'approved' ? 'Setoran sudah diapprove DM.' : 'Setoran sedang menunggu approval DM.'}
               </div>
             )}
-          </div>
-        </SectionPanel>
+            </div>
+          </SectionPanel>
+        </div>
       </div>
     </SubpageShell>
   )

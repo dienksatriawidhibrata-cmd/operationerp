@@ -140,17 +140,32 @@ export function StaffBottomNav() {
   const { pathname } = useLocation()
   const { profile } = useAuth()
   const isHeadStore = profile?.role === 'head_store'
+  const isAsstHeadStore = profile?.role === 'asst_head_store'
   const issuedSjCount = useIssuedSuratJalanCount()
 
   if (isHeadStore) {
+    const reportActive = pathname.startsWith('/laporan') || pathname.startsWith('/staff/laporan') || pathname.startsWith('/staff/opex')
     const peopleActive = pathname.startsWith('/people') || pathname.startsWith('/kpi') || pathname.startsWith('/hr')
     return (
       <Dock>
         <NavItem to="/staff"         icon="home"    label="Dashboard"     active={pathname === '/staff'} />
-        <NavItem to="/staff/laporan" icon="chart"   label="Laporan"       active={pathname.startsWith('/staff/laporan')} />
+        <NavItem to="/laporan"       icon="chart"   label="Laporan"       active={reportActive} />
         <NavItem to="/sc/sj"         icon="finance" label="Terima Barang" active={pathname.startsWith('/sc')} badgeCount={issuedSjCount} />
         <NavItem to="/people"        icon="users"   label="People"        active={peopleActive} />
         <NavItem to="/sop"           icon="book"    label="SOP"           active={pathname.startsWith('/sop')} />
+      </Dock>
+    )
+  }
+
+  if (isAsstHeadStore) {
+    const reportActive = pathname.startsWith('/laporan') || pathname.startsWith('/staff/quality-control')
+    return (
+      <Dock>
+        <NavItem to="/staff"                  icon="home"    label="Dashboard"     active={pathname === '/staff'} />
+        <NavItem to="/laporan"                icon="chart"   label="Laporan"       active={reportActive} />
+        <NavItem to="/sc/sj"                  icon="finance" label="Terima Barang" active={pathname.startsWith('/sc')} badgeCount={issuedSjCount} />
+        <NavItem to="/kpi"                    icon="spark"   label="KPI"           active={pathname.startsWith('/kpi')} />
+        <NavItem to="/sop"                    icon="book"    label="SOP"           active={pathname.startsWith('/sop')} />
       </Dock>
     )
   }
