@@ -193,7 +193,6 @@ export default function DMDashboard() {
   const [showBudgetSection, setShowBudgetSection] = useState(readSectionPreference)
   const [showStoreSection, setShowStoreSection] = useState(readStoreSectionPreference)
   const [selectedBudgetDetail, setSelectedBudgetDetail] = useState(null)
-  const [activeTab, setActiveTab] = useState('toko')
   const [visitPeriod, setVisitPeriod] = useState('week')
   const [visitSummary, setVisitSummary] = useState(EMPTY_VISIT_SUMMARY)
   const [managerCoverage, setManagerCoverage] = useState([])
@@ -722,73 +721,7 @@ export default function DMDashboard() {
   })
   const criticalAlertCount = alerts.filter((item) => ['danger', 'warn'].includes(item.level)).length
   const healthyStoreCount = stores.filter((store) => storeBadge(store).tone === 'ok').length
-  const pendingStoreIssues = stores.length - healthyStoreCount
   const visitCoveragePct = Math.round((visitSummary.coveragePct || 0) * 100)
-  const overviewCards = [
-    {
-      title: 'Ceklis Pagi',
-      value: summary.ceklisOK,
-      total: summary.total,
-      note: summary.total === summary.ceklisOK ? 'Semua toko sudah mengirim ceklis pagi.' : `${summary.total - summary.ceklisOK} toko masih perlu diingatkan.`,
-      icon: 'checklist',
-      tone: 'orange',
-    },
-    {
-      title: 'Laporan H-1',
-      value: summary.laporanOK,
-      total: summary.total,
-      note: summary.laporanOK === summary.total ? 'Semua laporan harian sudah masuk.' : `${summary.total - summary.laporanOK} laporan masih tertahan.`,
-      icon: 'chart',
-      tone: 'primary',
-    },
-    {
-      title: 'Visit Periode',
-      value: visitSummary.visitedCount,
-      total: summary.total,
-      note: `${visitSummary.totalVisits} kunjungan tercatat untuk periode ${visitSummary.label || 'aktif'}.`,
-      icon: 'map',
-      tone: 'violet',
-    },
-    {
-      title: 'Setoran Pending',
-      value: summary.pendingSetoran,
-      note: summary.pendingSetoran > 0 ? 'Masih ada approval yang perlu ditindaklanjuti.' : 'Tidak ada antrean approval setoran.',
-      icon: 'finance',
-      tone: summary.pendingSetoran > 0 ? 'rose' : 'emerald',
-    },
-  ]
-  const snapshotStats = [
-    { label: 'Outlet Aman', value: healthyStoreCount, tone: 'emerald' },
-    { label: 'Butuh Follow Up', value: pendingStoreIssues, tone: pendingStoreIssues > 0 ? 'amber' : 'slate' },
-    { label: 'Coverage Visit', value: `${visitCoveragePct}%`, tone: visitCoveragePct >= 80 ? 'emerald' : 'primary' },
-    { label: 'BOH Over Budget', value: opexSummary.overBudget, tone: opexSummary.overBudget > 0 ? 'rose' : 'slate' },
-  ]
-  const insightItems = [
-    {
-      icon: criticalAlertCount > 0 ? 'warning' : 'spark',
-      title: criticalAlertCount > 0 ? `${criticalAlertCount} alert prioritas menunggu follow up` : 'Tidak ada alert prioritas saat ini',
-      body: criticalAlertCount > 0
-        ? 'Fokuskan tindak lanjut ke toko yang belum isi ceklis, laporan, atau masih tertahan setorannya.'
-        : 'Kondisi operasional inti relatif aman. Kamu bisa lanjut cek performa visit dan BOH.',
-      tone: criticalAlertCount > 0 ? 'danger' : 'ok',
-    },
-    {
-      icon: 'chart',
-      title: `${opexSummary.withinBudget} toko masih di jalur BOH`,
-      body: opexSummary.overBudget > 0
-        ? `${opexSummary.overBudget} toko sedang melewati ambang 3% dan perlu dipantau lebih dekat.`
-        : 'Tidak ada toko yang melewati ambang BOH 3% pada bulan aktif.',
-      tone: opexSummary.overBudget > 0 ? 'warn' : 'info',
-    },
-    {
-      icon: 'map',
-      title: `${visitSummary.visitedCount} dari ${summary.total} outlet sudah tersentuh visit`,
-      body: isOpsManager
-        ? 'Gunakan monitoring per manager untuk melihat siapa yang masih tertinggal coverage-nya.'
-        : 'Pantau daftar toko yang belum kamu kunjungi agar coverage periode ini cepat naik.',
-      tone: visitCoveragePct >= 80 ? 'ok' : 'info',
-    },
-  ]
 
   return (
     <AppCanvas>
@@ -823,39 +756,34 @@ export default function DMDashboard() {
           </div>
         )}
 
-        {/* Store Status Overview */}
-        <div className="bg-gradient-to-br from-white to-blue-50/50 p-5 rounded-[2.5rem] border border-blue-100 shadow-sm mb-5">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xs font-bold text-blue-900 uppercase">Status Ceklis Toko (Hari Ini)</h2>
-            <span className="text-[10px] text-gray-500 font-medium">{loading ? '...' : `${summary.total} Toko`}</span>
+        {/* Command Center — Monitoring Overview */}
+        <div className="mb-5 rounded-[2.5rem] border border-blue-100 bg-gradient-to-br from-blue-50 to-sky-50/40 p-5 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <p className="text-[9px] font-bold uppercase tracking-widest text-blue-400">Command Center</p>
+              <h2 className="text-sm font-bold text-blue-900">{loading ? '...' : `${summary.total} Toko Aktif`}</h2>
+            </div>
+            {criticalAlertCount > 0 && (
+              <span className="rounded-full bg-red-500 px-2.5 py-1 text-[10px] font-bold text-white">{criticalAlertCount} alert</span>
+            )}
           </div>
-          <div className="grid grid-cols-3 gap-4 mb-5 sm:grid-cols-6">
+          <div className="grid grid-cols-2 gap-3 mb-4 sm:grid-cols-4">
             {[
-              { label: 'Ceklis Pagi', val: stores.filter((store) => store.ceklisPagi).length, color: '#22c55e' },
-              { label: 'Ceklis Middle', val: stores.filter((store) => store.ceklisMiddle).length, color: '#7c3aed' },
-              { label: 'Ceklis Malam', val: stores.filter((store) => store.ceklisMalam).length, color: '#6366f1' },
-              { label: 'Prep Pagi', val: stores.filter((store) => store.prepPagi).length, color: '#10b981' },
-              { label: 'Prep Middle', val: stores.filter((store) => store.prepMiddle).length, color: '#0d9488' },
-              { label: 'Prep Malam', val: stores.filter((store) => store.prepMalam).length, color: '#0891b2' },
-            ].map((item, i) => {
-              const offset = loading || summary.total === 0 ? 150 : 150 - (item.val / summary.total) * 150
-              return (
-                <div key={item.label} className={`text-center ${(i === 1 || i === 3) ? 'sm:border-l sm:border-blue-100' : ''}`}>
-                  <p className="text-[9px] font-bold text-gray-400 mb-2 uppercase">{item.label}</p>
-                  <div className="relative inline-flex items-center justify-center">
-                    <svg className="w-14 h-14" style={{ transform: 'rotate(-90deg)' }}>
-                      <circle strokeWidth="4" stroke="#e5e7eb" fill="transparent" r="24" cx="28" cy="28" />
-                      <circle strokeWidth="4" strokeDasharray="150" strokeDashoffset={offset} strokeLinecap="round" stroke={item.color} fill="transparent" r="24" cx="28" cy="28" />
-                    </svg>
-                    <span className="absolute text-xs font-bold">{loading ? '-' : `${item.val}/${summary.total}`}</span>
-                  </div>
-                </div>
-              )
-            })}
+              { label: 'Ceklis Pagi', value: loading ? '-' : `${summary.ceklisOK}/${summary.total}`, sub: loading ? '' : summary.ceklisOK === summary.total ? 'Semua aman' : `${summary.total - summary.ceklisOK} belum`, ok: !loading && summary.ceklisOK === summary.total },
+              { label: 'Laporan H-1', value: loading ? '-' : `${summary.laporanOK}/${summary.total}`, sub: loading ? '' : summary.laporanOK === summary.total ? 'Lengkap' : `${summary.total - summary.laporanOK} tertahan`, ok: !loading && summary.laporanOK === summary.total },
+              { label: 'Visit Coverage', value: loading ? '-' : `${visitCoveragePct}%`, sub: loading ? '' : `${visitSummary.visitedCount}/${summary.total} toko`, ok: !loading && visitCoveragePct >= 80 },
+              { label: 'Setoran Pending', value: loading ? '-' : String(summary.pendingSetoran), sub: loading ? '' : summary.pendingSetoran > 0 ? 'Perlu approval' : 'Tidak ada antrean', ok: !loading && summary.pendingSetoran === 0 },
+            ].map((stat) => (
+              <div key={stat.label} className="rounded-2xl bg-white border border-blue-100 px-3 py-3">
+                <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400">{stat.label}</p>
+                <p className={`text-lg font-black mt-0.5 ${loading ? 'text-slate-300' : stat.ok ? 'text-emerald-600' : 'text-rose-500'}`}>{stat.value}</p>
+                <p className="text-[9px] text-slate-400 mt-0.5">{stat.sub}</p>
+              </div>
+            ))}
           </div>
-          <Link to="/dm/stores" className="flex w-full py-3 bg-blue-600 text-white rounded-2xl font-bold text-xs items-center justify-center gap-2 hover:bg-blue-700 transition-colors">
+          <Link to="/dm/stores" className="flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 py-3 text-xs font-bold text-white hover:bg-blue-700 transition-colors">
             <AppIcon name="checklist" size={16} />
-            Detail Kepatuhan Toko
+            Detail Status Semua Toko
           </Link>
         </div>
 
@@ -901,56 +829,38 @@ export default function DMDashboard() {
           </div>
         )}
 
-        {/* Quick Actions */}
-        {(() => {
-          const dmActions = [
-            { to: '/staff/laporan', icon: 'chart', label: 'Laporan\nHarian' },
-            { to: '/kpi/personal/input', icon: 'checklist', label: 'Input\nKPI' },
-            { to: '/dm/approval', icon: 'approval', label: 'Approval\nSetoran', badge: summary.pendingSetoran > 0 },
-            ...(['district_manager','area_manager'].includes(profile?.role)
-              ? [{ to: '/dm/opex-approval', icon: 'finance', label: 'Approval\nOpex' }]
-              : []),
-            { to: '/dm/visits', icon: 'map', label: 'Daily\nVisit' },
-          ]
-          return (
-        <div className={`grid gap-4 mb-5 ${dmActions.length <= 4 ? 'grid-cols-4' : 'grid-cols-5'}`}>
-          {dmActions.map((action) => (
-            <Link key={action.to} to={action.to} className="flex flex-col items-center gap-2">
-              <div className="w-14 h-14 bg-white border border-blue-100 rounded-2xl flex items-center justify-center text-blue-600 shadow-sm active:scale-95 transition-transform relative">
-                <AppIcon name={action.icon} size={22} />
-                {action.badge && <span className="absolute -top-1 -right-1 bg-red-500 w-3 h-3 rounded-full border border-white" />}
+        {/* Tugas Saya — head_store style quick actions */}
+        <div className="mb-5">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Tugas Saya</p>
+            <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-[9px] font-bold text-blue-600">{roleName}</span>
+          </div>
+          {(() => {
+            const myActions = [
+              { to: '/dm/visits', icon: 'map', label: 'Daily\nVisit' },
+              { to: '/dm/approval', icon: 'approval', label: 'Approval\nSetoran', badge: summary.pendingSetoran > 0 },
+              ...(['district_manager', 'area_manager'].includes(profile?.role)
+                ? [{ to: '/dm/opex-approval', icon: 'finance', label: 'Approval\nOpex' }]
+                : []),
+              { to: '/kpi/personal/input', icon: 'checklist', label: 'Input\nKPI' },
+              { to: '/staff/laporan', icon: 'chart', label: 'Laporan\nHarian' },
+            ]
+            return (
+              <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${myActions.length}, 1fr)` }}>
+                {myActions.map((action) => (
+                  <Link key={action.to} to={action.to} className="flex flex-col items-center gap-2">
+                    <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl border border-blue-100 bg-white text-blue-600 shadow-sm transition-transform active:scale-95">
+                      <AppIcon name={action.icon} size={22} />
+                      {action.badge && <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-white bg-red-500" />}
+                    </div>
+                    <span className="text-[9px] font-bold text-center leading-tight text-gray-700">
+                      {action.label.split('\n').map((l, i) => <span key={i}>{l}{i === 0 ? <br /> : ''}</span>)}
+                    </span>
+                  </Link>
+                ))}
               </div>
-              <span className="text-[9px] font-bold text-center leading-tight text-gray-700">
-                {action.label.split('\n').map((l, i) => <span key={i}>{l}{i === 0 ? <br /> : ''}</span>)}
-              </span>
-            </Link>
-          ))}
-        </div>
-          )
-        })()}
-
-        {/* Performance Snapshot */}
-        <div className="flex gap-3 mb-5">
-          <div className="flex-1 bg-white p-4 rounded-3xl border border-blue-100 shadow-sm">
-            <p className="text-[9px] text-gray-400 font-bold uppercase mb-1">Ceklis Hari Ini</p>
-            <div className="flex items-end justify-between">
-              <h4 className="text-xl font-black text-blue-900">
-                {loading || summary.total === 0 ? '-' : `${Math.round(summary.ceklisOK / summary.total * 100)}%`}
-              </h4>
-              <span className="text-[8px] text-green-500 font-bold mb-1">{summary.ceklisOK}/{summary.total}</span>
-            </div>
-            <div className="w-full bg-gray-100 h-1.5 rounded-full mt-2">
-              <div className="bg-blue-600 h-1.5 rounded-full" style={{ width: summary.total > 0 ? `${(summary.ceklisOK / summary.total) * 100}%` : '0%' }} />
-            </div>
-          </div>
-          <div className="flex-1 bg-blue-600 p-4 rounded-3xl shadow-lg text-white">
-            <p className="text-[9px] text-blue-100 font-bold uppercase mb-1">Coverage Visit</p>
-            <div className="flex items-end justify-between">
-              <h4 className="text-xl font-black">{visitCoveragePct}%</h4>
-              <AppIcon name="map" size={16} className="mb-1 opacity-80" />
-            </div>
-            <p className="text-[8px] mt-1 opacity-80">{visitSummary.visitedCount}/{summary.total} toko</p>
-          </div>
+            )
+          })()}
         </div>
 
         {criticalAlertCount > 0 && (
@@ -976,45 +886,35 @@ export default function DMDashboard() {
           </div>
         ) : (
           <>
-            {/* Snapshot Cards */}
-            <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {overviewCards.map((card) => (
-                <button
-                  key={card.title}
-                  onClick={() => card.title === 'Visit Periode' ? setActiveTab('kunjungan') : setActiveTab('toko')}
-                  className="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm text-left active:scale-[0.97] transition-transform"
-                >
-                  <p className="text-[8px] font-bold text-gray-400 uppercase mb-1">{card.title}</p>
-                  <p className="text-xl font-black text-blue-900">
-                    {card.value}{card.total != null ? <span className="text-sm text-gray-400 font-semibold">/{card.total}</span> : ''}
-                  </p>
-                </button>
-              ))}
-            </div>
-
-            {/* SOP Links */}
-            <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {[
-                { to: '/dm/visits', icon: 'map', label: 'SOP Visit', sub: 'Daily audit toko', bg: 'bg-blue-50 border-blue-100 text-blue-600' },
-                { to: '/dm/approval', icon: 'approval', label: 'Approval', sub: 'Setoran harian', bg: 'bg-emerald-50 border-emerald-100 text-emerald-600' },
-                { to: '/kpi/personal/input', icon: 'checklist', label: 'Input KPI', sub: 'Penilaian bulanan tim', bg: 'bg-sky-50 border-sky-100 text-sky-600' },
+            {/* Jelajahi — secondary navigation links */}
+            {(() => {
+              const navLinks = [
                 { to: '/sop', icon: 'checklist', label: 'Panduan SOP', sub: 'Buku SOP operasional', bg: 'bg-indigo-50 border-indigo-100 text-indigo-600' },
                 ...(kpiEnabled ? [{ to: '/kpi', icon: 'chart', label: 'KPI Report', sub: 'Performa wilayah', bg: 'bg-primary-50 border-primary-100 text-primary-600' }] : []),
                 ...(supplyChainEnabled ? [{ to: '/sc', icon: 'finance', label: 'Supply Chain', sub: 'Order & pengiriman', bg: 'bg-violet-50 border-violet-100 text-violet-600' }] : []),
-            ...(isOpsManager ? [{ to: '/ops/laporan', icon: 'finance', label: 'Laporan Harian', sub: 'Setoran, opex, dan laporan', bg: 'bg-amber-50 border-amber-100 text-amber-600' }] : []),
-            ...(isOpsManager ? [{ to: '/finance/audit', icon: 'approval', label: 'Audit Finance', sub: 'Review setoran finance', bg: 'bg-primary-50 border-primary-100 text-primary-600' }] : []),
-              ].map((link) => (
-                <Link key={link.to} to={link.to} className={`flex items-center gap-3 rounded-[1.5rem] border px-4 py-3 hover:opacity-80 transition-opacity ${link.bg}`}>
-                  <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center shadow-sm shrink-0">
-                    <AppIcon name={link.icon} size={18} />
+                ...(isOpsManager ? [{ to: '/ops/laporan', icon: 'finance', label: 'Laporan Harian', sub: 'Setoran, opex, laporan', bg: 'bg-amber-50 border-amber-100 text-amber-600' }] : []),
+                ...(isOpsManager ? [{ to: '/finance/audit', icon: 'approval', label: 'Audit Finance', sub: 'Review setoran finance', bg: 'bg-primary-50 border-primary-100 text-primary-600' }] : []),
+              ]
+              if (navLinks.length === 0) return null
+              return (
+                <div className="mb-4">
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-3">Jelajahi</p>
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    {navLinks.map((link) => (
+                      <Link key={link.to} to={link.to} className={`flex items-center gap-3 rounded-[1.5rem] border px-4 py-3 transition-opacity hover:opacity-80 ${link.bg}`}>
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm">
+                          <AppIcon name={link.icon} size={18} />
+                        </div>
+                        <div>
+                          <p className="text-xs font-black leading-tight text-gray-900">{link.label}</p>
+                          <p className="text-[9px] leading-tight text-gray-500">{link.sub}</p>
+                        </div>
+                      </Link>
+                    ))}
                   </div>
-                  <div>
-                    <p className="text-xs font-black text-gray-900 leading-tight">{link.label}</p>
-                    <p className="text-[9px] text-gray-500 leading-tight">{link.sub}</p>
-                  </div>
-                </Link>
-              ))}
-            </div>
+                </div>
+              )
+            })()}
 
             <SectionPanel
               eyebrow="Leaderboard"
@@ -1824,39 +1724,6 @@ function FeedCard({ item }) {
             <ToneBadge tone={tone}>{item.timeLabel}</ToneBadge>
           </div>
         </div>
-      </div>
-    </article>
-  )
-}
-
-function InsightCard({ item }) {
-  const tone = item.tone === 'danger'
-    ? 'danger'
-    : item.tone === 'warn'
-      ? 'warn'
-      : item.tone === 'ok'
-        ? 'ok'
-        : 'info'
-
-  const accent = tone === 'danger'
-    ? 'bg-rose-50 text-rose-700'
-    : tone === 'warn'
-      ? 'bg-amber-50 text-amber-700'
-      : tone === 'ok'
-        ? 'bg-emerald-50 text-emerald-700'
-        : 'bg-primary-50 text-primary-700'
-
-  return (
-    <article className="rounded-[24px] border border-white/80 bg-white px-5 py-5 shadow-[0_18px_55px_-38px_rgba(15,23,42,0.3)]">
-      <div className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl ${accent}`}>
-        <AppIcon name={item.icon} size={20} />
-      </div>
-      <div className="mt-4 flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="text-base font-semibold text-slate-950">{item.title}</div>
-          <div className="mt-2 text-sm leading-6 text-slate-500">{item.body}</div>
-        </div>
-        <ToneBadge tone={tone}>{tone === 'danger' ? 'Prioritas' : tone === 'warn' ? 'Pantau' : 'Insight'}</ToneBadge>
       </div>
     </article>
   )
