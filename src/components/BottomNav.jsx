@@ -143,13 +143,13 @@ export function StaffBottomNav() {
   const issuedSjCount = useIssuedSuratJalanCount()
 
   if (isHeadStore) {
+    const peopleActive = pathname.startsWith('/people') || pathname.startsWith('/kpi') || pathname.startsWith('/hr')
     return (
       <Dock>
         <NavItem to="/staff"         icon="home"    label="Dashboard"     active={pathname === '/staff'} />
         <NavItem to="/staff/laporan" icon="chart"   label="Laporan"       active={pathname.startsWith('/staff/laporan')} />
         <NavItem to="/sc/sj"         icon="finance" label="Terima Barang" active={pathname.startsWith('/sc')} badgeCount={issuedSjCount} />
-        <NavItem to="/kpi"           icon="chart"   label="KPI"           active={pathname.startsWith('/kpi')} />
-        <NavItem to="/hr/store"      icon="users"   label="Rekrutmen"     active={pathname.startsWith('/hr')} />
+        <NavItem to="/people"        icon="users"   label="People"        active={peopleActive} />
         <NavItem to="/sop"           icon="book"    label="SOP"           active={pathname.startsWith('/sop')} />
       </Dock>
     )

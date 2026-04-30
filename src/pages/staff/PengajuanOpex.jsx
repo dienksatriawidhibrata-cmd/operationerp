@@ -258,6 +258,14 @@ export default function PengajuanOpex() {
               </div>
             ))}
 
+            <button
+              type="button"
+              onClick={addRow}
+              className="w-full rounded-[22px] border-2 border-dashed border-primary-200 bg-primary-50/50 py-3 text-sm font-semibold text-primary-600 hover:border-primary-300 hover:bg-primary-50 transition-colors"
+            >
+              + Tambah Item
+            </button>
+
             {totalPengajuan > 0 && (
               <div className="flex items-center justify-between rounded-[22px] border border-primary-100 bg-primary-50 px-4 py-4">
                 <span className="text-sm font-semibold text-slate-700">Total Pengajuan</span>

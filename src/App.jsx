@@ -72,6 +72,9 @@ const HRStoreView        = lazy(() => import('./pages/hr/StoreView'))
 const HRKontrakPage      = lazy(() => import('./pages/hr/KontrakPage'))
 const HROjtChecklist     = lazy(() => import('./pages/hr/OjtChecklist'))
 
+const PeopleHub   = lazy(() => import('./pages/staff/PeopleHub'))
+const JadwalShift = lazy(() => import('./pages/staff/JadwalShift'))
+
 function RootRedirect() {
   const { user, profile, loading, profileError, signOut } = useAuth()
 
@@ -235,6 +238,18 @@ export default function App() {
       <Route path="/staff/pengajuan-opex" element={
         <RequireAuth roles={['head_store']}>
           <PengajuanOpex />
+        </RequireAuth>
+      } />
+
+      {/* ── People (head_store) ── */}
+      <Route path="/people" element={
+        <RequireAuth roles={['head_store']}>
+          <PeopleHub />
+        </RequireAuth>
+      } />
+      <Route path="/people/jadwal" element={
+        <RequireAuth roles={['head_store']}>
+          <JadwalShift />
         </RequireAuth>
       } />
 
