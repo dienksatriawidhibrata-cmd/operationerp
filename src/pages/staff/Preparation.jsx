@@ -290,7 +290,7 @@ export default function Preparation() {
                         value={photoMap[item.key] || []}
                         onChange={(urls) => setItemPhotos(item.key, urls)}
                         label={`Upload Foto ${item.label}`}
-                        max={1}
+                        max={5}
                       />
                     )}
                   </div>

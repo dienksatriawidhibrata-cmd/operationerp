@@ -319,7 +319,7 @@ export default function CeklisHarian() {
                               value={photos[item.key] || []}
                               onChange={(urls) => setPhoto(item.key, urls)}
                               label={`Upload Foto ${item.label}`}
-                              max={3}
+                              max={5}
                             />
                           )}
                         </div>
