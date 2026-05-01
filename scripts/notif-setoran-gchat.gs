@@ -1,3 +1,141 @@
+// ─── WEBHOOK HANDLER (Real-time Notifications) ────────────────
+
+/**
+ * Handle incoming POST requests from Supabase Webhooks.
+ * To use this: 
+ * 1. Deploy this script as a Web App (Deploy > New Deployment > Web App > Execute as: Me, Who has access: Anyone).
+ * 2. Copy the Web App URL.
+ * 3. Go to Supabase > Database > Webhooks.
+ * 4. Create a webhook for 'surat_jalan' table on 'INSERT' and 'UPDATE'.
+ */
+function doPost(e) {
+  try {
+    var payload = JSON.parse(e.postData.contents);
+    if (payload.table === 'surat_jalan') {
+      handleSJWebhook(payload);
+    }
+    return ContentService.createTextOutput(JSON.stringify({ status: 'ok' })).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: err.message })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function handleSJWebhook(payload) {
+  var record = payload.record;
+  var old = payload.old_record;
+  
+  // 1. SHIPMENT NOTIFICATION
+  // Trigger when status changes to 'shipped' or 'issued'
+  // (Usually 'issued' is the first step of creation, 'shipped' is distribution)
+  var isNowShipped = (record.status === 'shipped' || record.status === 'issued') && (!old || old.status === 'draft');
+  
+  // Special case: if status is updated directly to 'shipped'
+  if (!isNowShipped && record.status === 'shipped' && old && old.status !== 'shipped') {
+    isNowShipped = true;
+  }
+
+  if (isNowShipped) {
+    sendDirectShipmentNotif(record);
+  }
+
+  // 2. DELIVERY NOTIFICATION
+  // Trigger when status changes to 'delivered'
+  var isNowDelivered = record.status === 'delivered' && (!old || old.status !== 'delivered');
+
+  if (isNowDelivered) {
+    sendDirectDeliveryNotif(record);
+  }
+}
+
+function sendDirectShipmentNotif(sj) {
+  const config = getConfig();
+  const branch = fetchBranchById(config.baseUrl, config.apiKey, sj.branch_id);
+  if (!branch) return;
+
+  // Fetch items and order items for comparison
+  const sjItems = fetchJson(config.baseUrl + '/rest/v1/surat_jalan_items?sj_id=eq.' + sj.id, config.apiKey) || [];
+  const orderItems = fetchJson(config.baseUrl + '/rest/v1/supply_order_items?order_id=eq.' + sj.order_id, config.apiKey) || [];
+  
+  const orderItemMap = {};
+  orderItems.forEach(function(it) { orderItemMap[it.sku_code] = it.qty_ordered || it.qty || 0; });
+
+  const mismatches = [];
+  sjItems.forEach(function(it) {
+    const qtyOrdered = orderItemMap[it.sku_code] || 0;
+    if (Number(it.qty_kirim) !== Number(qtyOrdered)) {
+      mismatches.push({ name: it.sku_name, kirim: it.qty_kirim, order: qtyOrdered, unit: it.unit });
+    }
+  });
+
+  const lines = [
+    '📦 *Pengiriman Barang (SC)*',
+    '📍 *' + shortName(branch.name) + '*',
+    '🔢 No. SJ: ' + sj.sj_number,
+    '⏰ Jam Kirim: ' + fmtJamWIB(sj.issued_at || new Date().toISOString()),
+    ''
+  ];
+
+  if (mismatches.length > 0) {
+    lines.push('⚠️ *Item tidak sesuai PO:*');
+    mismatches.forEach(function(it) {
+      lines.push('   • ' + it.name + ': ' + it.kirim + ' ' + it.unit + ' (PO: ' + it.order + ')');
+    });
+  } else {
+    lines.push('✅ Semua item sesuai PO.');
+  }
+
+  const text = lines.join('\n');
+  sendToGChatWithDistricts(branch.district, text);
+}
+
+function sendDirectDeliveryNotif(sj) {
+  const config = getConfig();
+  const branch = fetchBranchById(config.baseUrl, config.apiKey, sj.branch_id);
+  if (!branch) return;
+
+  const sjItems = fetchJson(config.baseUrl + '/rest/v1/surat_jalan_items?sj_id=eq.' + sj.id, config.apiKey) || [];
+  
+  const mismatches = [];
+  sjItems.forEach(function(it) {
+    const qtyReceived = it.qty_received !== null ? it.qty_received : it.qty_kirim;
+    if (Number(qtyReceived) !== Number(it.qty_kirim)) {
+      mismatches.push({ name: it.sku_name, terima: qtyReceived, kirim: it.qty_kirim, unit: it.unit });
+    }
+  });
+
+  const lines = [
+    '✅ *Barang Diterima (Store)*',
+    '📍 *' + shortName(branch.name) + '*',
+    '🔢 No. SJ: ' + sj.sj_number,
+    '⏰ Jam Terima: ' + fmtJamWIB(sj.received_at || new Date().toISOString()),
+    ''
+  ];
+
+  if (mismatches.length > 0) {
+    lines.push('⚠️ *Item tidak sesuai SJ:*');
+    mismatches.forEach(function(it) {
+      lines.push('   • ' + it.name + ': ' + it.terima + ' ' + it.unit + ' (SJ: ' + it.kirim + ')');
+    });
+  } else {
+    lines.push('🎉 Barang diterima lengkap sesuai SJ.');
+  }
+
+  const text = lines.join('\n');
+  sendToGChatWithDistricts(branch.district, text);
+}
+
+function sendToGChatWithDistricts(district, text) {
+  const config = getConfig();
+  if (config.webhookAll) sendToGChat(config.webhookAll, { text: text });
+  if (district === 'JKT' && config.webhookJKT) sendToGChat(config.webhookJKT, { text: text });
+  if (district === 'BTN' && config.webhookBTN) sendToGChat(config.webhookBTN, { text: text });
+}
+
+function fetchBranchById(baseUrl, apiKey, branchId) {
+  const data = fetchJson(baseUrl + '/rest/v1/branches?id=eq.' + branchId + '&select=id,name,district', apiKey);
+  return data && data.length > 0 ? data[0] : null;
+}
+
 // ─── TRIGGER FUNCTIONS ───────────────────────────────────────
 
 function triggerClosing() { combinedNotifCheckPrep('malam', getYesterdayWIB(), '05:00', 'Closing 🌙', true); }
@@ -156,7 +294,6 @@ function notifLaporan() {
 function notifVisit() {
   const config = getConfig();
   const today = getTodayWIB();
-  // Fetch managers with their managed_districts to allow filtering
   const managers = fetchJson(config.baseUrl + '/rest/v1/profiles?role=in.(district_manager,area_manager)&select=id,full_name,managed_districts', config.apiKey) || [];
   const visits = fetchJson(config.baseUrl + '/rest/v1/daily_visits?tanggal=eq.' + today + '&select=auditor_id', config.apiKey) || [];
 
@@ -164,18 +301,11 @@ function notifVisit() {
 
   var sendFilteredMessage = function(webhookUrl, district, groupName) {
     if (!webhookUrl) return;
-    
-    // Filter managers who manage the specific district (if district provided)
     var filteredManagers = district 
-      ? managers.filter(function(m) { 
-          return m.managed_districts && m.managed_districts.indexOf(district) !== -1; 
-        })
+      ? managers.filter(function(m) { return m.managed_districts && m.managed_districts.indexOf(district) !== -1; })
       : managers;
-      
     var belum = filteredManagers.filter(function(m) { return !visitMap.has(m.id); });
-
     if (belum.length === 0) return;
-
     var lines = ['🚗 *[' + groupName + '] DM/AM Belum Visit* — ' + formatTanggal(today), ''];
     belum.forEach(function(m) { lines.push('   • ' + m.full_name); });
     sendToGChat(webhookUrl, { text: lines.join('\n') });
@@ -244,6 +374,13 @@ function formatTanggal(iso) {
   if (!iso) return '';
   var p = iso.split('-'), m = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
   return parseInt(p[2]) + ' ' + m[parseInt(p[1]) - 1] + ' ' + p[0];
+}
+
+function fmtJamWIB(isoStr) {
+  if (!isoStr) return '-';
+  var d = new Date(isoStr);
+  var wib = new Date(d.getTime() + 7 * 3600000);
+  return String(wib.getUTCHours()).padStart(2, '0') + ':' + String(wib.getUTCMinutes()).padStart(2, '0');
 }
 
 function shortName(name) {
