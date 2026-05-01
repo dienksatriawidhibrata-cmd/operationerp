@@ -37,7 +37,25 @@
       "Bash(scoop *)",
       "Bash(pip --version)",
       "Bash(pip install *)",
-      "Bash(npx vite *)"
+      "Bash(npx vite *)",
+      "Bash(npx supabase *)",
+      "Bash(npm list *)",
+      "Bash(cat backend/.env)",
+      "Bash(ls .env*)",
+      "Bash(psql --version)",
+      "Bash(where psql *)",
+      "Read(//c/Users/dksat/.supabase/**)",
+      "Read(//c/Users/dksat/AppData/Roaming/supabase/**)",
+      "Read(//c/Users/dksat/AppData/Local/supabase/**)",
+      "Bash(\"c:/Users/dksat/AppData/Local/supabase/supabase.exe\" --version)",
+      "Bash(\"c:/Users/dksat/AppData/Local/supabase/supabase.exe\" projects *)",
+      "Read(//c/Users/dksat/.config/**)",
+      "Read(//c/Users/dksat/**)",
+      "Bash(xargs grep *)",
+      "Bash(npm uninstall *)",
+      "Bash(dir \"C:\\\\Users\\\\dksat\\\\Project\\\\2026-bagikopi-sales-complain\")",
+      "PowerShell(cd \"C:\\\\Users\\\\dksat\\\\Project\\\\2601-bagikopi-ops\"; powershell -ExecutionPolicy Bypass -File scripts\\\\update-pos-data.ps1)",
+      "Bash(npx xlsx-to-json *)"
     ]
   }
 }

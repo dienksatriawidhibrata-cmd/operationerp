@@ -1,0 +1,308 @@
+
+
+Saya akan melakukan pemetaan komprehensif untuk web apps ini. Mari saya analisis struktur authentication, authorization, dan semua halaman yang ada.
+ 
+
+Map web app pages and access
+
+Read [](file:///c%3A/Users/dksat/Project/2601-bagikopi-ops/src/pages)
+
+Read [](file:///c%3A/Users/dksat/Project/2601-bagikopi-ops/src/contexts/AuthContext.jsx#1-1), lines 1 to 150
+
+Read [](file:///c%3A/Users/dksat/Project/2601-bagikopi-ops/src/lib/access.js#1-1), lines 1 to 150
+
+Read [](file:///c%3A/Users/dksat/Project/2601-bagikopi-ops/src/App.jsx#1-1), lines 1 to 200
+
+Read [](file:///c%3A/Users/dksat/Project/2601-bagikopi-ops/src/App.jsx#200-200), lines 200 to 350
+
+Read [](file:///c%3A/Users/dksat/Project/2601-bagikopi-ops/src/pages/dm)
+
+Read [](file:///c%3A/Users/dksat/Project/2601-bagikopi-ops/src/pages/ops)
+
+Read [](file:///c%3A/Users/dksat/Project/2601-bagikopi-ops/src/pages/kpi)
+
+Read [](file:///c%3A/Users/dksat/Project/2601-bagikopi-ops/src/pages/staff)
+
+Read [](file:///c%3A/Users/dksat/Project/2601-bagikopi-ops/src/App.jsx#300-300), lines 300 to 400
+
+Read [](file:///c%3A/Users/dksat/Project/2601-bagikopi-ops/src/pages/trainer)
+
+Read [](file:///c%3A/Users/dksat/Project/2601-bagikopi-ops/src/pages/finance)
+
+Read [](file:///c%3A/Users/dksat/Project/2601-bagikopi-ops/src/pages/sc)
+
+Read [](file:///c%3A/Users/dksat/Project/2601-bagikopi-ops/src/pages/hr)
+
+Read [](file:///c%3A/Users/dksat/Project/2601-bagikopi-ops/src/App.jsx#400-400), lines 400 to 450
+
+Read [](file:///c%3A/Users/dksat/Project/2601-bagikopi-ops/src/pages/tasks)
+
+Read [](file:///c%3A/Users/dksat/Project/2601-bagikopi-ops/src/pages/support)
+
+Read [](file:///c%3A/Users/dksat/Project/2601-bagikopi-ops/src/App.jsx#430-430), lines 430 to 520
+
+Read [](file:///c%3A/Users/dksat/Project/2601-bagikopi-ops/src/contexts/AuthContext.jsx#150-150), lines 150 to 200
+
+Read [](file:///c%3A/Users/dksat/Project/2601-bagikopi-ops/src/contexts/AuthContext.jsx#200-200), lines 200 to 246
+
+Read [](file:///c%3A/Users/dksat/Project/2601-bagikopi-ops/src/pages/staff/Home.jsx#1-1), lines 1 to 80
+
+Read [](file:///c%3A/Users/dksat/Project/2601-bagikopi-ops/src/pages/ops/Hub.jsx#1-1), lines 1 to 80
+
+Read [](file:///c%3A/Users/dksat/Project/2601-bagikopi-ops/src/pages/dm/Dashboard.jsx#1-1), lines 1 to 80
+
+
+
+
+ 
+
+Read [](file:///c%3A/Users/dksat/AppData/Roaming/Code/User/workspaceStorage/3e7f6ce0ac9a2a8156e952db55bf8bf7/GitHub.copilot-chat/chat-session-resources/f3ea1bb7-c656-4fb2-8ea9-0ae3699e83ae/call_c5085e81770343279e98e3dc__vscode-1777556505917/content.txt#1-1), lines 1 to 500
+
+
+
+# 📊 Pemetaan Komprehensif Web Apps Bagikopi Ops
+
+## 1️⃣ Sistem Autentikasi
+
+| Komponen | Detail |
+|----------|--------|
+| **Provider** | Supabase Auth |
+| **Login Methods** | Email + Password (admin/manager) atau Email + Staff Password (staff toko) |
+| **Session** | Cache di localStorage dengan timeout verification 8 detik |
+
+---
+
+## 2️⃣ 14 Role & Hierarki Akses
+
+### **Store Roles** (karyawan toko)
+| Role | Akses |
+|------|-------|
+| `staff`, `barista`, `kitchen`, `waitress` | Dashboard, ceklis, SOP, KPI personal |
+| `asst_head_store` | + Laporan, QC |
+| `head_store` | + Pengajuan opex, people management, input KPI |
+
+### **Manager Roles** (manajemen regional)
+| Role | Scope |
+|------|-------|
+| `district_manager` | Districts di `managed_districts` |
+| `area_manager` | Areas di `managed_areas` |
+| `ops_manager` | Semua branches |
+
+### **Support Roles** (pusat)
+| Role | Fungsi |
+|------|--------|
+| `support_spv`, `support_admin` | Semua branches, full access |
+
+### **Functional Roles**
+| Role | Deskripsi |
+|------|-----------|
+| `auditor` | Audit setoran |
+| `finance_supervisor` | Keuangan & opex |
+| `trainer` | Training staff |
+| `hr_staff`, `hr_spv`, `hr_legal`, `hr_administrator` | Recruitment & HR |
+| `warehouse_admin`, `warehouse_spv`, `picking_spv`, `qc_spv`, `distribution_spv`, `purchasing_admin`, `sc_supervisor` | Supply Chain |
+
+---
+
+## 3️⃣ Tabel Halaman & Akses
+
+### A. Halaman Utama per Role
+
+| Route | Halaman | Roles yang Bisa Akses |
+|-------|---------|----------------------|
+| `/login` | Login | Public (semua) |
+| `/staff` | Staff Home | Store roles + Manager + Finance |
+| `/staff/ceklis` | Ceklis Harian | Store roles |
+| `/staff/laporan` | Laporan Harian | head_store, asst_head_store |
+| `/staff/opex` | Beban Operasional | Store roles + Manager |
+| `/staff/pengajuan-opex` | Pengajuan Opex | head_store |
+| `/dm` | DM Dashboard | district_manager, area_manager, support |
+| `/dm/visits` | Hub Kunjungan | DM, Area Manager, Support |
+| `/dm/visit` | Daily Visit | DM, Area Manager, Support |
+| `/dm/approval` | Approval Setoran | DM, Area Manager, Support |
+| `/dm/opex-approval` | Opex Approval | DM, Area Manager |
+| `/dm/stores` | Store Status | DM, Area Manager, Support, Auditor |
+| `/ops` | Ops Hub | ops_manager, support |
+| `/ops/visit-monitor` | Visit Monitor | ops_manager, support |
+| `/ops/pengumuman` | Announcements | ops_manager, support_spv |
+| `/finance` | Finance Hub | finance_supervisor, ops, support |
+| `/finance/audit` | Audit Setoran | finance_supervisor, ops, support |
+| `/kpi` | KPI Hub | Store + Manager + Support + Trainer |
+| `/kpi/personal/input` | Input KPI | head_store, DM, area_manager, ops, support_spv |
+| `/kpi/360` | Peer Review 360 | Store + DM + Area Manager |
+| `/sc` | SC Dashboard | SC roles + Store + Manager |
+| `/sc/orders/new` | Buat Order | warehouse_admin, purchasing_admin, ops, sc_supervisor |
+| `/sc/picking` | Picking | picking_spv, warehouse roles |
+| `/sc/qc` | QC | qc_spv, warehouse roles |
+| `/sc/distribution` | Distribution | distribution_spv, warehouse roles |
+| `/trainer` | Trainer Dashboard | trainer, ops_manager, support |
+| `/hr` | HR Hub | HR roles + ops_manager |
+| `/hr/batch` | Batch OJE | hr_staff, hr_administrator, ops_manager |
+| `/hr/kontrak` | Kontrak | hr_legal, hr_administrator |
+| `/sop` | SOP | Semua authenticated roles |
+
+---
+
+## 4️⃣ Runtutan Flow Mengakses
+
+### 🔄 Flow Universal (Semua Role)
+
+```
+/login
+    ↓
+Cek session & profile (loading state)
+    ↓
+Root redirect berdasarkan role:
+├── STORE_ROLES → /staff
+├── DM / Area Manager → /dm
+├── OPS / Support → /ops
+├── TRAINER → /trainer
+├── FINANCE → /finance
+├── HR → /hr
+└── SC roles → /sc/[picking|qc|distribution]
+```
+
+### 👥 Flow Staff Toko
+
+```
+Login → /staff
+    ├─→ /staff/ceklis (isi checklist)
+    ├─→ /staff/opex (lihat opex)
+    ├─→ /staff/preparation
+    ├─→ /kpi/personal (lihat KPI)
+    ├─→ /kpi/360 (peer review)
+    └─→ /sop (panduan)
+    
+HEAD STORE tambahan:
+    ├─→ /staff/pengajuan-opex
+    ├─→ /laporan
+    ├─→ /people
+    ├─→ /kpi/personal/input
+    └─→ /hr/store
+```
+
+### 🔍 Flow District Manager
+
+```
+Login → /dm
+    ├─→ /dm/visits (tracking)
+    ├─→ /dm/visit (input visit)
+    ├─→ /dm/approval (approve setoran)
+    ├─→ /dm/opex-approval
+    ├─→ /dm/stores
+    ├─→ /dm/laporan
+    ├─→ /kpi (store KPI, personal, input, 360)
+    └─→ /tasks
+```
+
+### ⚙️ Flow Ops Manager
+
+```
+Login → /ops
+    ├─→ /ops/visits (monitor all)
+    ├─→ /ops/visit-monitor (real-time)
+    ├─→ /ops/laporan
+    ├─→ /ops/setoran
+    ├─→ /ops/opex-approval
+    ├─→ /ops/pengumuman
+    ├─→ /kpi
+    ├─→ /sc
+    ├─→ /hr
+    ├─→ /trainer
+    └─→ /support/staff
+```
+
+### 💰 Flow Finance
+
+```
+Login → /finance
+    ├─→ /finance/opex
+    ├─→ /finance/audit
+    └─→ /opex
+```
+
+### 📦 Flow Supply Chain
+
+```
+Login → /sc (atau /sc/picking|/sc/qc|/sc/distribution)
+    ├─→ /sc/orders/new (buat PO)
+    ├─→ /sc/orders/:id
+    ├─→ /sc/picking
+    ├─→ /sc/qc
+    ├─→ /sc/distribution
+    └─→ /sc/sj
+```
+
+### 🎓 Flow Trainer
+
+```
+Login → /trainer
+    ├─→ /trainer/staff baru
+    ├─→ /trainer/staff lama
+    ├─→ /trainer/oje
+    ├─→ /hr/batch
+    └─→ /kpi/personal
+```
+
+### 👔 Flow HR
+
+```
+Login → /hr
+    ├─→ /hr/batch
+    ├─→ /hr/batch/:id
+    ├─→ /hr/candidates/:id
+    ├─→ /hr/store
+    ├─→ /hr/kontrak (hr_legal, hr_administrator)
+    └─→ /kpi/personal
+```
+
+---
+
+## 5️⃣ Mekanisme Proteksi Route
+
+Setiap halaman menggunakan `<RequireAuth>` dengan urutan cek:
+
+1. **Loading** → "Sesi masih aktif..."
+2. **Authentication** → Redirect ke `/login` jika tidak login
+3. **Profile** → "Menghubungkan data profil..."
+4. **Active Status** → Tampilkan "Akun Dinonaktifkan" jika `is_active === false`
+5. **Authorization** → Redirect ke `/` jika role tidak sesuai
+6. **Render** → Lazy load dengan Suspense
+
+### Data Scoping per Role:
+
+| Role | Scope Data |
+|------|------------|
+| Store | Hanya branch_id mereka |
+| District Manager | Hanya managed_districts |
+| Area Manager | Hanya managed_areas |
+| Ops/Support | Semua branches (no filter) |
+
+---
+
+## 6️⃣ Ringkasan Visual
+
+```
+                    ┌─────────────────┐
+                    │   /login       │
+                    └────────┬────────┘
+                             │
+              ┌──────────────┼──────────────┐
+              │              │              │
+        ┌─────▼─────┐  ┌─────▼─────┐  ┌─────▼─────┐
+        │  STORE    │  │   DM/AM   │  │    OPS    │
+        │ /staff    │  │   /dm     │  │   /ops    │
+        └───────────┘  └───────────┘  └───────────┘
+              │              │              │
+        ┌─────▼─────┐  ┌─────▼─────┐  ┌─────▼─────┐
+        │  TRAINER  │  │  FINANCE   │  │    HR     │
+        │ /trainer  │  │ /finance  │  │   /hr     │
+        └───────────┘  └───────────┘  └───────────┘
+              │
+        ┌─────▼─────┐
+        │     SC    │
+        │   /sc     │
+        └───────────┘
+```
+
+Pemetaan ini mencakup **30+ halaman** dengan **14 role** yang berbeda. Setiap role memiliki dashboard redirect dan menu spesifik sesuai tanggung jawabnya.

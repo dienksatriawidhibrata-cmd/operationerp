@@ -13,11 +13,11 @@ export default function ReminderBanner({ status, loading, isHeadStore }) {
   const now = wibMinutes()
   const overdue = []
 
-  if (now >= 8 * 60 && !status.ceklisPagi)
-    overdue.push({ label: 'Ceklis Pagi', to: '/staff/ceklis' })
+  if (now >= 8 * 60 && !status.ceklisOpening)
+    overdue.push({ label: 'Ceklis Opening', to: '/staff/ceklis' })
   if (now >= 8 * 60 && !status.prepPagi)
     overdue.push({ label: 'Preparation Pagi', to: '/staff/preparation' })
-  if (now >= 14 * 60 && !status.ceklisMiddle)
+  if (now >= 15 * 60 + 30 && !status.ceklisMiddle)
     overdue.push({ label: 'Ceklis Middle', to: '/staff/ceklis' })
   if (now >= 14 * 60 && !status.prepMiddle)
     overdue.push({ label: 'Preparation Middle', to: '/staff/preparation' })
@@ -25,8 +25,10 @@ export default function ReminderBanner({ status, loading, isHeadStore }) {
     overdue.push({ label: 'Laporan Harian (kemarin)', to: '/staff/laporan' })
   if (isHeadStore && now >= 14 * 60 && !status.setoran)
     overdue.push({ label: 'Setoran (kemarin)', to: '/staff/laporan' })
-  if (now >= 22 * 60 && !status.ceklisMalam)
+  if (now >= 19 * 60 + 30 && !status.ceklisMalam)
     overdue.push({ label: 'Ceklis Malam', to: '/staff/ceklis' })
+  if (now >= 4 * 60 && !status.ceklisClosing)
+    overdue.push({ label: 'Ceklis Closing', to: '/staff/ceklis' })
 
   if (overdue.length === 0) return null
 

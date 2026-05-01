@@ -23,7 +23,7 @@ const SECTION_CONFIG = {
   status: {
     eyebrow: 'Status Awal',
     title: (shift) =>
-      shift === 'pagi' ? 'Status Pembukaan' : shift === 'malam' ? 'Status Penutupan' : 'Status Pergantian Shift',
+      shift === 'opening' ? 'Status Pembukaan' : shift === 'closing' ? 'Status Penutupan' : 'Status Pergantian Shift',
     description: 'Pastikan semua platform dan status toko sesuai kondisi aktual.',
   },
   kebersihan: {
@@ -89,8 +89,8 @@ export default function CeklisHarian() {
   const { profile } = useAuth()
   const { toastSuccess, toastError } = useToast()
   const today = todayWIB()
-  const [activeShift, setActiveShift] = useState('pagi')
-  const [existing, setExisting] = useState({ pagi: null, middle: null, malam: null })
+  const [activeShift, setActiveShift] = useState('opening')
+  const [existing, setExisting] = useState({ opening: null, middle: null, malam: null, closing: null })
   const [answers, setAnswers] = useState({})
   const [photos, setPhotos] = useState({})
   const [oosInput, setOosInput] = useState('')
@@ -146,7 +146,7 @@ export default function CeklisHarian() {
       .select('*')
       .eq('branch_id', branchId)
       .eq('tanggal', today)
-      .in('shift', ['pagi', 'middle', 'malam'])
+      .in('shift', ['opening', 'middle', 'malam', 'closing'])
 
     if (fetchErr) {
       setError('Gagal memuat data ceklis: ' + fetchErr.message)
@@ -154,16 +154,14 @@ export default function CeklisHarian() {
     }
 
     if (data) {
-      const map = { pagi: null, middle: null, malam: null }
+      const map = { opening: null, middle: null, malam: null, closing: null }
       data.forEach((item) => { map[item.shift] = item })
       setExisting(map)
     }
   }
 
   const items = CHECKLIST_ITEMS.filter((item) =>
-    item.shift === activeShift ||
-    item.shift === 'both' ||
-    (item.shift === 'pagi_middle' && (activeShift === 'pagi' || activeShift === 'middle'))
+    Array.isArray(item.shift) ? item.shift.includes(activeShift) : item.shift === activeShift
   )
 
   const setAnswer = (key, value) => setAnswers((cur) => ({ ...cur, [key]: value }))
@@ -223,7 +221,7 @@ export default function CeklisHarian() {
   }
 
   const isReadOnly = !!existing[activeShift] && !isEditing
-  const deadline = activeShift === 'pagi' ? '08.00 WIB' : activeShift === 'middle' ? '14.00 WIB' : '03.00 WIB'
+  const deadline = activeShift === 'opening' ? '08.00 WIB' : activeShift === 'middle' ? '15.30 WIB' : activeShift === 'malam' ? '19.30 WIB' : '04.00 WIB'
   const toggleItems = items.filter((i) => i.type === 'toggle')
   const completionCount = toggleItems.filter((i) => answers[i.key] !== undefined).length
 
@@ -244,9 +242,10 @@ export default function CeklisHarian() {
         actions={
           <SegmentedControl
             options={[
-              { key: 'pagi', label: 'Pagi' },
+              { key: 'opening', label: 'Opening' },
               { key: 'middle', label: 'Middle' },
               { key: 'malam', label: 'Malam' },
+              { key: 'closing', label: 'Closing' },
             ]}
             value={activeShift}
             onChange={setActiveShift}
@@ -255,7 +254,7 @@ export default function CeklisHarian() {
       >
         <div className="grid gap-3 sm:grid-cols-3">
           <InlineStat label="Tanggal" value={today} tone="primary" />
-          <InlineStat label="Deadline" value={deadline} tone={activeShift === 'pagi' ? 'amber' : 'slate'} />
+          <InlineStat label="Deadline" value={deadline} tone={activeShift === 'opening' ? 'amber' : 'slate'} />
           <InlineStat label="Progress" value={`${completionCount}/${toggleItems.length}`} tone={isReadOnly ? 'emerald' : 'primary'} />
         </div>
       </SectionPanel>
@@ -425,7 +424,7 @@ export default function CeklisHarian() {
               </button>
             )}
             <LoadingButton onClick={handleSubmit} loading={saving} className="btn-primary flex-1">
-              {isEditing ? 'Simpan Koreksi' : `Submit Ceklis ${activeShift === 'pagi' ? 'Pagi' : activeShift === 'middle' ? 'Middle' : 'Malam'}`}
+              {isEditing ? 'Simpan Koreksi' : `Submit Ceklis ${activeShift.charAt(0).toUpperCase() + activeShift.slice(1)}`}
             </LoadingButton>
           </div>
         )}

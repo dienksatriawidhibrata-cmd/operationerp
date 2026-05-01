@@ -1,0 +1,13 @@
+1. Support_SPV full handling People + Trainer
+2. Support_Admin full handling Finance.
+3. Dua support tadi memiliki dashboard sendiri yang disatukan ke Hub Support ops_manager.
+4. UI/UX pada akun AM/DM dibuat seperti kombinasi antara Ops_Manager (untuk memantau) dan head_store (untuk tugas yang dilakukan).
+5. Pada laporan pengiriman sc di ops_manager, buat agar item bisa ditampilkan atau disembunyikan. Berikan semacam summary barang yang tidak terkirim atau tidak diterima.
+6. Buat Opex bisa ditulis ke Google Sheets untuk AM/DM bisa memantau secara manual. Update per hari trigger di jam 10.00 WIB - merangkum penggunaan opex kemarin.
+7. perlu UI/UX KPI baru yang lebih usefull dan mudah untuk digunakan. Ambil referensi dari menu Hub Trainer.
+8. pisahkan ceklis malam dengan ceklis closing. jadi nanti akan ada 4 ceklis yang dinamai opening, middle, malam, dan closing.
+Middle: tidak perlu mengisi took open/close, gofood open/close, shopeefood open/close, grabfood open/close. Ganti deadline ke 15.30.
+malam: Area Bar, Area Kitchen, Indoor Non-Smoking, Indoor Smoking, Area Outdoor, Toilet Pria, Toilet Wanita, Musholla, Neon Box. ganti deadline ke 19.30
+closing: Toko Close, Gofood Close, Grabfood Close, ShopeeFood Close, Area Bar, Area Kitchen, Indoor Non-Smoking, Indoor Smoking, Area Outdoor, Toilet Pria, Toilet Wanita, Musholla deadline di 04.00
+semua ceklis ditambah item; Showcase Bar, Showcase Kitchen, Freezer, Sink.
+9. Pada laporan daily visit am/dm, buat agar ops_manager bisa memilih tanggal yang akan dilihat.

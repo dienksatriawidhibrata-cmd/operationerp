@@ -581,9 +581,10 @@ export default function DMDashboard() {
 
       return {
         ...branch,
-        ceklisPagi: checklistsByBranch[branch.id]?.pagi || null,
+        ceklisOpening: checklistsByBranch[branch.id]?.opening || null,
         ceklisMiddle: checklistsByBranch[branch.id]?.middle || null,
         ceklisMalam: checklistsByBranch[branch.id]?.malam || null,
+        ceklisClosing: checklistsByBranch[branch.id]?.closing || null,
         prepPagi: prepByBranch[branch.id]?.pagi || false,
         prepMiddle: prepByBranch[branch.id]?.middle || false,
         prepMalam: prepByBranch[branch.id]?.malam || false,
@@ -611,7 +612,7 @@ export default function DMDashboard() {
 
       setSummary({
         total: branches.length,
-        ceklisOK: enrichedStores.filter((store) => store.ceklisPagi).length,
+        ceklisOK: enrichedStores.filter((store) => store.ceklisOpening).length,
         laporanOK: enrichedStores.filter((store) => store.laporan).length,
         visitedCount,
         pendingSetoran,
@@ -694,7 +695,7 @@ export default function DMDashboard() {
   }
 
   const storeBadge = (store) => {
-    if (!store.ceklisPagi) return { tone: 'danger', label: 'Ceklis pagi belum masuk' }
+    if (!store.ceklisOpening) return { tone: 'danger', label: 'Ceklis opening belum masuk' }
     if (!store.laporan) return { tone: 'warn', label: 'Laporan harian tertahan' }
     if (store.setoran?.status === 'submitted') return { tone: 'warn', label: 'Menunggu approval setoran' }
     if (store.setoran?.status === 'rejected') return { tone: 'danger', label: 'Setoran ditolak' }
@@ -769,7 +770,7 @@ export default function DMDashboard() {
           </div>
           <div className="grid grid-cols-2 gap-3 mb-4 sm:grid-cols-4">
             {[
-              { label: 'Ceklis Pagi', value: loading ? '-' : `${summary.ceklisOK}/${summary.total}`, sub: loading ? '' : summary.ceklisOK === summary.total ? 'Semua aman' : `${summary.total - summary.ceklisOK} belum`, ok: !loading && summary.ceklisOK === summary.total },
+              { label: 'Ceklis Opening', value: loading ? '-' : `${summary.ceklisOK}/${summary.total}`, sub: loading ? '' : summary.ceklisOK === summary.total ? 'Semua aman' : `${summary.total - summary.ceklisOK} belum`, ok: !loading && summary.ceklisOK === summary.total },
               { label: 'Laporan H-1', value: loading ? '-' : `${summary.laporanOK}/${summary.total}`, sub: loading ? '' : summary.laporanOK === summary.total ? 'Lengkap' : `${summary.total - summary.laporanOK} tertahan`, ok: !loading && summary.laporanOK === summary.total },
               { label: 'Visit Coverage', value: loading ? '-' : `${visitCoveragePct}%`, sub: loading ? '' : `${visitSummary.visitedCount}/${summary.total} toko`, ok: !loading && visitCoveragePct >= 80 },
               { label: 'Setoran Pending', value: loading ? '-' : String(summary.pendingSetoran), sub: loading ? '' : summary.pendingSetoran > 0 ? 'Perlu approval' : 'Tidak ada antrean', ok: !loading && summary.pendingSetoran === 0 },
@@ -1308,7 +1309,7 @@ function buildAlerts(stores, today, yesterday) {
   stores.forEach((store) => {
     const shortName = store.name.replace('Bagi Kopi ', '')
 
-    if (!store.ceklisPagi) {
+    if (!store.ceklisOpening) {
       items.push({
         id: `missing-ceklis-${today}-${store.id}`,
         level: 'danger',
@@ -1824,7 +1825,7 @@ function StoreHealthCard({ store, isOpsManager, badge }) {
           <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 mb-2">Ceklis Harian</div>
           <div className="flex gap-2">
             {[
-              { label: 'Pagi', ok: !!store.ceklisPagi, late: store.ceklisPagi?.is_late },
+              { label: 'Opening', ok: !!store.ceklisOpening, late: store.ceklisOpening?.is_late },
               { label: 'Middle', ok: !!store.ceklisMiddle, late: store.ceklisMiddle?.is_late },
               { label: 'Malam', ok: !!store.ceklisMalam, late: store.ceklisMalam?.is_late },
             ].map((s) => (
@@ -1836,7 +1837,7 @@ function StoreHealthCard({ store, isOpsManager, badge }) {
               </div>
             ))}
           </div>
-          {store.ceklisPagi && <ChecklistPreview checklist={store.ceklisPagi} />}
+          {store.ceklisOpening && <ChecklistPreview checklist={store.ceklisOpening} />}
         </div>
         <div className="rounded-2xl bg-slate-50 px-3.5 py-3">
           <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 mb-2">Preparation</div>
@@ -1874,7 +1875,7 @@ function StoreHealthCard({ store, isOpsManager, badge }) {
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
-        <ToneBadge tone={store.ceklisPagi ? 'ok' : 'danger'}>{store.ceklisPagi ? 'Ceklis Pagi ✓' : 'Ceklis Pagi –'}</ToneBadge>
+        <ToneBadge tone={store.ceklisOpening ? 'ok' : 'danger'}>{store.ceklisOpening ? 'Ceklis Opening ✓' : 'Ceklis Opening –'}</ToneBadge>
         <ToneBadge tone={store.ceklisMiddle ? 'ok' : 'slate'}>{store.ceklisMiddle ? 'Middle ✓' : 'Middle –'}</ToneBadge>
         <ToneBadge tone={store.ceklisMalam ? 'ok' : 'slate'}>{store.ceklisMalam ? 'Malam ✓' : 'Malam –'}</ToneBadge>
         <ToneBadge tone={store.laporan ? 'ok' : 'warn'}>{store.laporan ? 'Laporan masuk' : 'Laporan tertahan'}</ToneBadge>

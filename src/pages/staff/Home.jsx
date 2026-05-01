@@ -103,10 +103,10 @@ export default function StaffHome() {
   const fetchStatus = async () => {
     const branchId = profile.branch_id
 
-    const [ceklisPagi, ceklisMiddle, ceklisMalam, laporan, prepPagi, prepMiddle, prepMalam, opexToday, setoran] = await Promise.all([
+    const [ceklisOpening, ceklisMiddle, ceklisMalam, ceklisClosing, laporan, prepPagi, prepMiddle, prepMalam, opexToday, setoran] = await Promise.all([
       supabase.from('daily_checklists')
         .select('id, is_late, submitted_at')
-        .eq('branch_id', branchId).eq('tanggal', today).eq('shift', 'pagi')
+        .eq('branch_id', branchId).eq('tanggal', today).eq('shift', 'opening')
         .maybeSingle(),
 
       supabase.from('daily_checklists')
@@ -117,6 +117,11 @@ export default function StaffHome() {
       supabase.from('daily_checklists')
         .select('id, is_late')
         .eq('branch_id', branchId).eq('tanggal', today).eq('shift', 'malam')
+        .maybeSingle(),
+
+      supabase.from('daily_checklists')
+        .select('id, is_late')
+        .eq('branch_id', branchId).eq('tanggal', today).eq('shift', 'closing')
         .maybeSingle(),
 
       supabase.from('daily_reports')
@@ -154,9 +159,10 @@ export default function StaffHome() {
     const totalOpex = (opexToday.data || []).reduce((sum, row) => sum + Number(row.total), 0)
 
     setStatus({
-      ceklisPagi: ceklisPagi.data,
+      ceklisOpening: ceklisOpening.data,
       ceklisMiddle: ceklisMiddle.data,
       ceklisMalam: ceklisMalam.data,
+      ceklisClosing: ceklisClosing.data,
       laporan: laporan.data,
       prepPagi: prepPagi.data,
       prepMiddle: prepMiddle.data,
@@ -175,8 +181,8 @@ export default function StaffHome() {
   const shortName = profile?.full_name?.split(' ')[0] || '-'
   const branchName = profile?.branch?.name?.replace('Bagi Kopi ', '') || 'Toko'
 
-  const ceklisDone = [status?.ceklisPagi, status?.ceklisMiddle, status?.ceklisMalam].filter(Boolean).length
-  const ceklisPct = Math.round((ceklisDone / 3) * 100)
+  const ceklisDone = [status?.ceklisOpening, status?.ceklisMiddle, status?.ceklisMalam, status?.ceklisClosing].filter(Boolean).length
+  const ceklisPct = Math.round((ceklisDone / 4) * 100)
   const laporanStatus = status?.laporan ? (status.laporan.is_late ? 'Terlambat' : 'Masuk') : 'Belum'
   const opexStatus = (status?.totalOpex || 0) > 0 ? 'Sudah ada input' : 'Belum ada input'
 
@@ -292,13 +298,13 @@ export default function StaffHome() {
               <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg">{branchName}</span>
             </div>
 
-            <div className="grid grid-cols-3 gap-2 mb-4">
+            <div className="grid grid-cols-4 gap-2 mb-4">
               <StatusItem
                 icon="spark"
-                label="Pagi"
-                done={!!status?.ceklisPagi}
+                label="Opening"
+                done={!!status?.ceklisOpening}
                 loading={loading}
-                statusLabel={status?.ceklisPagi ? (status.ceklisPagi.is_late ? 'Terlambat' : 'Selesai') : 'Belum'}
+                statusLabel={status?.ceklisOpening ? (status.ceklisOpening.is_late ? 'Terlambat' : 'Selesai') : 'Belum'}
                 to="/staff/ceklis"
               />
               <StatusItem
@@ -315,6 +321,14 @@ export default function StaffHome() {
                 done={!!status?.ceklisMalam}
                 loading={loading}
                 statusLabel={status?.ceklisMalam ? 'Selesai' : 'Belum'}
+                to="/staff/ceklis"
+              />
+              <StatusItem
+                icon="moon"
+                label="Closing"
+                done={!!status?.ceklisClosing}
+                loading={loading}
+                statusLabel={status?.ceklisClosing ? 'Selesai' : 'Belum'}
                 to="/staff/ceklis"
               />
             </div>
@@ -433,7 +447,7 @@ export default function StaffHome() {
                   style={{ width: loading ? '0%' : `${ceklisPct}%` }}
                 />
               </div>
-              <p className="text-[8px] opacity-70 mt-1">{loading ? '...' : `${ceklisDone} dari 3 ceklis`}</p>
+              <p className="text-[8px] opacity-70 mt-1">{loading ? '...' : `${ceklisDone} dari 4 ceklis`}</p>
             </div>
             <AppIcon name="spark" size={52} className="absolute -right-2 -bottom-2 opacity-10" />
           </Link>
@@ -511,7 +525,7 @@ export default function StaffHome() {
             <p className="text-[10px] opacity-60 leading-relaxed">
               {loading
                 ? 'Memuat status...'
-                : `Ceklis: ${status?.ceklisPagi ? 'Pagi ✓' : 'Pagi -'} ${status?.ceklisMiddle ? '· Middle ✓' : '· Middle -'} ${status?.ceklisMalam ? '· Malam ✓' : '· Malam -'} · Laporan: ${status?.laporan ? '✓' : 'Pending'}`}
+                : `Ceklis: ${status?.ceklisOpening ? 'Opn ✓' : 'Opn -'} ${status?.ceklisMiddle ? '· Mid ✓' : '· Mid -'} ${status?.ceklisMalam ? '· Mal ✓' : '· Mal -'} ${status?.ceklisClosing ? '· Cls ✓' : '· Cls -'} · Laporan: ${status?.laporan ? '✓' : 'Pending'}`}
             </p>
           </div>
           <AppIcon name="store" size={72} className="absolute -right-3 -bottom-3 opacity-5" />
