@@ -3,7 +3,7 @@ import { OpsBottomNav } from '../../components/BottomNav'
 import { useAuth } from '../../contexts/AuthContext'
 
 const ACTIONS = [
-  { to: '/dm/finance', icon: 'finance', title: 'Finance Hub', description: 'Ringkasan jalur finance manager untuk approval dan monitoring toko.', accent: 'primary' },
+  { to: '/finance', icon: 'finance', title: 'Finance Hub', description: 'Ringkasan jalur finance untuk approval dan monitoring toko.', accent: 'primary' },
   { to: '/ops/laporan', icon: 'chart', title: 'Laporan Harian', description: 'Pantau setoran, opex, dan net sales semua toko.', accent: 'amber' },
   { to: '/ops/opex-approval', icon: 'approval', title: 'Approval Opex', description: 'Tangani approval support sebelum naik ke Ops Manager.', accent: 'emerald' },
   { to: '/finance/audit', icon: 'checklist', title: 'Audit Setoran', description: 'Review audit finance dan tindak lanjuti temuan setoran.', accent: 'violet' },

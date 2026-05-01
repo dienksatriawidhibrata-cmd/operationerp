@@ -320,7 +320,7 @@ export default function App() {
         </RequireAuth>
       } />
       <Route path="/dm/finance" element={
-        <RequireAuth roles={['district_manager', 'area_manager', ...SUPPORT_FINANCE_ROLES]}>
+        <RequireAuth roles={['district_manager', 'area_manager', 'ops_manager', ...SUPPORT_FINANCE_ROLES]}>
           <ManagerFinanceHub />
         </RequireAuth>
       } />
@@ -381,7 +381,7 @@ export default function App() {
         </RequireAuth>
       } />
       <Route path="/finance/opex" element={
-        <RequireAuth roles={[...FINANCE_ROLES, ...SUPPORT_FINANCE_ROLES]}>
+        <RequireAuth roles={[...FINANCE_ROLES, 'ops_manager', ...SUPPORT_FINANCE_ROLES]}>
           <FinanceOpexView />
         </RequireAuth>
       } />
