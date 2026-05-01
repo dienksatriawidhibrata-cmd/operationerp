@@ -3,15 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { HRBottomNav } from '../../components/BottomNav'
-import {
-  ActionCard,
-  AppIcon,
-  EmptyPanel,
-  HeroCard,
-  InlineStat,
-  SectionPanel,
-  ToneBadge,
-} from '../../components/ui/AppKit'
+import { AppIcon, EmptyPanel, ToneBadge } from '../../components/ui/AppKit'
 import {
   ACTION_LABELS,
   GROUP_COLORS,
@@ -47,270 +39,246 @@ export default function HRHub() {
 
   const role = profile?.role
   const shortName = profile?.full_name?.split(' ')[0] ?? 'HR'
-  const activeCandidates = candidates.filter((candidate) => candidate.status === 'active')
+  const activeCandidates = candidates.filter((c) => c.status === 'active')
   const actionStages = getActionStagesForRole(role)
 
   const queuedForMe = useMemo(
-    () => activeCandidates.filter((candidate) => needsActionFrom(candidate, role)),
+    () => activeCandidates.filter((c) => needsActionFrom(c, role)),
     [activeCandidates, role],
   )
 
   const groupSummary = useMemo(() => {
     return STAGE_GROUPS.map((group) => {
-      const rows = activeCandidates.filter((candidate) => group.stages.includes(candidate.current_stage))
-      const actionable = rows.filter((candidate) => needsActionFrom(candidate, role))
-      return {
-        ...group,
-        rows,
-        total: rows.length,
-        actionable,
-      }
-    }).filter((group) => group.total > 0)
+      const rows = activeCandidates.filter((c) => group.stages.includes(c.current_stage))
+      const actionable = rows.filter((c) => needsActionFrom(c, role))
+      return { ...group, rows, total: rows.length, actionable }
+    }).filter((g) => g.total > 0)
   }, [activeCandidates, role])
 
-  const pendingContracts = activeCandidates.filter((candidate) => candidate.current_stage === 'kontrak_pending').length
-  const onDutyCount = candidates.filter((candidate) => candidate.current_stage === 'on_duty').length
+  const pendingContracts = activeCandidates.filter((c) => c.current_stage === 'kontrak_pending').length
+  const onDutyCount = candidates.filter((c) => c.current_stage === 'on_duty').length
+
+  const showBatch = ['hr_staff', 'hr_administrator', 'ops_manager', 'support_spv'].includes(role)
+  const showKontrak = ['hr_legal', 'hr_administrator', 'ops_manager'].includes(role)
 
   const quickActions = [
-    ...(['hr_staff', 'hr_administrator', 'ops_manager', 'support_spv'].includes(role)
-      ? [{
-          title: 'Batch OJE',
-          description: 'Buat batch baru dan masuk ke layar penilaian massal kandidat.',
-          icon: 'checklist',
-          to: '/hr/batch',
-          accent: 'primary',
-        }]
-      : []),
-    {
-      title: 'Queue Toko',
-      description: 'Lihat semua kandidat per toko dan action yang harus dilakukan Head Store atau DM.',
-      icon: 'store',
-      to: '/hr/store',
-      accent: 'violet',
-    },
-    ...(['hr_legal', 'hr_administrator', 'ops_manager'].includes(role)
-      ? [{
-          title: 'Kontrak Pending',
-          description: 'Finalisasi kandidat yang sudah lolos approval dan siap dibuatkan akun.',
-          icon: 'approval',
-          to: '/hr/kontrak',
-          accent: 'amber',
-        }]
-      : []),
+    ...(showBatch ? [{ to: '/hr/batch', icon: 'checklist', label: 'Batch\nOJE' }] : []),
+    { to: '/hr/store', icon: 'store', label: 'Queue\nToko' },
+    ...(showKontrak ? [{ to: '/hr/kontrak', icon: 'approval', label: 'Kontrak\nPending' }] : []),
   ]
 
   return (
-    <div className="min-h-screen bg-[#f8fbff] pb-28">
-      <div className="sticky top-0 z-50 flex items-center justify-between border-b border-purple-50 bg-white/85 px-5 py-4 backdrop-blur-md">
+    <div className="min-h-screen bg-[#faf8ff] pb-28">
+      {/* Header */}
+      <div className="sticky top-0 z-50 bg-white px-5 pt-5 pb-4 flex justify-between items-center border-b border-purple-50 backdrop-blur-md">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-purple-600 text-white shadow-lg shadow-purple-200">
-            <AppIcon name="users" size={20} />
+          <div className="w-11 h-11 rounded-full bg-purple-600 flex items-center justify-center text-white shadow-md">
+            <AppIcon name="users" size={18} />
           </div>
           <div>
-            <h1 className="text-[10px] font-black uppercase tracking-[0.18em] text-purple-600">Human Resources</h1>
-            <p className="text-lg font-extrabold text-gray-900">Recruitment Flow</p>
+            <p className="text-[10px] text-purple-600 font-bold uppercase tracking-widest">Human Resources</p>
+            <p className="font-extrabold text-gray-900 text-base leading-tight">{shortName}</p>
           </div>
         </div>
-        <button
-          onClick={signOut}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-50 text-purple-600 transition-colors hover:bg-purple-100"
-        >
-          <AppIcon name="logout" size={18} />
-        </button>
+        <div className="flex items-center gap-2">
+          <span className="text-[9px] font-bold text-purple-600 bg-purple-50 px-2.5 py-1 rounded-full uppercase tracking-wide">
+            Recruitment Flow
+          </span>
+          <button
+            type="button"
+            onClick={signOut}
+            className="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center text-purple-600 hover:bg-purple-100 transition-colors"
+          >
+            <AppIcon name="logout" size={18} />
+          </button>
+        </div>
       </div>
 
       <div className="px-5 pt-5">
-        <HeroCard
-          eyebrow="Recruitment Control"
-          title={`Queue kerja ${shortName} hari ini`}
-          description="Alur rekrutmen sekarang dibaca seperti pipeline: lihat antrean tahap, buka detail kandidat, lalu selesaikan aksi hanya dari tahap yang memang sedang aktif."
-          meta={(
-            <>
-              <ToneBadge tone="info">{activeCandidates.length} kandidat aktif</ToneBadge>
-              <ToneBadge tone={queuedForMe.length > 0 ? 'warn' : 'ok'}>
-                {queuedForMe.length} butuh aksi
-              </ToneBadge>
-              <ToneBadge tone={pendingContracts > 0 ? 'warn' : 'slate'}>
-                {pendingContracts} kontrak pending
-              </ToneBadge>
-            </>
-          )}
-        >
-          <div className="grid gap-3 sm:grid-cols-3">
-            <InlineStat label="Butuh Aksi" value={queuedForMe.length} tone={queuedForMe.length > 0 ? 'amber' : 'emerald'} />
-            <InlineStat label="On Duty" value={onDutyCount} tone="emerald" />
-            <InlineStat label="Tahap Aktif" value={groupSummary.length} tone="primary" />
+        {/* Stats Overview */}
+        <div className="bg-purple-50 p-5 rounded-[2.5rem] border border-purple-100 mb-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xs font-black text-purple-900 uppercase">Recruitment Overview</h2>
+            <span className="text-[10px] font-bold text-purple-600">{activeCandidates.length} aktif</span>
           </div>
-        </HeroCard>
 
-        <div className="mt-6 grid gap-4 md:grid-cols-3">
-          {quickActions.map((action) => (
-            <ActionCard
-              key={action.to}
-              title={action.title}
-              description={action.description}
-              icon={action.icon}
-              to={action.to}
-              accent={action.accent}
-            />
-          ))}
+          <div className="grid grid-cols-3 gap-3 mb-4">
+            <div className="bg-white p-3 rounded-2xl text-center shadow-sm">
+              <p className="text-[8px] font-bold text-gray-400 uppercase mb-1">Butuh Aksi</p>
+              <p className={`text-2xl font-black ${queuedForMe.length > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                {loading ? '-' : String(queuedForMe.length).padStart(2, '0')}
+              </p>
+              <p className="text-[7px] text-gray-500 leading-tight">Antrean kamu</p>
+            </div>
+            <div className="bg-white p-3 rounded-2xl text-center shadow-sm">
+              <p className="text-[8px] font-bold text-gray-400 uppercase mb-1">On Duty</p>
+              <p className="text-2xl font-black text-emerald-600">
+                {loading ? '-' : String(onDutyCount).padStart(2, '0')}
+              </p>
+              <p className="text-[7px] text-gray-500 leading-tight">Sudah bertugas</p>
+            </div>
+            <div className="bg-white p-3 rounded-2xl text-center shadow-sm">
+              <p className="text-[8px] font-bold text-gray-400 uppercase mb-1">Kontrak</p>
+              <p className={`text-2xl font-black ${pendingContracts > 0 ? 'text-rose-500' : 'text-gray-400'}`}>
+                {loading ? '-' : String(pendingContracts).padStart(2, '0')}
+              </p>
+              <p className="text-[7px] text-gray-500 leading-tight">Pending</p>
+            </div>
+          </div>
+
+          <div className="bg-white/70 p-3 rounded-2xl flex items-center justify-between">
+            <div>
+              <p className="text-[9px] font-bold text-purple-900">Tahap Pipeline Aktif</p>
+              <p className="text-xs text-purple-700 font-medium">Grup yang sedang berjalan</p>
+            </div>
+            <span className="text-xl font-black text-purple-900">{loading ? '-' : groupSummary.length}</span>
+          </div>
         </div>
 
-        <div className="mt-6 space-y-6">
-          <SectionPanel
-            eyebrow="Action Queue"
-            title="Prioritas Saat Ini"
-            description="Hanya kandidat yang memang menunggu keputusan role kamu yang muncul di sini."
-            actions={<ToneBadge tone={queuedForMe.length > 0 ? 'warn' : 'ok'}>{queuedForMe.length} kandidat</ToneBadge>}
+        {/* Quick Actions */}
+        {quickActions.length > 0 && (
+          <div className={`grid grid-cols-${quickActions.length === 1 ? '1' : quickActions.length === 2 ? '2' : '3'} gap-3 mb-6`}>
+            {quickActions.map((action) => (
+              <Link key={action.to} to={action.to} className="flex flex-col items-center gap-2">
+                <div className="w-14 h-14 bg-white border border-purple-100 rounded-2xl flex items-center justify-center text-purple-600 shadow-sm active:scale-95 transition-transform">
+                  <AppIcon name={action.icon} size={22} />
+                </div>
+                <span className="text-[9px] font-bold text-center leading-tight text-gray-700">
+                  {action.label.split('\n').map((l, i) => <span key={i}>{l}{i === 0 ? <br /> : ''}</span>)}
+                </span>
+              </Link>
+            ))}
+          </div>
+        )}
+
+        {/* Hero pair */}
+        <div className="flex gap-3 mb-6">
+          <Link
+            to="/hr/store"
+            className="flex-1 bg-gradient-to-br from-purple-600 to-purple-800 p-4 rounded-3xl text-white relative overflow-hidden shadow-md transition-transform active:scale-[0.98]"
           >
-            {loading ? (
-              <div className="flex justify-center py-10">
-                <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary-600 border-t-transparent" />
+            <div className="relative z-10">
+              <p className="text-[9px] font-bold opacity-80 uppercase mb-1">Prioritas</p>
+              <p className="text-2xl font-black">{loading ? '-' : queuedForMe.length}</p>
+              <div className="w-full bg-white/20 h-1.5 rounded-full mt-2 overflow-hidden">
+                <div
+                  className="bg-white h-1.5 rounded-full"
+                  style={{ width: !loading && queuedForMe.length > 0 ? '100%' : '0%' }}
+                />
               </div>
-            ) : queuedForMe.length === 0 ? (
-              <EmptyPanel
-                title="Tidak ada antrean"
-                description="Semua kandidat yang perlu aksi dari role kamu saat ini sudah selesai diproses."
-              />
-            ) : (
-              <div className="space-y-3">
-                {queuedForMe.slice(0, 10).map((candidate) => {
-                  const color = GROUP_COLORS[stageColor(candidate.current_stage)] || GROUP_COLORS.slate
-                  const group = stageGroupFor(candidate.current_stage)
-                  return (
-                    <Link
-                      key={candidate.id}
-                      to={`/hr/candidates/${candidate.id}`}
-                      className="flex items-center gap-3 rounded-[22px] bg-slate-50/85 px-4 py-4 transition-colors hover:bg-slate-100"
-                    >
-                      <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${color.soft}`}>
-                        <span className="text-sm font-black">{stageStep(candidate.current_stage)}</span>
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-semibold text-slate-900">{candidate.full_name}</div>
-                        <div className="mt-1 truncate text-xs text-slate-500">
-                          {candidate.branches?.name || '-'} · {POSITION_LABELS[candidate.applied_position] || candidate.applied_position}
-                        </div>
-                        <div className="mt-1 truncate text-[11px] text-slate-400">
-                          PIC sekarang: {stagePic(candidate.current_stage)} · Grup: {group?.label || '-'}
-                        </div>
-                      </div>
-                      <div className="shrink-0 text-right">
-                        <ToneBadge tone="info">{stageLabel(candidate.current_stage)}</ToneBadge>
-                        <div className="mt-2 text-[11px] font-semibold text-slate-400">
-                          {ACTION_LABELS.advance ? 'Buka detail' : ''}
-                        </div>
-                      </div>
-                    </Link>
-                  )
-                })}
-              </div>
-            )}
-          </SectionPanel>
-
-          <SectionPanel
-            eyebrow="Stage Pipeline"
-            title="Antrean Per Tahap"
-            description="Pola ini mengikuti Supply Chain: tiap tahap punya jumlah antrean, siapa PIC-nya, dan pintu masuk detail yang jelas."
+              <p className="text-[8px] opacity-70 mt-1">kandidat perlu aksi</p>
+            </div>
+            <AppIcon name="users" size={52} className="absolute -right-2 -bottom-2 opacity-10" />
+          </Link>
+          <Link
+            to="/hr/batch"
+            className="flex-1 bg-white border border-purple-100 p-4 rounded-3xl shadow-sm flex flex-col justify-between hover:border-purple-300 transition-colors"
           >
-            {groupSummary.length === 0 ? (
-              <EmptyPanel
-                title="Belum ada pipeline aktif"
-                description="Kandidat aktif akan muncul di sini sesuai tahap rekrutmennya."
-              />
-            ) : (
-              <div className="grid gap-4 lg:grid-cols-2">
-                {groupSummary.map((group) => {
-                  const color = GROUP_COLORS[group.color] || GROUP_COLORS.slate
-                  const nextCandidates = group.rows.slice(0, 3)
+            <p className="text-[9px] font-bold text-gray-400 uppercase">Batch</p>
+            <p className="text-base font-black text-gray-900 leading-tight mt-1">OJE</p>
+            <div className="flex items-center gap-1 mt-2">
+              <AppIcon name="checklist" size={12} className="text-purple-400" />
+              <p className="text-[8px] text-purple-400 font-semibold">Masuk penilaian</p>
+            </div>
+          </Link>
+        </div>
 
-                  return (
-                    <article key={group.key} className={`rounded-[24px] border p-4 ${color.panel}`}>
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <div className="text-[11px] font-black uppercase tracking-[0.16em]">{group.label}</div>
-                          <div className="mt-2 text-sm leading-6 text-slate-600">{group.description}</div>
-                        </div>
-                        <ToneBadge tone={group.actionable.length > 0 ? 'warn' : 'info'}>
-                          {group.total} kandidat
-                        </ToneBadge>
+        {/* Action Queue */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Antrean Prioritas</p>
+            <ToneBadge tone={queuedForMe.length > 0 ? 'warn' : 'ok'}>{queuedForMe.length} kandidat</ToneBadge>
+          </div>
+
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <div className="h-7 w-7 animate-spin rounded-full border-2 border-purple-600 border-t-transparent" />
+            </div>
+          ) : queuedForMe.length === 0 ? (
+            <div className="bg-emerald-50 border border-emerald-100 rounded-[1.75rem] px-4 py-5 text-center">
+              <p className="text-sm font-bold text-emerald-700">Antrean kamu kosong</p>
+              <p className="text-[10px] text-emerald-600 mt-1">Semua kandidat sudah diproses</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {queuedForMe.slice(0, 8).map((candidate) => {
+                const color = GROUP_COLORS[stageColor(candidate.current_stage)] || GROUP_COLORS.slate
+                return (
+                  <Link
+                    key={candidate.id}
+                    to={`/hr/candidates/${candidate.id}`}
+                    className="flex items-center gap-3 rounded-[20px] bg-white border border-slate-100 px-4 py-3 transition-colors hover:border-purple-200 shadow-sm"
+                  >
+                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${color.soft}`}>
+                      <span className="text-sm font-black">{stageStep(candidate.current_stage)}</span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-semibold text-slate-900">{candidate.full_name}</div>
+                      <div className="truncate text-xs text-slate-500">
+                        {candidate.branches?.name || '-'} · {POSITION_LABELS[candidate.applied_position] || candidate.applied_position}
                       </div>
+                    </div>
+                    <ToneBadge tone="info">{stageLabel(candidate.current_stage)}</ToneBadge>
+                  </Link>
+                )
+              })}
+            </div>
+          )}
+        </div>
 
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        {group.stages.map((stage) => {
-                          const count = group.rows.filter((candidate) => candidate.current_stage === stage).length
-                          if (!count) return null
-                          return (
-                            <span key={stage} className={`rounded-full px-2.5 py-1 text-[10px] font-black ${color.pill}`}>
-                              {stageLabel(stage)} · {count}
-                            </span>
-                          )
-                        })}
+        {/* Stage Pipeline */}
+        <div className="mb-5">
+          <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-3">Pipeline Per Tahap</p>
+          {groupSummary.length === 0 ? (
+            <EmptyPanel title="Belum ada pipeline aktif" description="Kandidat aktif akan muncul di sini sesuai tahap rekrutmennya." />
+          ) : (
+            <div className="space-y-3">
+              {groupSummary.map((group) => {
+                const color = GROUP_COLORS[group.color] || GROUP_COLORS.slate
+                return (
+                  <div key={group.key} className={`rounded-[1.75rem] border p-4 ${color.panel}`}>
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-wide">{group.label}</p>
+                        <p className="text-[10px] text-slate-500 mt-0.5">{group.description}</p>
                       </div>
-
-                      <div className="mt-4 space-y-2">
-                        {nextCandidates.map((candidate) => (
-                          <Link
-                            key={candidate.id}
-                            to={`/hr/candidates/${candidate.id}`}
-                            className="flex items-center justify-between rounded-[18px] bg-white/85 px-3 py-3 text-slate-800 transition-colors hover:bg-white"
-                          >
-                            <div className="min-w-0">
-                              <div className="truncate text-sm font-semibold">{candidate.full_name}</div>
-                              <div className="truncate text-xs text-slate-500">
-                                {candidate.branches?.name || '-'} · {stageLabel(candidate.current_stage)}
-                              </div>
+                      <ToneBadge tone={group.actionable.length > 0 ? 'warn' : 'info'}>
+                        {group.total} kandidat
+                      </ToneBadge>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 mb-3">
+                      {group.stages.map((stage) => {
+                        const count = group.rows.filter((c) => c.current_stage === stage).length
+                        if (!count) return null
+                        return (
+                          <span key={stage} className={`rounded-full px-2.5 py-1 text-[10px] font-black ${color.pill}`}>
+                            {stageLabel(stage)} · {count}
+                          </span>
+                        )
+                      })}
+                    </div>
+                    <div className="space-y-1.5">
+                      {group.rows.slice(0, 3).map((candidate) => (
+                        <Link
+                          key={candidate.id}
+                          to={`/hr/candidates/${candidate.id}`}
+                          className="flex items-center justify-between rounded-[14px] bg-white/85 px-3 py-2.5 text-slate-800 transition-colors hover:bg-white"
+                        >
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-semibold">{candidate.full_name}</div>
+                            <div className="truncate text-xs text-slate-500">
+                              {candidate.branches?.name || '-'} · {stageLabel(candidate.current_stage)}
                             </div>
-                            <AppIcon name="chevronRight" size={16} className="text-slate-400" />
-                          </Link>
-                        ))}
-                      </div>
-                    </article>
-                  )
-                })}
-              </div>
-            )}
-          </SectionPanel>
-
-          <SectionPanel
-            eyebrow="Semua Kandidat"
-            title="Daftar Kandidat"
-            description="Daftar ini tetap tersedia, tapi fokus utamanya sekarang adalah antrean per tahap di atas."
-            actions={<ToneBadge tone="info">{activeCandidates.length} aktif</ToneBadge>}
-          >
-            {activeCandidates.length === 0 ? (
-              <EmptyPanel
-                title="Belum ada kandidat aktif"
-                description="Kandidat baru akan muncul setelah batch OJE dibuat."
-              />
-            ) : (
-              <div className="space-y-2">
-                {activeCandidates.map((candidate) => {
-                  const statusTone = STATUS_CONFIG[candidate.status]?.tone || 'slate'
-                  return (
-                    <Link
-                      key={candidate.id}
-                      to={`/hr/candidates/${candidate.id}`}
-                      className="flex items-center gap-3 rounded-[20px] bg-slate-50/85 px-4 py-3 transition-colors hover:bg-slate-100"
-                    >
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-slate-500 shadow-sm">
-                        <AppIcon name="users" size={16} />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-semibold text-slate-900">{candidate.full_name}</div>
-                        <div className="truncate text-xs text-slate-500">
-                          {candidate.branches?.name || '-'} · {POSITION_LABELS[candidate.applied_position] || candidate.applied_position}
-                        </div>
-                      </div>
-                      <div className="shrink-0 text-right">
-                        <ToneBadge tone={statusTone}>{stageLabel(candidate.current_stage)}</ToneBadge>
-                      </div>
-                    </Link>
-                  )
-                })}
-              </div>
-            )}
-          </SectionPanel>
+                          </div>
+                          <AppIcon name="chevronRight" size={16} className="text-slate-400 shrink-0 ml-3" />
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       </div>
 
