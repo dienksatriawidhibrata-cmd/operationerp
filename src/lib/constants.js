@@ -282,7 +282,7 @@ export const BRANCH_SHIFTS = {
   'Bagi Kopi - Lenteng Agung':   [S('DAY OFF'), S('OPENING','06:30 - 14:30'), S('MIDDLE 1','11:00 - 19:00'), S('MIDDLE 2','15:00 - 23:00'), S('CLOSING','19:00 - 03:00')],
   'Bagi Kopi - Margonda Raya':   [S('DAY OFF'), S('OPENING','06:30 - 14:30'), S('OPENING 2','09:30 - 18:00'), S('MIDDLE 1','12:00 - 20:00'), S('CLOSING','16:00 - 00:00')],
   'Bagi Kopi - Margorejo':       [S('DAY OFF'), S('OPENING','08:30 - 16:30'), S('MIDDLE 1','12:00 - 20:00'), S('MIDDLE 2','15:00 - 23:00'), S('CLOSING','18:00 - 02:00')],
-  'Bagi Kopi - Melong':          [S('DAY OFF'), S('OPENING','06:30 - 15:00'), S('MIDDLE 1','09:30 - 18:00'), S('MIDDLE 2','15:00 - 23:00'), S('CLOSING','19:00 - 03:00')],
+  'Bagi Kopi - Melong':          [S('DAY OFF'), S('OPENING','06:30 - 15:00'), S('MIDDLE','09:30 - 18:00'), S('MALAM','15:00 - 23:00'), S('CLOSING','19:00 - 03:00')],
   'Bagi Kopi - Metro':           [S('DAY OFF'), S('OPENING','06:30 - 15:00'), S('MIDDLE 1','09:30 - 18:00'), S('MIDDLE 2','15:00 - 23:00'), S('CLOSING','19:00 - 03:00')],
   'Bagi Kopi - Pamulang':        [S('DAY OFF'), S('OPENING','06:30 - 14:30'), S('MIDDLE 1','11:00 - 19:00'), S('MIDDLE 2','15:00 - 23:00'), S('CLOSING','19:00 - 03:00')],
   'Bagi Kopi - Pekayon':         [S('DAY OFF'), S('OPENING','06:30 - 14:30'), S('MIDDLE 1','11:00 - 19:00'), S('MIDDLE 2','15:00 - 23:00'), S('CLOSING','19:00 - 03:00')],
