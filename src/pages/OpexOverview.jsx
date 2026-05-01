@@ -26,6 +26,10 @@ function rangeLabel(from, to) {
   return `${fmtDateMed(from)} - ${fmtDateLong(to)}`
 }
 
+function formatDayCount(count) {
+  return `${count} hari`
+}
+
 function monthStart(isoDate) {
   const [year, month] = String(isoDate || '').split('-')
   return `${year}-${month}-01`
@@ -226,11 +230,21 @@ export default function OpexOverview() {
     const map = {}
     filtered.forEach((item) => {
       const key = item.branch_id
-      if (!map[key]) map[key] = { branch: item.branch, total: 0, items: [] }
+      if (!map[key]) map[key] = { branch: item.branch, total: 0, items: [], dates: {} }
       map[key].total += Number(item.total || 0)
       map[key].items.push(item)
+      if (!map[key].dates[item.tanggal]) {
+        map[key].dates[item.tanggal] = { tanggal: item.tanggal, total: 0, items: [] }
+      }
+      map[key].dates[item.tanggal].total += Number(item.total || 0)
+      map[key].dates[item.tanggal].items.push(item)
     })
-    return Object.values(map).sort((left, right) => right.total - left.total)
+    return Object.values(map)
+      .map((group) => ({
+        ...group,
+        dateGroups: Object.values(group.dates).sort((left, right) => right.tanggal.localeCompare(left.tanggal)),
+      }))
+      .sort((left, right) => right.total - left.total)
   }, [filtered])
 
   const byCategory = useMemo(() => {
@@ -396,7 +410,7 @@ function ByStoreView({ groups, onDownloadCsv, onDownloadXlsx }) {
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-semibold text-slate-900">{storeName}</div>
                 <div className="text-[11px] text-slate-400">
-                  {group.branch?.district || '-'} · {group.items.length} item
+                  {group.branch?.district || '-'} · {group.items.length} item · {formatDayCount(group.dateGroups.length)}
                 </div>
               </div>
               <div className="shrink-0 text-right">
@@ -414,9 +428,25 @@ function ByStoreView({ groups, onDownloadCsv, onDownloadXlsx }) {
                     XLSX {storeName}
                   </SoftButton>
                 </div>
-                {group.items.map((item, index) => (
-                  <OpexRow key={item.id} item={item} last={index === group.items.length - 1} showDate />
-                ))}
+                <div className="space-y-3 px-4 py-3">
+                  {group.dateGroups.map((dateGroup) => (
+                    <div key={`${group.branch?.id}-${dateGroup.tanggal}`} className="overflow-hidden rounded-[20px] border border-slate-100 bg-slate-50/70">
+                      <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
+                        <div>
+                          <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Tanggal Input</div>
+                          <div className="mt-1 text-sm font-semibold text-slate-900">{fmtDateLong(dateGroup.tanggal)}</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-xs text-slate-400">{dateGroup.items.length} item</div>
+                          <div className="text-sm font-bold text-primary-700">{fmtRp(dateGroup.total)}</div>
+                        </div>
+                      </div>
+                      {dateGroup.items.map((item, index) => (
+                        <OpexRow key={item.id} item={item} last={index === dateGroup.items.length - 1} />
+                      ))}
+                    </div>
+                  ))}
+                </div>
                 <div className="flex items-center justify-between border-t border-primary-100 bg-primary-50 px-4 py-2.5">
                   <span className="text-xs font-semibold text-slate-600">Total {storeName}</span>
                   <span className="text-sm font-bold text-primary-700">{fmtRp(group.total)}</span>

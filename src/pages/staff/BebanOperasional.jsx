@@ -8,6 +8,7 @@ import PhotoUpload from '../../components/PhotoUpload'
 import { useToast } from '../../contexts/ToastContext'
 import { StaffBottomNav } from '../../components/BottomNav'
 import {
+  AppIcon,
   EmptyPanel,
   InlineStat,
   SectionPanel,
@@ -32,6 +33,7 @@ export default function BebanOperasional() {
   const [detail, setDetail] = useState('')
   const [fotoBukti, setFotoBukti] = useState([])
   const [saving, setSaving] = useState(false)
+  const [deletingId, setDeletingId] = useState('')
   const [error, setError] = useState('')
 
   const [history, setHistory] = useState([])
@@ -42,18 +44,36 @@ export default function BebanOperasional() {
   }, [branchId, tanggal])
 
   const fetchHistory = async () => {
-    const { data } = await supabase
+    const { data, error: historyError } = await supabase
       .from('operational_expenses')
       .select('*')
       .eq('branch_id', branchId)
       .eq('tanggal', tanggal)
       .order('created_at', { ascending: false })
+
+    if (historyError) {
+      toastError(`Gagal memuat histori: ${historyError.message}`)
+      setHistory([])
+      return
+    }
+
     setHistory(data || [])
   }
 
   const handleDelete = async (id) => {
-    await supabase.from('operational_expenses').delete().eq('id', id)
-    fetchHistory()
+    if (!window.confirm('Hapus input OPEX ini? Gunakan ini hanya untuk koreksi salah input.')) return
+
+    setDeletingId(id)
+    const { error: deleteError } = await supabase.from('operational_expenses').delete().eq('id', id)
+    if (deleteError) {
+      toastError(`Gagal menghapus: ${deleteError.message}`)
+      setDeletingId('')
+      return
+    }
+
+    toastSuccess('Input OPEX berhasil dihapus.')
+    await fetchHistory()
+    setDeletingId('')
   }
 
   const filtered = query.length > 0
@@ -107,7 +127,7 @@ export default function BebanOperasional() {
 
     const { error: submitErr } = await supabase.from('operational_expenses').insert(payload)
     if (submitErr) {
-      toastError('Gagal menyimpan: ' + submitErr.message)
+      toastError(`Gagal menyimpan: ${submitErr.message}`)
     } else {
       toastSuccess('Pengeluaran berhasil disimpan.')
       setSelected(null)
@@ -116,7 +136,7 @@ export default function BebanOperasional() {
       setHarga('')
       setDetail('')
       setFotoBukti([])
-      fetchHistory()
+      await fetchHistory()
     }
     setSaving(false)
   }
@@ -170,8 +190,8 @@ export default function BebanOperasional() {
                     key={item.code}
                     type="button"
                     className="w-full border-b border-slate-50 px-4 py-3 text-left last:border-0 hover:bg-primary-50"
-                    onPointerDown={(e) => {
-                      e.preventDefault()
+                    onPointerDown={(event) => {
+                      event.preventDefault()
                       setSelected(item)
                       setQuery(`${item.code} - ${item.name}`)
                       setShowDrop(false)
@@ -184,20 +204,20 @@ export default function BebanOperasional() {
                 ))}
                 {categories.length > 0 && (
                   <>
-                    <div className="px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 border-b border-slate-50">Pilih Kategori</div>
-                    {categories.map((cat) => (
+                    <div className="border-b border-slate-50 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">Pilih Kategori</div>
+                    {categories.map((category) => (
                       <button
-                        key={cat}
+                        key={category}
                         type="button"
                         className="w-full border-b border-slate-50 px-4 py-2.5 text-left last:border-0 hover:bg-primary-50"
-                        onPointerDown={(e) => {
-                          e.preventDefault()
-                          setQuery(cat)
+                        onPointerDown={(event) => {
+                          event.preventDefault()
+                          setQuery(category)
                           setShowDrop(true)
                         }}
                       >
-                        <div className="text-sm font-medium text-slate-700">{cat}</div>
-                        <div className="text-xs text-slate-400">{EXPENSE_CODES.filter((i) => i.category === cat).length} item</div>
+                        <div className="text-sm font-medium text-slate-700">{category}</div>
+                        <div className="text-xs text-slate-400">{EXPENSE_CODES.filter((item) => item.category === category).length} item</div>
                       </button>
                     ))}
                   </>
@@ -210,7 +230,7 @@ export default function BebanOperasional() {
             <div className="mt-4 rounded-[22px] border border-primary-100 bg-primary-50 px-4 py-4">
               <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-500">Item Dipilih</div>
               <div className="mt-2 text-base font-semibold text-primary-700">{selected.name}</div>
-              <div className="mt-1 text-sm text-primary-600">{selected.code} • {selected.category}</div>
+              <div className="mt-1 text-sm text-primary-600">{selected.code} · {selected.category}</div>
             </div>
           )}
         </SectionPanel>
@@ -229,11 +249,11 @@ export default function BebanOperasional() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className="label">Qty</label>
-                <input className="input" type="number" step="any" value={qty} onChange={(event) => setQty(event.target.value)} onWheel={(e) => e.target.blur()} placeholder="0" />
+                <input className="input" type="number" step="any" value={qty} onChange={(event) => setQty(event.target.value)} onWheel={(event) => event.target.blur()} placeholder="0" />
               </div>
               <div>
                 <label className="label">Harga Satuan (Rp)</label>
-                <input className="input" type="number" value={harga} onChange={(event) => setHarga(event.target.value)} onWheel={(e) => e.target.blur()} placeholder="0" />
+                <input className="input" type="number" value={harga} onChange={(event) => setHarga(event.target.value)} onWheel={(event) => event.target.blur()} placeholder="0" />
               </div>
             </div>
 
@@ -291,15 +311,21 @@ export default function BebanOperasional() {
                   <div className="min-w-0 flex-1">
                     <div className="text-sm font-semibold text-slate-950">{row.code} - {row.item_name}</div>
                     <div className="mt-1 text-sm text-slate-500">{row.qty} x {fmtRp(row.harga_satuan)}</div>
+                    {row.detail && <div className="mt-1 text-xs italic text-slate-400">{row.detail}</div>}
                   </div>
                   <div className="shrink-0 text-sm font-semibold text-primary-700">{fmtRp(row.total)}</div>
                   <button
                     type="button"
+                    disabled={deletingId === row.id}
                     onClick={() => handleDelete(row.id)}
-                    className="shrink-0 flex h-7 w-7 items-center justify-center rounded-full bg-rose-50 text-rose-400 hover:bg-rose-100 hover:text-rose-600 transition-colors"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-rose-50 text-rose-400 transition-colors hover:bg-rose-100 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-60"
                     title="Hapus entri ini"
                   >
-                    ×
+                    {deletingId === row.id ? (
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-rose-300 border-t-rose-600" />
+                    ) : (
+                      <AppIcon name="warning" size={16} className="rotate-45" />
+                    )}
                   </button>
                 </div>
               ))}
