@@ -532,6 +532,7 @@ function SJList() {
   const [filter, setFilter] = useState('all')
   const [pendingAction, setPending] = useState(null)
   const [downloadingId, setDownloadingId] = useState(null)
+  const [expandedId, setExpandedId] = useState(null)
 
   const handleDownloadPenerimaan = async (sj) => {
     setDownloadingId(sj.id)
@@ -547,7 +548,7 @@ function SJList() {
   const fetchList = async () => {
     let query = supabase
       .from('surat_jalan')
-      .select('*, branch:branches(name), order:supply_orders(order_number)')
+      .select('*, branch:branches(name), order:supply_orders(order_number), items:surat_jalan_items(*)')
       .order('issued_at', { ascending: false })
 
     if (isStoreOnly && profile?.branch_id) {
@@ -673,7 +674,13 @@ function SJList() {
                 </ToneBadge>
               </div>
 
-              <div className="flex gap-2">
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  onClick={() => setExpandedId(expandedId === sj.id ? null : sj.id)}
+                  className="rounded-xl bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200"
+                >
+                  {expandedId === sj.id ? 'Sembunyikan Item' : 'Lihat Item'}
+                </button>
                 {!isStoreOnly && (
                   <Link
                     to={`/sc/orders/${sj.order_id}`}
@@ -716,6 +723,49 @@ function SJList() {
                   </button>
                 )}
               </div>
+
+              {expandedId === sj.id && (
+                <div className="mt-4 border-t border-slate-200 pt-3">
+                  <div className="mb-2 text-xs font-bold text-slate-700">Daftar Barang:</div>
+                  <div className="space-y-1.5">
+                    {sj.items?.map((item) => {
+                      const qtyReceived = item.qty_received ?? item.qty_kirim
+                      const isUnfulfilled = sj.status === 'delivered' && Number(qtyReceived) < Number(item.qty_kirim)
+                      return (
+                        <div key={item.id} className="flex justify-between items-center text-xs">
+                          <span className="text-slate-800">{item.sku_name}</span>
+                          <div className="flex gap-2 text-slate-500">
+                            <span>Kirim: {item.qty_kirim}</span>
+                            {sj.status === 'delivered' && (
+                              <span className={isUnfulfilled ? 'font-bold text-rose-500' : 'text-emerald-600'}>
+                                Terima: {qtyReceived}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  {sj.status === 'delivered' && (
+                    <div className="mt-3 rounded-xl bg-slate-100 p-3 text-xs">
+                      <div className="mb-1 font-semibold text-slate-700">Summary Penerimaan:</div>
+                      {(() => {
+                        const unfulfilled = sj.items?.filter(item => Number(item.qty_received ?? item.qty_kirim) < Number(item.qty_kirim)) || []
+                        if (unfulfilled.length === 0) return <div className="text-emerald-600">Semua barang diterima sesuai jumlah pengiriman.</div>
+                        return (
+                          <ul className="list-inside list-disc text-rose-600">
+                            {unfulfilled.map(item => (
+                              <li key={item.id}>
+                                {item.sku_name} (Selisih/Kurang: {Number(item.qty_kirim) - Number(item.qty_received ?? item.qty_kirim)})
+                              </li>
+                            ))}
+                          </ul>
+                        )
+                      })()}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>

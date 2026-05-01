@@ -1,4 +1,8 @@
 import { lastNPeriods, periodLabel } from '../lib/utils'
+import { useAuth } from '../contexts/AuthContext'
+import { SC_ROLES, HR_ROLES, SUPPORT_ROLES, AUDITOR_ROLES } from '../lib/access'
+
+const EXCLUDED_ROLES = [...SC_ROLES, ...HR_ROLES, ...SUPPORT_ROLES, ...AUDITOR_ROLES, 'trainer']
 
 const STAFF_ROLES = ['staff', 'barista', 'kitchen', 'waitress', 'asst_head_store']
 const HEAD_STORE_HIDDEN_ROLES = ['staff', 'barista', 'kitchen', 'waitress']
@@ -83,6 +87,13 @@ export default function LeaderboardSection({
   profile = null,
   showHeadStore = true,
 }) {
+  const { profile: authProfile } = useAuth()
+  const activeProfile = profile || authProfile
+
+  if (activeProfile && EXCLUDED_ROLES.includes(activeProfile.role)) {
+    return null
+  }
+
   const effectiveView = !showHeadStore && leaderboardView === 'head_store' ? 'store' : leaderboardView
 
   const tabs = [
@@ -101,8 +112,8 @@ export default function LeaderboardSection({
         <TooltipBubble />
       </div>
 
-      {profile && (
-        <MyRankCard profile={profile} leaderboards={leaderboards} period={selectedPeriod} />
+      {activeProfile && (
+        <MyRankCard profile={activeProfile} leaderboards={leaderboards} period={selectedPeriod} />
       )}
 
       <div>
@@ -138,7 +149,7 @@ export default function LeaderboardSection({
               countLabel="toko"
               rows={leaderboards.storesTop}
               emptyText="Belum ada data toko untuk periode ini."
-              highlightId={profile?.branch_id}
+              highlightId={activeProfile?.branch_id}
             />
             <LeaderboardCard
               title="Bottom 10 Toko"
@@ -147,7 +158,7 @@ export default function LeaderboardSection({
               countLabel="toko"
               rows={leaderboards.storesBottom}
               emptyText="Belum ada data toko untuk periode ini."
-              highlightId={profile?.branch_id}
+              highlightId={activeProfile?.branch_id}
             />
           </>
         )}
@@ -160,7 +171,7 @@ export default function LeaderboardSection({
               countLabel="staff"
               rows={leaderboards.staffTop}
               emptyText="Belum ada data staff untuk periode ini."
-              highlightId={profile?.id}
+              highlightId={activeProfile?.id}
             />
             <LeaderboardCard
               title="Bottom 10 Staff"
@@ -169,7 +180,7 @@ export default function LeaderboardSection({
               countLabel="staff"
               rows={leaderboards.staffBottom}
               emptyText="Belum ada data staff untuk periode ini."
-              highlightId={profile?.id}
+              highlightId={activeProfile?.id}
             />
           </>
         )}
@@ -182,7 +193,7 @@ export default function LeaderboardSection({
               countLabel="head store"
               rows={leaderboards.headStoresTop}
               emptyText="Belum ada data head store untuk periode ini."
-              highlightId={profile?.id}
+              highlightId={activeProfile?.id}
             />
             <LeaderboardCard
               title="Bottom 10 Head Store"
@@ -191,7 +202,7 @@ export default function LeaderboardSection({
               countLabel="head store"
               rows={leaderboards.headStoresBottom}
               emptyText="Belum ada data head store untuk periode ini."
-              highlightId={profile?.id}
+              highlightId={activeProfile?.id}
             />
           </>
         )}

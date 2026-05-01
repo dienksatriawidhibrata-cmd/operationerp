@@ -59,6 +59,8 @@ export default function OrderDetail() {
   const [suratJalan, setSuratJalan] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [showOrderItems, setShowOrderItems] = useState(false)
+  const [showSjItems, setShowSjItems] = useState(false)
 
   useEffect(() => {
     fetchAll()
@@ -72,7 +74,7 @@ export default function OrderDetail() {
       supabase.from('supply_orders').select('*, branch:branches(id,name,store_id,district,area)').eq('id', id).single(),
       supabase.from('supply_order_items').select('*').eq('order_id', id).order('sku_name'),
       supabase.from('supply_confirmations').select('*, confirmed_by:profiles(full_name)').eq('order_id', id),
-      supabase.from('surat_jalan').select('*').eq('order_id', id).maybeSingle(),
+      supabase.from('surat_jalan').select('*, items:surat_jalan_items(*)').eq('order_id', id).maybeSingle(),
     ])
 
     if (orderRes.error || !orderRes.data) {
@@ -135,7 +137,7 @@ export default function OrderDetail() {
     )
   }
 
-  const totalQty = items.reduce((sum, item) => sum + Number(item.qty_ordered), 0)
+  const totalPrice = items.reduce((sum, item) => sum + (Number(item.qty_ordered) * Number(item.unit_price || 0)), 0)
   const subtitle = isStoreRole(profile?.role)
     ? 'Detail order dan hasil konfirmasi barang untuk toko kamu.'
     : isManagerRole(profile?.role)
@@ -154,7 +156,7 @@ export default function OrderDetail() {
           <InlineStat label="Status" value={STATUS_LABEL[order.status] || order.status} tone={STATUS_TONE[order.status] || 'slate'} />
           <InlineStat label="Toko" value={order.branch?.name || '-'} tone="primary" />
           <InlineStat label="Total Item" value={items.length} tone="slate" />
-          <InlineStat label="Total Qty" value={totalQty.toLocaleString('id-ID')} tone="slate" />
+          <InlineStat label="Total Nominal" value={fmtRp(totalPrice)} tone="slate" />
         </div>
         {order.catatan && (
           <div className="mt-4 rounded-[18px] bg-slate-50 px-4 py-3 text-sm text-slate-600">{order.catatan}</div>
@@ -194,7 +196,19 @@ export default function OrderDetail() {
         </SectionPanel>
 
         {suratJalan && (
-          <SectionPanel eyebrow="Surat Jalan" title={suratJalan.sj_number} description={`Tanggal kirim: ${suratJalan.tanggal_kirim}`}>
+          <SectionPanel
+            eyebrow="Surat Jalan"
+            title={suratJalan.sj_number}
+            description={`Tanggal kirim: ${suratJalan.tanggal_kirim}`}
+            actions={
+              <button
+                onClick={() => setShowSjItems(!showSjItems)}
+                className="rounded-xl bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200"
+              >
+                {showSjItems ? 'Sembunyikan Item SJ' : 'Lihat Item SJ'}
+              </button>
+            }
+          >
             <div className="grid gap-3 sm:grid-cols-3">
               <InlineStat label="Status SJ" value={suratJalan.status} tone={suratJalan.status === 'shipped' ? 'primary' : 'emerald'} />
               <InlineStat label="Pengirim" value={suratJalan.pengirim || '-'} tone="slate" />
@@ -204,16 +218,89 @@ export default function OrderDetail() {
                 tone="slate"
               />
             </div>
+            
+            {showSjItems && suratJalan.items && (
+              <div className="mt-4 border-t border-slate-100 pt-4">
+                <div className="mb-2 text-xs font-bold text-slate-700">Detail Pengiriman & Penerimaan:</div>
+                <div className="space-y-2">
+                  {suratJalan.items.map((item) => {
+                    const qtyReceived = item.qty_received ?? item.qty_kirim
+                    const isUnreceived = suratJalan.status === 'delivered' && Number(qtyReceived) < Number(item.qty_kirim)
+                    const orderItem = items.find((oi) => oi.sku_code === item.sku_code)
+                    const qtyOrdered = orderItem ? orderItem.qty_ordered : item.qty_kirim
+                    const isUnshipped = Number(item.qty_kirim) < Number(qtyOrdered)
+
+                    return (
+                      <div key={item.id} className="grid grid-cols-1 gap-2 rounded-[18px] bg-slate-50 px-3 py-3 sm:grid-cols-3 sm:items-center">
+                        <div className="text-xs font-semibold text-slate-800">{item.sku_name}</div>
+                        <div className="flex gap-2 text-xs text-slate-500 sm:justify-center">
+                          <span className={isUnshipped ? 'font-bold text-amber-600' : ''}>
+                            Order: {qtyOrdered} → Kirim: {item.qty_kirim}
+                          </span>
+                        </div>
+                        <div className="text-xs sm:text-right">
+                          {suratJalan.status === 'delivered' ? (
+                            <span className={isUnreceived ? 'font-bold text-rose-500' : 'font-semibold text-emerald-600'}>
+                              Terima: {qtyReceived}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">Belum diterima</span>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                <div className="mt-4 rounded-[18px] bg-slate-50 p-3 text-xs">
+                  <div className="font-semibold text-slate-700">Summary Barang Kurang/Tidak Diterima:</div>
+                  {(() => {
+                    const issues = []
+                    suratJalan.items.forEach(item => {
+                      const qtyReceived = item.qty_received ?? item.qty_kirim
+                      const orderItem = items.find((oi) => oi.sku_code === item.sku_code)
+                      const qtyOrdered = orderItem ? orderItem.qty_ordered : item.qty_kirim
+                      
+                      const notShipped = Number(qtyOrdered) - Number(item.qty_kirim)
+                      const notReceived = suratJalan.status === 'delivered' ? Number(item.qty_kirim) - Number(qtyReceived) : 0
+                      
+                      if (notShipped > 0) issues.push(`${item.sku_name} (Tidak terkirim: ${notShipped})`)
+                      if (notReceived > 0) issues.push(`${item.sku_name} (Tidak diterima: ${notReceived})`)
+                    })
+                    
+                    if (issues.length === 0) return <div className="mt-1 text-emerald-600">Semua barang terkirim dan diterima dengan sesuai.</div>
+                    
+                    return (
+                      <ul className="mt-1 list-inside list-disc text-rose-600">
+                        {issues.map((issue, idx) => <li key={idx}>{issue}</li>)}
+                      </ul>
+                    )
+                  })()}
+                </div>
+              </div>
+            )}
           </SectionPanel>
         )}
 
         <SectionPanel
           eyebrow="Items"
           title="Daftar Item Order"
-          actions={<ToneBadge tone="info">{items.length} SKU</ToneBadge>}
+          actions={
+            <div className="flex items-center gap-2">
+              <ToneBadge tone="info">{items.length} SKU</ToneBadge>
+              <button
+                onClick={() => setShowOrderItems(!showOrderItems)}
+                className="rounded-xl bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200"
+              >
+                {showOrderItems ? 'Sembunyikan' : 'Tampilkan'}
+              </button>
+            </div>
+          }
         >
           {items.length === 0 ? (
             <EmptyPanel title="Tidak ada item" description="Order ini tidak memiliki item." />
+          ) : !showOrderItems ? (
+            <div className="text-sm text-slate-500 italic">Daftar item disembunyikan. Klik Tampilkan untuk melihat detail {items.length} SKU.</div>
           ) : (
             <div className="space-y-2">
               <div className="hidden grid-cols-[0.8fr_2fr_0.7fr_0.5fr_0.7fr] gap-2 px-3 sm:grid">
