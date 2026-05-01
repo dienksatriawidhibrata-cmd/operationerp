@@ -464,7 +464,7 @@ export default function App() {
         </RequireAuth>
       } />
       <Route path="/hr/batch" element={
-        <RequireAuth roles={['hr_staff', 'hr_administrator', 'ops_manager', ...SUPPORT_PEOPLE_ROLES]}>
+        <RequireAuth roles={['hr_staff', 'hr_spv', 'hr_administrator', 'ops_manager', ...SUPPORT_PEOPLE_ROLES]}>
           <HRBatchOJE />
         </RequireAuth>
       } />
@@ -484,7 +484,7 @@ export default function App() {
         </RequireAuth>
       } />
       <Route path="/hr/kontrak" element={
-        <RequireAuth roles={['hr_legal', 'hr_administrator', 'ops_manager']}>
+        <RequireAuth roles={['hr_legal', 'hr_spv', 'hr_administrator', 'ops_manager']}>
           <HRKontrakPage />
         </RequireAuth>
       } />

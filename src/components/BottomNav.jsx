@@ -303,8 +303,8 @@ export function HRBottomNav() {
   const { profile } = useAuth()
   const role = profile?.role
 
-  const showBatch   = ['hr_staff','hr_administrator'].includes(role)
-  const showKontrak = ['hr_legal','hr_administrator'].includes(role)
+  const showBatch   = ['hr_staff', 'hr_spv', 'hr_administrator'].includes(role)
+  const showKontrak = ['hr_legal', 'hr_spv', 'hr_administrator'].includes(role)
 
   return (
     <Dock>

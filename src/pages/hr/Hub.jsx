@@ -58,8 +58,8 @@ export default function HRHub() {
   const pendingContracts = activeCandidates.filter((c) => c.current_stage === 'kontrak_pending').length
   const onDutyCount = candidates.filter((c) => c.current_stage === 'on_duty').length
 
-  const showBatch = ['hr_staff', 'hr_administrator', 'ops_manager', 'support_spv'].includes(role)
-  const showKontrak = ['hr_legal', 'hr_administrator', 'ops_manager'].includes(role)
+  const showBatch = ['hr_staff', 'hr_spv', 'hr_administrator', 'ops_manager', ...SUPPORT_PEOPLE_ROLES].includes(role)
+  const showKontrak = ['hr_legal', 'hr_spv', 'hr_administrator', 'ops_manager'].includes(role)
 
   const quickActions = [
     ...(showBatch ? [{ to: '/hr/batch', icon: 'checklist', label: 'Batch\nOJE' }] : []),

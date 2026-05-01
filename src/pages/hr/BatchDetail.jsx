@@ -42,8 +42,8 @@ export default function HRBatchDetail() {
   const [saving, setSaving] = useState(false)
 
   const role = profile?.role
-  const isHRStaff = ['hr_staff','hr_administrator','ops_manager','support_spv'].includes(role)
-  const canUpload = ['head_store','district_manager','hr_staff','hr_administrator','ops_manager','support_spv'].includes(role)
+  const isHRStaff = ['hr_staff', 'hr_spv', 'hr_administrator', 'ops_manager', ...SUPPORT_PEOPLE_ROLES].includes(role)
+  const canUpload = ['head_store', 'district_manager', 'hr_staff', 'hr_spv', 'hr_administrator', 'ops_manager', ...SUPPORT_PEOPLE_ROLES].includes(role)
 
   useEffect(() => {
     async function load() {
