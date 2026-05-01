@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
-import { fmtRp } from '../../lib/utils'
+import { fmtRp, fmtDateShort } from '../../lib/utils'
 import { DMBottomNav } from '../../components/BottomNav'
 import { useToast } from '../../contexts/ToastContext'
 import {
@@ -14,9 +14,12 @@ import {
   LoadingButton,
 } from '../../components/ui/AppKit'
 
-// DM sees 'submitted'; AM sees 'dm_approved'
 function queueStatus(role) {
   return role === 'area_manager' ? 'dm_approved' : 'submitted'
+}
+
+function itemCount(items) {
+  return Array.isArray(items) ? items.length : 0
 }
 
 export default function OpexApproval() {
@@ -43,39 +46,49 @@ export default function OpexApproval() {
   const fetchQueue = async () => {
     setLoading(true)
     const status = queueStatus(role)
-    let q = supabase
+    let query = supabase
       .from('opex_requests')
-      .select('*, branch:branches(name,district,area)')
+      .select('*, branch:branches!inner(id,name,store_id,district,area), submitter:profiles!submitted_by(full_name)')
       .eq('status', status)
       .order('created_at', { ascending: false })
 
     if (isDM && profile.managed_districts?.length) {
-      q = q.in('branch.district', profile.managed_districts)
+      query = query.in('branch.district', profile.managed_districts)
     } else if (role === 'area_manager' && profile.managed_areas?.length) {
-      q = q.in('branch.area', profile.managed_areas)
+      query = query.in('branch.area', profile.managed_areas)
     }
 
-    const { data } = await q
-    setQueue(data || [])
+    const { data, error } = await query
+    if (error) {
+      toastError(`Gagal memuat antrian: ${error.message}`)
+      setQueue([])
+    } else {
+      setQueue(data || [])
+    }
     setLoading(false)
   }
 
   const fetchHistory = async () => {
     const doneStatuses = ['pending_support', 'support_approved', 'ops_approved', 'rejected']
-    let q = supabase
+    let query = supabase
       .from('opex_requests')
-      .select('*, branch:branches(name,district,area)')
+      .select('*, branch:branches!inner(id,name,store_id,district,area), submitter:profiles!submitted_by(full_name)')
       .in('status', doneStatuses)
       .order('created_at', { ascending: false })
       .limit(20)
 
     if (isDM && profile.managed_districts?.length) {
-      q = q.in('branch.district', profile.managed_districts)
+      query = query.in('branch.district', profile.managed_districts)
     } else if (role === 'area_manager' && profile.managed_areas?.length) {
-      q = q.in('branch.area', profile.managed_areas)
+      query = query.in('branch.area', profile.managed_areas)
     }
 
-    const { data } = await q
+    const { data, error } = await query
+    if (error) {
+      toastError(`Gagal memuat riwayat: ${error.message}`)
+      setHistory([])
+      return
+    }
     setHistory(data || [])
   }
 
@@ -95,7 +108,6 @@ export default function OpexApproval() {
         am_skipped: skipAM,
       }
     } else {
-      // AM approves → goes to support
       update = {
         status: 'pending_support',
         am_approved_by: profile.id,
@@ -106,7 +118,7 @@ export default function OpexApproval() {
 
     const { error } = await supabase.from('opex_requests').update(update).eq('id', selected.id)
     if (error) {
-      toastError('Gagal approve: ' + error.message)
+      toastError(`Gagal approve: ${error.message}`)
     } else {
       toastSuccess('Pengajuan berhasil di-approve.')
       resetAction()
@@ -136,7 +148,7 @@ export default function OpexApproval() {
       .eq('id', selected.id)
 
     if (error) {
-      toastError('Gagal reject: ' + error.message)
+      toastError(`Gagal reject: ${error.message}`)
     } else {
       toastSuccess('Pengajuan ditolak.')
       resetAction()
@@ -154,15 +166,15 @@ export default function OpexApproval() {
     setSkipAM(false)
   }
 
-  const totalQueue = queue.reduce((s, r) => s + Number(r.total_pengajuan || 0), 0)
+  const totalQueue = queue.reduce((sum, row) => sum + Number(row.total_pengajuan || 0), 0)
 
   const STATUS_MAP = {
-    submitted:       { label: 'Menunggu DM',     tone: 'warn'   },
-    dm_approved:     { label: 'Menunggu AM',      tone: 'info'   },
-    pending_support: { label: 'Menunggu Support', tone: 'info'   },
-    support_approved:{ label: 'Menunggu Ops',     tone: 'info'   },
-    ops_approved:    { label: 'Final Approved',   tone: 'ok'     },
-    rejected:        { label: 'Ditolak',          tone: 'danger' },
+    submitted: { label: 'Menunggu DM', tone: 'warn' },
+    dm_approved: { label: 'Menunggu AM', tone: 'info' },
+    pending_support: { label: 'Menunggu Support', tone: 'info' },
+    support_approved: { label: 'Menunggu Ops', tone: 'info' },
+    ops_approved: { label: 'Final Approved', tone: 'ok' },
+    rejected: { label: 'Ditolak', tone: 'danger' },
   }
 
   return (
@@ -182,141 +194,165 @@ export default function OpexApproval() {
       </SectionPanel>
 
       <div className="mt-6 space-y-6">
-        {/* Approval queue */}
         <SectionPanel
           eyebrow="Queue"
           title={isDM ? 'Menunggu Approval DM' : 'Menunggu Approval AM'}
+          description="Setiap kartu menampilkan toko pengaju, nominal total, dan item yang diajukan agar approval tidak tercampur antar toko."
           actions={<ToneBadge tone={queue.length > 0 ? 'warn' : 'slate'}>{queue.length} item</ToneBadge>}
         >
           {loading ? (
-            <p className="text-sm text-slate-400">Memuat…</p>
+            <div className="flex justify-center py-12">
+              <div className="h-9 w-9 animate-spin rounded-full border-2 border-primary-600 border-t-transparent" />
+            </div>
           ) : queue.length === 0 ? (
             <EmptyPanel title="Antrian kosong" description="Tidak ada pengajuan yang menunggu approval." />
           ) : (
-            <div className="space-y-3">
-              {queue.map((req) => (
-                <button
-                  key={req.id}
-                  type="button"
-                  onClick={() => { setSelected(selected?.id === req.id ? null : req); setNote(''); setRejectNote(''); setShowReject(false); setSkipAM(false) }}
-                  className="w-full text-left rounded-[22px] bg-slate-50/85 px-4 py-4 transition-colors hover:bg-primary-50"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-500">
-                      {req.branch?.name?.replace('Bagi Kopi ', '') || '-'}
-                    </span>
-                    <span className="text-xs text-slate-400">{req.tanggal_pengajuan}</span>
-                  </div>
-                  <div className="mt-1.5 text-lg font-bold text-slate-900">{fmtRp(req.total_pengajuan)}</div>
-                  <div className="mt-0.5 text-xs text-slate-400">
-                    {Array.isArray(req.items) ? req.items.length : 0} item
-                    {req.sisa_saldo != null ? ` · Sisa saldo ${fmtRp(req.sisa_saldo)}` : ''}
-                  </div>
+            <div className="space-y-4">
+              {queue.map((req) => {
+                const expanded = selected?.id === req.id
+                const branchName = req.branch?.name?.replace('Bagi Kopi ', '') || '-'
+                return (
+                  <article key={req.id} className="overflow-hidden rounded-[24px] border border-white/85 bg-white shadow-[0_18px_55px_-34px_rgba(15,23,42,0.26)]">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelected(expanded ? null : req)
+                        setNote('')
+                        setRejectNote('')
+                        setShowReject(false)
+                        setSkipAM(false)
+                      }}
+                      className="flex w-full items-start gap-3 px-4 py-4 text-left transition-colors hover:bg-slate-50/70 sm:px-5 sm:py-5"
+                    >
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary-50 text-sm font-bold text-primary-700">
+                        {req.branch?.store_id?.split('-')[1] || '--'}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="text-base font-semibold text-slate-950">{branchName}</div>
+                          <ToneBadge tone="slate">{req.branch?.district || '-'}</ToneBadge>
+                          {!isDM && <ToneBadge tone="slate">{req.branch?.area || '-'}</ToneBadge>}
+                        </div>
+                        <div className="mt-1 text-sm text-slate-500">
+                          {fmtDateShort(req.tanggal_pengajuan)} · {itemCount(req.items)} item · {req.submitter?.full_name || 'Pengaju tidak terbaca'}
+                        </div>
+                        <div className="mt-2 text-lg font-bold text-slate-900">{fmtRp(req.total_pengajuan)}</div>
+                        <div className="mt-1 text-xs text-slate-400">
+                          {req.sisa_saldo != null ? `Sisa saldo ${fmtRp(req.sisa_saldo)}` : 'Tanpa info sisa saldo'}
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <AppIcon name={expanded ? 'chevronDown' : 'chevronRight'} size={18} className="text-slate-400" />
+                      </div>
+                    </button>
 
-                  {selected?.id === req.id && (
-                    <div className="mt-4 space-y-3 border-t border-slate-100 pt-4" onClick={(e) => e.stopPropagation()}>
-                      {/* Item list */}
-                      {Array.isArray(req.items) && req.items.map((item, idx) => (
-                        <div key={idx} className="flex items-start justify-between gap-3 rounded-2xl bg-white px-3 py-2.5 text-sm">
-                          <div className="min-w-0">
-                            <div className="font-semibold text-slate-900">{item.kebutuhan}</div>
-                            <div className="text-xs text-slate-400">{item.kategori}</div>
-                            <div className="text-xs text-slate-500">{item.jumlah} × {fmtRp(item.harga_satuan)}</div>
+                    {expanded && (
+                      <div className="border-t border-slate-100 px-4 py-4 sm:px-5 sm:py-5" onClick={(event) => event.stopPropagation()}>
+                        <div className="grid gap-3 sm:grid-cols-3">
+                          <InlineStat label="Toko" value={branchName} tone="slate" />
+                          <InlineStat label="Tanggal" value={fmtDateShort(req.tanggal_pengajuan)} tone="slate" />
+                          <InlineStat label="Total" value={fmtRp(req.total_pengajuan)} tone="primary" />
+                        </div>
+
+                        <div className="mt-4 space-y-3">
+                          {Array.isArray(req.items) && req.items.map((item, index) => (
+                            <div key={index} className="flex items-start justify-between gap-3 rounded-[20px] bg-slate-50 px-4 py-3">
+                              <div className="min-w-0 flex-1">
+                                <div className="text-sm font-semibold text-slate-900">{item.kebutuhan}</div>
+                                <div className="mt-1 text-xs text-slate-400">{item.kategori || '-'}</div>
+                                <div className="mt-1 text-xs text-slate-500">{item.jumlah} x {fmtRp(item.harga_satuan)}</div>
+                              </div>
+                              <div className="shrink-0 text-sm font-semibold text-primary-700">{fmtRp(item.total)}</div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {req.keterangan && (
+                          <div className="mt-4 rounded-[20px] border border-slate-200 bg-white px-4 py-3 text-sm italic text-slate-500">
+                            {req.keterangan}
                           </div>
-                          <div className="shrink-0 font-semibold text-primary-700">{fmtRp(item.total)}</div>
-                        </div>
-                      ))}
-                      {req.keterangan && (
-                        <p className="text-xs italic text-slate-500 px-1">{req.keterangan}</p>
-                      )}
-
-                      {/* DM: skip AM option */}
-                      {isDM && (
-                        <label className="flex items-center gap-3 rounded-2xl bg-amber-50 px-3 py-2.5 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={skipAM}
-                            onChange={(e) => setSkipAM(e.target.checked)}
-                            className="h-4 w-4 rounded border-slate-300 accent-amber-500"
-                          />
-                          <span className="text-sm font-semibold text-amber-800">
-                            Skip AM (DM tidak punya Area Manager)
-                          </span>
-                        </label>
-                      )}
-
-                      {/* Approval note */}
-                      <div>
-                        <label className="label">Catatan (opsional)</label>
-                        <input
-                          className="input"
-                          type="text"
-                          value={note}
-                          onChange={(e) => setNote(e.target.value)}
-                          placeholder="Catatan persetujuan…"
-                        />
-                      </div>
-
-                      {/* Reject form */}
-                      {showReject && (
-                        <div>
-                          <label className="label">Alasan Penolakan <span className="text-rose-500">*</span></label>
-                          <input
-                            className="input border-rose-200"
-                            type="text"
-                            value={rejectNote}
-                            onChange={(e) => setRejectNote(e.target.value)}
-                            placeholder="Wajib diisi…"
-                          />
-                        </div>
-                      )}
-
-                      <div className="flex gap-2">
-                        {!showReject ? (
-                          <>
-                            <LoadingButton
-                              loading={actioning}
-                              onClick={handleApprove}
-                              className="btn-primary flex-1"
-                            >
-                              Approve
-                            </LoadingButton>
-                            <button
-                              type="button"
-                              onClick={() => setShowReject(true)}
-                              className="flex-1 rounded-2xl border border-rose-200 bg-rose-50 py-3 text-sm font-semibold text-rose-600 hover:bg-rose-100 transition-colors"
-                            >
-                              Tolak
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <LoadingButton
-                              loading={actioning}
-                              onClick={handleReject}
-                              className="flex-1 rounded-2xl bg-rose-600 py-3 text-sm font-semibold text-white hover:bg-rose-700 transition-colors"
-                            >
-                              Konfirmasi Tolak
-                            </LoadingButton>
-                            <button
-                              type="button"
-                              onClick={() => setShowReject(false)}
-                              className="flex-1 rounded-2xl border border-slate-200 bg-white py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
-                            >
-                              Batal
-                            </button>
-                          </>
                         )}
+
+                        {isDM && (
+                          <label className="mt-4 flex items-center gap-3 rounded-2xl bg-amber-50 px-3 py-2.5 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={skipAM}
+                              onChange={(event) => setSkipAM(event.target.checked)}
+                              className="h-4 w-4 rounded border-slate-300 accent-amber-500"
+                            />
+                            <span className="text-sm font-semibold text-amber-800">
+                              Skip AM (district ini tidak punya Area Manager aktif)
+                            </span>
+                          </label>
+                        )}
+
+                        <div className="mt-4">
+                          <label className="label">Catatan (opsional)</label>
+                          <input
+                            className="input"
+                            type="text"
+                            value={note}
+                            onChange={(event) => setNote(event.target.value)}
+                            placeholder="Catatan persetujuan..."
+                          />
+                        </div>
+
+                        {showReject && (
+                          <div className="mt-4">
+                            <label className="label">Alasan Penolakan <span className="text-rose-500">*</span></label>
+                            <input
+                              className="input border-rose-200"
+                              type="text"
+                              value={rejectNote}
+                              onChange={(event) => setRejectNote(event.target.value)}
+                              placeholder="Wajib diisi..."
+                            />
+                          </div>
+                        )}
+
+                        <div className="mt-4 flex gap-2">
+                          {!showReject ? (
+                            <>
+                              <LoadingButton loading={actioning} onClick={handleApprove} className="btn-primary flex-1">
+                                Approve
+                              </LoadingButton>
+                              <button
+                                type="button"
+                                onClick={() => setShowReject(true)}
+                                className="flex-1 rounded-2xl border border-rose-200 bg-rose-50 py-3 text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-100"
+                              >
+                                Tolak
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <LoadingButton
+                                loading={actioning}
+                                onClick={handleReject}
+                                className="flex-1 rounded-2xl bg-rose-600 py-3 text-sm font-semibold text-white transition-colors hover:bg-rose-700"
+                              >
+                                Konfirmasi Tolak
+                              </LoadingButton>
+                              <button
+                                type="button"
+                                onClick={() => setShowReject(false)}
+                                className="flex-1 rounded-2xl border border-slate-200 bg-white py-3 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50"
+                              >
+                                Batal
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </button>
-              ))}
+                    )}
+                  </article>
+                )
+              })}
             </div>
           )}
         </SectionPanel>
 
-        {/* History */}
         <SectionPanel
           eyebrow="Riwayat"
           title="Sudah Diproses"
@@ -327,16 +363,18 @@ export default function OpexApproval() {
           ) : (
             <div className="space-y-2">
               {history.map((req) => {
-                const st = STATUS_MAP[req.status] || { label: req.status, tone: 'slate' }
+                const status = STATUS_MAP[req.status] || { label: req.status, tone: 'slate' }
                 return (
                   <div key={req.id} className="flex items-center justify-between rounded-[22px] bg-slate-50/85 px-4 py-3">
                     <div>
                       <div className="text-sm font-semibold text-slate-900">
-                        {req.branch?.name?.replace('Bagi Kopi ', '') || '-'}
+                        {(req.branch?.name || '-').replace('Bagi Kopi ', '')}
                       </div>
-                      <div className="text-xs text-slate-400">{req.tanggal_pengajuan} · {fmtRp(req.total_pengajuan)}</div>
+                      <div className="text-xs text-slate-400">
+                        {fmtDateShort(req.tanggal_pengajuan)} · {fmtRp(req.total_pengajuan)} · {req.submitter?.full_name || '-'}
+                      </div>
                     </div>
-                    <ToneBadge tone={st.tone}>{st.label}</ToneBadge>
+                    <ToneBadge tone={status.tone}>{status.label}</ToneBadge>
                   </div>
                 )
               })}
