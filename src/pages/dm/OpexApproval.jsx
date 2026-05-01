@@ -22,6 +22,29 @@ function itemCount(items) {
   return Array.isArray(items) ? items.length : 0
 }
 
+async function fetchScopedBranchIds(profile) {
+  if (!profile?.role) return []
+
+  let query = supabase
+    .from('branches')
+    .select('id')
+    .eq('is_active', true)
+
+  if (profile.role === 'district_manager') {
+    const districts = profile.managed_districts || []
+    if (!districts.length) return []
+    query = query.in('district', districts)
+  } else if (profile.role === 'area_manager') {
+    const areas = profile.managed_areas || []
+    if (!areas.length) return []
+    query = query.in('area', areas)
+  }
+
+  const { data, error } = await query
+  if (error) throw error
+  return (data || []).map((row) => row.id)
+}
+
 export default function OpexApproval() {
   const { profile } = useAuth()
   const { toastSuccess, toastError } = useToast()
@@ -41,22 +64,34 @@ export default function OpexApproval() {
   useEffect(() => {
     fetchQueue()
     fetchHistory()
-  }, [profile])
+  }, [profile?.id, profile?.role, profile?.managed_districts, profile?.managed_areas])
 
   const fetchQueue = async () => {
     setLoading(true)
     const status = queueStatus(role)
+    let branchIds = []
+
+    try {
+      branchIds = await fetchScopedBranchIds(profile)
+    } catch (error) {
+      toastError(`Gagal memuat scope toko: ${error.message}`)
+      setQueue([])
+      setLoading(false)
+      return
+    }
+
+    if (!branchIds.length) {
+      setQueue([])
+      setLoading(false)
+      return
+    }
+
     let query = supabase
       .from('opex_requests')
-      .select('*, branch:branches!inner(id,name,store_id,district,area), submitter:profiles!submitted_by(full_name)')
+      .select('*, branch:branches(id,name,store_id,district,area), submitter:profiles!submitted_by(full_name)')
       .eq('status', status)
+      .in('branch_id', branchIds)
       .order('created_at', { ascending: false })
-
-    if (isDM && profile.managed_districts?.length) {
-      query = query.in('branch.district', profile.managed_districts)
-    } else if (role === 'area_manager' && profile.managed_areas?.length) {
-      query = query.in('branch.area', profile.managed_areas)
-    }
 
     const { data, error } = await query
     if (error) {
@@ -70,18 +105,28 @@ export default function OpexApproval() {
 
   const fetchHistory = async () => {
     const doneStatuses = ['pending_support', 'support_approved', 'ops_approved', 'rejected']
+    let branchIds = []
+
+    try {
+      branchIds = await fetchScopedBranchIds(profile)
+    } catch (error) {
+      toastError(`Gagal memuat scope toko: ${error.message}`)
+      setHistory([])
+      return
+    }
+
+    if (!branchIds.length) {
+      setHistory([])
+      return
+    }
+
     let query = supabase
       .from('opex_requests')
-      .select('*, branch:branches!inner(id,name,store_id,district,area), submitter:profiles!submitted_by(full_name)')
+      .select('*, branch:branches(id,name,store_id,district,area), submitter:profiles!submitted_by(full_name)')
       .in('status', doneStatuses)
+      .in('branch_id', branchIds)
       .order('created_at', { ascending: false })
       .limit(20)
-
-    if (isDM && profile.managed_districts?.length) {
-      query = query.in('branch.district', profile.managed_districts)
-    } else if (role === 'area_manager' && profile.managed_areas?.length) {
-      query = query.in('branch.area', profile.managed_areas)
-    }
 
     const { data, error } = await query
     if (error) {
