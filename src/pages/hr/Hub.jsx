@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { HRBottomNav } from '../../components/BottomNav'
 import { AppIcon, EmptyPanel, ToneBadge } from '../../components/ui/AppKit'
+import { SUPPORT_PEOPLE_ROLES } from '../../lib/access'
 import {
   ACTION_LABELS,
   GROUP_COLORS,

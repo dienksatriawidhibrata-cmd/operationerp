@@ -9,6 +9,7 @@ import { SmartBottomNav } from '../../components/BottomNav'
 import { fmtDate } from '../../lib/utils'
 import { useToast } from '../../contexts/ToastContext'
 import { stageLabel } from '../../lib/recruitment'
+import { SUPPORT_PEOPLE_ROLES } from '../../lib/access'
 
 const BATCH_CRITERIA = ['disiplin','sikap','behavior','nyapu_ngepel','layout','toilet','stamina','kerja_sama','fokus','subjektif']
 const BATCH_LABELS   = ['Disiplin','Sikap','Behavior','Nyapu/Ngepel','Layout','Toilet','Stamina','Kerja Sama','Fokus','Subjektif']
