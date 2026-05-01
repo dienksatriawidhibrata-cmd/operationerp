@@ -75,6 +75,13 @@ function notifikasiBeluSetoran() {
     if (d.status !== 'rejected') submitted.add(d.branch_id);
   });
 
+  // Ambil data setoran sukses terakhir untuk info "Terakhir Setor"
+  const lastSuccessRows = fetchJson(config.baseUrl + '/rest/v1/daily_deposits?status=in.(submitted,approved)&select=branch_id,tanggal&order=tanggal.desc&limit=200', config.apiKey) || [];
+  const lastSetorMap = {};
+  lastSuccessRows.forEach(function(r) {
+    if (!lastSetorMap[r.branch_id]) lastSetorMap[r.branch_id] = r.tanggal;
+  });
+
   var sendFilteredMessage = function(webhookUrl, filterFn, groupName) {
     if (!webhookUrl) return;
     var filteredBranches = branches.filter(filterFn);
@@ -86,7 +93,10 @@ function notifikasiBeluSetoran() {
     }
 
     var lines = ['🔴 *[' + groupName + '] Toko Belum Setoran* — ' + formatTanggal(tanggal), '', '*' + belumSetor.length + ' Toko* belum setor:'];
-    belumSetor.forEach(function(b) { lines.push('   • ' + shortName(b.name) + ' _[' + b.district + ']_') });
+    belumSetor.forEach(function(b) { 
+      var lastDate = lastSetorMap[b.id] ? formatTanggal(lastSetorMap[b.id]) : 'Belum pernah';
+      lines.push('   • ' + shortName(b.name) + ' _(Terakhir: ' + lastDate + ')_'); 
+    });
     sendToGChat(webhookUrl, { text: lines.join('\n') });
   };
 
