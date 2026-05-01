@@ -27,6 +27,9 @@ export default function QualityControl() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
+  const [canAccess, setCanAccess] = useState(true)
+  const [accessReason, setAccessReason] = useState('')
+
   useEffect(() => {
     if (!profile?.full_name) return
     setMakerName((current) => current || profile.full_name)
@@ -37,11 +40,69 @@ export default function QualityControl() {
       setLoading(false)
       return
     }
-    fetchData()
+    checkAccessAndFetch()
   }, [branchId])
 
-  const fetchData = async () => {
+  const checkAccessAndFetch = async () => {
     setLoading(true)
+    setError('')
+
+    const role = profile?.role
+    const privilegedRoles = ['head_store', 'asst_head_store', 'district_manager', 'area_manager', 'ops_manager', 'support_spv', 'support_admin']
+    
+    // 1. Ifprivileged, allow directly
+    if (privilegedRoles.includes(role)) {
+      setCanAccess(true)
+      await fetchData()
+      return
+    }
+
+    // 2. If lower role, check the fallback condition
+    // "Jika head_store libur dan toko tidak punya role asst_head_store"
+    try {
+      const [staffRes, scheduleRes] = await Promise.all([
+        supabase.from('profiles')
+          .select('role')
+          .eq('branch_id', branchId)
+          .eq('is_active', true)
+          .eq('role', 'asst_head_store'),
+        supabase.from('shift_schedules')
+          .select('shift_type')
+          .eq('branch_id', branchId)
+          .eq('tanggal', today)
+          .in('staff_id', (
+            await supabase.from('profiles')
+              .select('id')
+              .eq('branch_id', branchId)
+              .eq('role', 'head_store')
+          ).data?.map(p => p.id) || [])
+      ])
+
+      const hasAHS = (staffRes.data || []).length > 0
+      const hsShifts = (scheduleRes.data || []).map(s => s.shift_type)
+      // HS is "libur" if all HS are either DAY OFF or don't have a record at all
+      // But usually there's only 1 HS. If hsShifts is empty, it means they aren't scheduled.
+      const hsIsOff = hsShifts.length === 0 || hsShifts.every(s => s === 'DAY OFF')
+
+      if (!hasAHS && hsIsOff) {
+        setCanAccess(true)
+        setAccessReason('Akses darurat diberikan karena Head Store sedang libur dan tidak ada Asst. Head Store.')
+        await fetchData()
+      } else {
+        setCanAccess(false)
+        setAccessReason(hasAHS 
+          ? 'Toko ini memiliki Asst. Head Store. QC harus dilakukan oleh HS atau AHS.' 
+          : 'Head Store tidak sedang libur hari ini. QC harus dilakukan oleh Head Store.'
+        )
+        setLoading(false)
+      }
+    } catch (err) {
+      setError('Gagal memverifikasi akses: ' + err.message)
+      setLoading(false)
+    }
+  }
+
+  const fetchData = async () => {
     const { data, error: fetchError } = await supabase
       .from('daily_quality_controls')
       .select('*')
@@ -66,7 +127,6 @@ export default function QualityControl() {
 
     setLoading(false)
   }
-
   const handleRowChange = (index, key, value) => {
     setRows((current) => current.map((row, rowIndex) => (
       rowIndex === index ? { ...row, [key]: value } : row
@@ -122,8 +182,30 @@ export default function QualityControl() {
         <div className="flex justify-center py-24">
           <div className="h-9 w-9 animate-spin rounded-full border-2 border-primary-600 border-t-transparent" />
         </div>
+      ) : !canAccess ? (
+        <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+          <div className="text-5xl mb-4">🔒</div>
+          <h2 className="text-lg font-bold text-slate-900 mb-2">Akses Terbatas</h2>
+          <p className="text-sm text-slate-500 max-w-xs mx-auto mb-6">
+            {accessReason}
+          </p>
+          <button 
+            onClick={() => window.history.back()}
+            className="btn-primary px-8"
+          >
+            Kembali
+          </button>
+        </div>
       ) : (
         <>
+          {accessReason && (
+            <div className="mb-6 p-4 rounded-3xl bg-amber-50 border border-amber-100 flex gap-3 items-center">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-600">
+                <AppIcon name="bell" size={16} />
+              </div>
+              <p className="text-xs text-amber-800 font-medium">{accessReason}</p>
+            </div>
+          )}
           <SectionPanel
             eyebrow="Ringkasan"
             title="Status Quality Control"

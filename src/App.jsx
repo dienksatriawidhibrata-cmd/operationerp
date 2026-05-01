@@ -256,12 +256,12 @@ export default function App() {
       } />
 
       <Route path="/laporan" element={
-        <RequireAuth roles={['head_store', 'asst_head_store']}>
+        <RequireAuth roles={[...STORE_ROLES, ...ALL_MANAGER]}>
           <LaporanHub />
         </RequireAuth>
       } />
       <Route path="/laporan/quality-control" element={
-        <RequireAuth roles={['head_store', 'asst_head_store']}>
+        <RequireAuth roles={[...STORE_ROLES, ...ALL_MANAGER]}>
           <QualityControl />
         </RequireAuth>
       } />

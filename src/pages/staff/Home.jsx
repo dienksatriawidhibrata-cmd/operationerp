@@ -202,6 +202,7 @@ export default function StaffHome() {
     { to: '/sop',                     icon: 'checklist', label: 'Panduan\nSOP' },
   ] : isStoreLevel ? [
     { to: '/staff/preparation',  icon: 'approval',  label: 'Prep\nHarian' },
+    { to: '/laporan/quality-control', icon: 'checklist', label: 'Quality\nControl' },
     { to: '/kpi/personal',       icon: 'chart',     label: 'KPI\nPersonal' },
     { to: '/kpi/360',            icon: 'spark',     label: 'Penilaian\n360°' },
     { to: '/sc/sj',              icon: 'finance',   label: 'Terima\nBarang' },
