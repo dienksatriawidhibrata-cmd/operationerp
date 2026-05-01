@@ -8,50 +8,97 @@ import {
   SubpageShell,
   ToneBadge,
 } from '../../components/ui/AppKit'
-import { DMBottomNav } from '../../components/BottomNav'
+import { SmartBottomNav } from '../../components/BottomNav'
 
-const FINANCE_ACTIONS = [
-  {
-    to: '/dm/opex-approval',
-    icon: 'approval',
-    title: 'Pengajuan Opex',
-    description: 'Review pengajuan dana operasional dari Head Store dan lanjutkan approval.',
-    accent: 'amber',
-  },
-  {
-    to: '/opex',
-    icon: 'opex',
-    title: 'Penggunaan Opex',
-    description: 'Pantau pemakaian BOH harian per toko dan cek toko yang over budget.',
-    accent: 'primary',
-  },
-  {
-    to: '/dm/approval',
-    icon: 'finance',
-    title: 'Setoran',
-    description: 'Lihat setoran yang menunggu approval dan tindak lanjuti toko yang belum submit.',
-    accent: 'emerald',
-  },
-  {
-    to: '/dm/laporan',
-    icon: 'chart',
-    title: 'Net Sales',
-    description: 'Pantau laporan harian dan net sales semua toko dalam scope kamu.',
-    accent: 'violet',
-  },
-  {
-    to: '/sc',
-    icon: 'store',
-    title: 'Pembelian WH',
-    description: 'Buka monitoring supply chain untuk cek kebutuhan pembelian, picking, dan distribusi.',
-    accent: 'primary',
-  },
-]
+function getFinanceActions(role) {
+  if (role === 'ops_manager') {
+    return [
+      {
+        to: '/ops/opex-approval',
+        icon: 'approval',
+        title: 'Approval Opex',
+        description: 'Tangani approval OPEX yang sudah naik ke jalur support dan ops.',
+        accent: 'amber',
+      },
+      {
+        to: '/finance/opex',
+        icon: 'finance',
+        title: 'Pengajuan Opex',
+        description: 'Lihat seluruh daftar pengajuan dana operasional yang sudah final.',
+        accent: 'primary',
+      },
+      {
+        to: '/ops/setoran',
+        icon: 'finance',
+        title: 'Setoran',
+        description: 'Pantau status setoran toko dari jalur monitoring ops.',
+        accent: 'emerald',
+      },
+      {
+        to: '/ops/laporan',
+        icon: 'chart',
+        title: 'Net Sales',
+        description: 'Pantau laporan harian, OPEX, dan net sales seluruh toko.',
+        accent: 'violet',
+      },
+      {
+        to: '/sc',
+        icon: 'store',
+        title: 'Pembelian WH',
+        description: 'Buka monitoring supply chain untuk cek kebutuhan pembelian, picking, dan distribusi.',
+        accent: 'primary',
+      },
+    ]
+  }
+
+  return [
+    {
+      to: '/dm/opex-approval',
+      icon: 'approval',
+      title: 'Pengajuan Opex',
+      description: 'Review pengajuan dana operasional dari Head Store dan lanjutkan approval.',
+      accent: 'amber',
+    },
+    {
+      to: '/opex',
+      icon: 'opex',
+      title: 'Penggunaan Opex',
+      description: 'Pantau pemakaian BOH harian per toko dan cek toko yang over budget.',
+      accent: 'primary',
+    },
+    {
+      to: '/dm/approval',
+      icon: 'finance',
+      title: 'Setoran',
+      description: 'Lihat setoran yang menunggu approval dan tindak lanjuti toko yang belum submit.',
+      accent: 'emerald',
+    },
+    {
+      to: '/dm/laporan',
+      icon: 'chart',
+      title: 'Net Sales',
+      description: 'Pantau laporan harian dan net sales semua toko dalam scope kamu.',
+      accent: 'violet',
+    },
+    {
+      to: '/sc',
+      icon: 'store',
+      title: 'Pembelian WH',
+      description: 'Buka monitoring supply chain untuk cek kebutuhan pembelian, picking, dan distribusi.',
+      accent: 'primary',
+    },
+  ]
+}
 
 export default function ManagerFinanceHub() {
   const { profile } = useAuth()
   const scopeLabel = getScopeLabel(profile)
-  const roleLabel = profile?.role === 'area_manager' ? 'Area Manager' : 'District Manager'
+  const roleLabel = profile?.role === 'ops_manager'
+    ? 'Operations Manager'
+    : profile?.role === 'area_manager'
+      ? 'Area Manager'
+      : 'District Manager'
+  const financeActions = getFinanceActions(profile?.role)
 
   return (
     <SubpageShell
@@ -59,7 +106,7 @@ export default function ManagerFinanceHub() {
       subtitle={scopeLabel}
       eyebrow="Manager Finance"
       showBack={false}
-      footer={<DMBottomNav />}
+      footer={<SmartBottomNav />}
     >
       <HeroCard
         eyebrow="Finance Control"
@@ -80,7 +127,7 @@ export default function ManagerFinanceHub() {
           description="Masuk ke tiap alur kerja finance tanpa perlu bolak-balik ke halaman lain."
         >
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {FINANCE_ACTIONS.map((action) => (
+            {financeActions.map((action) => (
               <ActionCard key={action.to} {...action} />
             ))}
           </div>
@@ -92,7 +139,7 @@ export default function ManagerFinanceHub() {
           description="Urutan ini mengikuti ritme kerja manager saat memantau toko."
         >
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-            {FINANCE_ACTIONS.map((action, index) => (
+            {financeActions.map((action, index) => (
               <Link
                 key={action.to}
                 to={action.to}
