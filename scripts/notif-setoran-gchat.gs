@@ -1,9 +1,9 @@
 // ─── TRIGGER FUNCTIONS ───────────────────────────────────────
 
-function triggerClosing() { combinedNotifCheckPrep('malam', getYesterdayWIB(), '05:00', 'Closing 🌙', true); }
-function triggerPagi()    { combinedNotifCheckPrep('pagi',   getTodayWIB(),     '09:30', 'Pagi ☀️'); }
-function triggerMiddle()  { combinedNotifCheckPrep('middle', getTodayWIB(),     '15:30', 'Middle 🌤'); }
-function triggerMalam()   { combinedNotifCheckPrep('malam',  getTodayWIB(),     '20:00', 'Malam 🌙'); }
+function triggerClosing() { combinedNotifCheckPrep('closing', getYesterdayWIB(), '05:00', 'Closing 🌙', true); }
+function triggerPagi()    { combinedNotifCheckPrep('opening', getTodayWIB(),     '09:30', 'Opening ☀️'); }
+function triggerMiddle()  { combinedNotifCheckPrep('middle',  getTodayWIB(),     '15:30', 'Middle 🌤'); }
+function triggerMalam()   { combinedNotifCheckPrep('malam',   getTodayWIB(),     '20:00', 'Malam 🌙'); }
 
 function triggerFinanceOpexLaporan() {
   notifikasiBeluSetoran(); 
