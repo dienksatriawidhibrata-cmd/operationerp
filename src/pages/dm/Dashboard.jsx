@@ -585,9 +585,10 @@ export default function DMDashboard() {
         ceklisMiddle: checklistsByBranch[branch.id]?.middle || null,
         ceklisMalam: checklistsByBranch[branch.id]?.malam || null,
         ceklisClosing: checklistsByBranch[branch.id]?.closing || null,
-        prepPagi: prepByBranch[branch.id]?.pagi || false,
+        prepOpening: prepByBranch[branch.id]?.opening || false,
         prepMiddle: prepByBranch[branch.id]?.middle || false,
         prepMalam: prepByBranch[branch.id]?.malam || false,
+        prepClosing: prepByBranch[branch.id]?.closing || false,
         laporan: reportsByBranchDay[branch.id] || null,
         setoran: depositsByBranch[branch.id] || null,
         visitPeriod: latestVisitByBranch[branch.id] || null,
@@ -1843,9 +1844,10 @@ function StoreHealthCard({ store, isOpsManager, badge }) {
           <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 mb-2">Preparation</div>
           <div className="flex gap-2">
             {[
-              { label: 'Pagi', ok: store.prepPagi },
+              { label: 'Opening', ok: store.prepOpening },
               { label: 'Middle', ok: store.prepMiddle },
               { label: 'Malam', ok: store.prepMalam },
+              { label: 'Closing', ok: store.prepClosing },
             ].map((s) => (
               <div key={s.label} className={`flex-1 rounded-xl px-2 py-1.5 text-center ${s.ok ? 'bg-emerald-100' : 'bg-slate-100'}`}>
                 <div className={`text-[9px] font-bold ${s.ok ? 'text-emerald-700' : 'text-slate-400'}`}>{s.label}</div>

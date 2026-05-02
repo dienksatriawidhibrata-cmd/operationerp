@@ -103,7 +103,7 @@ export default function StaffHome() {
   const fetchStatus = async () => {
     const branchId = profile.branch_id
 
-    const [ceklisOpening, ceklisMiddle, ceklisMalam, ceklisClosing, laporan, prepPagi, prepMiddle, prepMalam, opexToday, setoran] = await Promise.all([
+    const [ceklisOpening, ceklisMiddle, ceklisMalam, ceklisClosing, laporan, prepOpening, prepMiddle, prepMalam, prepClosing, opexToday, setoran] = await Promise.all([
       supabase.from('daily_checklists')
         .select('id, is_late, submitted_at')
         .eq('branch_id', branchId).eq('tanggal', today).eq('shift', 'opening')
@@ -131,7 +131,7 @@ export default function StaffHome() {
 
       supabase.from('daily_preparation')
         .select('id')
-        .eq('branch_id', branchId).eq('tanggal', today).eq('shift', 'pagi')
+        .eq('branch_id', branchId).eq('tanggal', today).eq('shift', 'opening')
         .maybeSingle(),
 
       supabase.from('daily_preparation')
@@ -142,6 +142,11 @@ export default function StaffHome() {
       supabase.from('daily_preparation')
         .select('id')
         .eq('branch_id', branchId).eq('tanggal', today).eq('shift', 'malam')
+        .maybeSingle(),
+
+      supabase.from('daily_preparation')
+        .select('id')
+        .eq('branch_id', branchId).eq('tanggal', today).eq('shift', 'closing')
         .maybeSingle(),
 
       supabase.from('operational_expenses')
@@ -164,9 +169,10 @@ export default function StaffHome() {
       ceklisMalam: ceklisMalam.data,
       ceklisClosing: ceklisClosing.data,
       laporan: laporan.data,
-      prepPagi: prepPagi.data,
+      prepOpening: prepOpening.data,
       prepMiddle: prepMiddle.data,
       prepMalam: prepMalam.data,
+      prepClosing: prepClosing.data,
       setoran: setoran.data,
       totalOpex,
     })
@@ -354,13 +360,13 @@ export default function StaffHome() {
               <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg">{branchName}</span>
             </div>
 
-            <div className="grid grid-cols-3 gap-2 mb-4">
+            <div className="grid grid-cols-4 gap-2 mb-4">
               <StatusItem
                 icon="spark"
-                label="Pagi"
-                done={!!status?.prepPagi}
+                label="Opening"
+                done={!!status?.prepOpening}
                 loading={loading}
-                statusLabel={status?.prepPagi ? 'Selesai' : 'Belum'}
+                statusLabel={status?.prepOpening ? 'Selesai' : 'Belum'}
                 to="/staff/preparation"
               />
               <StatusItem
@@ -377,6 +383,14 @@ export default function StaffHome() {
                 done={!!status?.prepMalam}
                 loading={loading}
                 statusLabel={status?.prepMalam ? 'Selesai' : 'Belum'}
+                to="/staff/preparation"
+              />
+              <StatusItem
+                icon="moon"
+                label="Closing"
+                done={!!status?.prepClosing}
+                loading={loading}
+                statusLabel={status?.prepClosing ? 'Selesai' : 'Belum'}
                 to="/staff/preparation"
               />
             </div>

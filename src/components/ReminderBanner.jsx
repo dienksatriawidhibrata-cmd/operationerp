@@ -15,8 +15,8 @@ export default function ReminderBanner({ status, loading, isHeadStore }) {
 
   if (now >= 8 * 60 && !status.ceklisOpening)
     overdue.push({ label: 'Ceklis Opening', to: '/staff/ceklis' })
-  if (now >= 8 * 60 && !status.prepPagi)
-    overdue.push({ label: 'Preparation Pagi', to: '/staff/preparation' })
+  if (now >= 8 * 60 && !status.prepOpening)
+    overdue.push({ label: 'Preparation Opening', to: '/staff/preparation' })
   if (now >= 15 * 60 + 30 && !status.ceklisMiddle)
     overdue.push({ label: 'Ceklis Middle', to: '/staff/ceklis' })
   if (now >= 14 * 60 && !status.prepMiddle)

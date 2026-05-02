@@ -283,9 +283,10 @@ const SECTIONS = [
   { key: 'ceklis_middle', label: 'Ceklis Middle', icon: '⛅' },
   { key: 'ceklis_malam', label: 'Ceklis Malam', icon: '🌙' },
   { key: 'ceklis_closing', label: 'Ceklis Closing', icon: '🔒' },
-  { key: 'prep_pagi', label: 'Preparation Opening', icon: '🥣' },
+  { key: 'prep_opening', label: 'Preparation Opening', icon: '🥣' },
   { key: 'prep_middle', label: 'Preparation Middle', icon: '🥤' },
   { key: 'prep_malam', label: 'Preparation Malam', icon: '🌃' },
+  { key: 'prep_closing', label: 'Preparation Closing', icon: '🌌' },
 ]
 
 export default function StoreStatus() {
@@ -337,9 +338,10 @@ export default function StoreStatus() {
       })
       ;(preparationRes.data || []).forEach(({ branch_id, shift }) => {
         if (!map[branch_id]) map[branch_id] = {}
-        if (shift === 'pagi') map[branch_id].prepPagi = true
+        if (shift === 'opening') map[branch_id].prepOpening = true
         if (shift === 'middle') map[branch_id].prepMiddle = true
         if (shift === 'malam') map[branch_id].prepMalam = true
+        if (shift === 'closing') map[branch_id].prepClosing = true
       })
 
       setDateStatus(map)
@@ -381,9 +383,10 @@ export default function StoreStatus() {
         result = data
       } else {
         const shift =
-          section === 'prep_pagi' ? 'opening' :
+          section === 'prep_opening' ? 'opening' :
           section === 'prep_middle' ? 'middle' :
-          'malam'
+          section === 'prep_malam' ? 'malam' :
+          'closing'
 
         const { data } = await supabase
           .from('daily_preparation')
@@ -428,9 +431,10 @@ export default function StoreStatus() {
     if (section === 'ceklis_middle') return status?.middle ? <ToneBadge tone="ok">Masuk</ToneBadge> : <ToneBadge tone="warn">Belum</ToneBadge>
     if (section === 'ceklis_malam') return status?.malam ? <ToneBadge tone="ok">Masuk</ToneBadge> : <ToneBadge tone="slate">Belum</ToneBadge>
     if (section === 'ceklis_closing') return status?.closing ? <ToneBadge tone="ok">Masuk</ToneBadge> : <ToneBadge tone="primary">Belum</ToneBadge>
-    if (section === 'prep_pagi') return status?.prepPagi ? <ToneBadge tone="ok">Masuk</ToneBadge> : <ToneBadge tone="danger">Belum</ToneBadge>
+    if (section === 'prep_opening') return status?.prepOpening ? <ToneBadge tone="ok">Masuk</ToneBadge> : <ToneBadge tone="danger">Belum</ToneBadge>
     if (section === 'prep_middle') return status?.prepMiddle ? <ToneBadge tone="ok">Masuk</ToneBadge> : <ToneBadge tone="warn">Belum</ToneBadge>
     if (section === 'prep_malam') return status?.prepMalam ? <ToneBadge tone="ok">Masuk</ToneBadge> : <ToneBadge tone="slate">Belum</ToneBadge>
+    if (section === 'prep_closing') return status?.prepClosing ? <ToneBadge tone="ok">Masuk</ToneBadge> : <ToneBadge tone="primary">Belum</ToneBadge>
     return null
   }
 
@@ -449,7 +453,7 @@ export default function StoreStatus() {
       ) : (
         branches.map((branch) => {
           const status = dateStatus[branch.id]
-          const hasAny = !!(status?.opening || status?.middle || status?.malam || status?.closing || status?.prepPagi || status?.prepMiddle || status?.prepMalam)
+          const hasAny = !!(status?.opening || status?.middle || status?.malam || status?.closing || status?.prepOpening || status?.prepMiddle || status?.prepMalam || status?.prepClosing)
           const isSelected = branch.id === selectedId
 
           return (

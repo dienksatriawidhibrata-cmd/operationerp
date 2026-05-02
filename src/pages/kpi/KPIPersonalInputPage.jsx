@@ -76,8 +76,8 @@ async function calcAutoValues(branchId, staff, period) {
     throw new Error(ceklisRes.error?.message || prepRes.error?.message || threeSixtyRes.error?.message || 'Gagal menghitung skor otomatis.')
   }
 
-  const maxCeklis = daysInMonth * 3
-  const maxPrep = daysInMonth * 3
+  const maxCeklis = daysInMonth * 4
+  const maxPrep = daysInMonth * 4
   const ceklisPct = maxCeklis > 0 ? Math.round(((ceklisRes.count || 0) / maxCeklis) * 100) : 0
   const prepPct = maxPrep > 0 ? Math.round(((prepRes.count || 0) / maxPrep) * 100) : 0
 

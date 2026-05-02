@@ -54,8 +54,8 @@ function normalizeLeaderboards(data) {
 async function fetchOperationalLeaderboardsLegacy({ supabase, period, today, branchIds = [] }) {
   const { startDate, endDate, daysInMonth } = getPeriodBounds(period)
   const elapsedDays = getElapsedDaysInPeriod(period, today, daysInMonth)
-  const expectedChecklistDays = elapsedDays * 3
-  const expectedPreparationDays = elapsedDays * 3
+  const expectedChecklistDays = elapsedDays * 4
+  const expectedPreparationDays = elapsedDays * 4
   const expectedHeadStoreReportDays = Math.max(elapsedDays - 1, 0)
   const expectedHeadStoreDepositDays = Math.max(elapsedDays - 1, 0)
   const expectedHeadStoreOpexDays = elapsedDays
@@ -368,10 +368,22 @@ function isPreparationOnTime(row) {
   if (!row?.tanggal || !timestamp || !row?.shift) return false
 
   const [year, month, day] = row.tanggal.split('-').map(Number)
-  const utcHourByShift = { pagi: 1, middle: 7, malam: 20 }
-  const deadlineHour = utcHourByShift[row.shift]
-  if (deadlineHour == null) return false
+  const deadlineByShift = {
+    opening: { dayOffset: 0, hour: 1, minute: 0 },
+    middle: { dayOffset: 0, hour: 8, minute: 30 },
+    malam: { dayOffset: 0, hour: 12, minute: 30 },
+    closing: { dayOffset: 0, hour: 21, minute: 0 },
+  }
+  const deadlineShift = deadlineByShift[row.shift]
+  if (!deadlineShift) return false
 
-  const deadline = new Date(Date.UTC(year, month - 1, day, deadlineHour, 0, 0))
+  const deadline = new Date(Date.UTC(
+    year,
+    month - 1,
+    day + deadlineShift.dayOffset,
+    deadlineShift.hour,
+    deadlineShift.minute,
+    0,
+  ))
   return new Date(timestamp) <= deadline
 }

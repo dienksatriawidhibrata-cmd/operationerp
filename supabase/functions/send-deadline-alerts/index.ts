@@ -40,10 +40,20 @@ function dateLabel(iso: string): string {
   })
 }
 
+function normalizeShift(shift: string): 'opening' | 'middle' | 'malam' | 'closing' | null {
+  if (shift === 'pagi' || shift === 'opening') return 'opening'
+  if (shift === 'middle') return 'middle'
+  if (shift === 'malam') return 'malam'
+  if (shift === 'closing') return 'closing'
+  return null
+}
+
 function shiftLabel(shift: string): string {
-  if (shift === 'pagi') return 'Ceklis Pagi'
-  if (shift === 'middle') return 'Reminder Siang'
-  return 'Ceklis Malam'
+  const normalized = normalizeShift(shift)
+  if (normalized === 'opening') return 'Reminder Opening'
+  if (normalized === 'middle') return 'Reminder Middle'
+  if (normalized === 'closing') return 'Reminder Closing'
+  return 'Reminder Malam'
 }
 
 function buildEmailHtml(dm: Profile, missing: MissingEntry[], shift: string, today: string): string {
@@ -85,7 +95,7 @@ function buildEmailHtml(dm: Profile, missing: MissingEntry[], shift: string, tod
       </p>
     </div>
     <div style="background:#f8fafc;padding:16px 32px;border-top:1px solid #f1f5f9">
-      <p style="color:#cbd5e1;font-size:11px;margin:0">Bagi Kopi Ops System — pesan otomatis, jangan dibalas</p>
+      <p style="color:#cbd5e1;font-size:11px;margin:0">Bagi Kopi Ops System - pesan otomatis, jangan dibalas</p>
     </div>
   </div>
 </body>
@@ -96,7 +106,7 @@ async function sendEmail(to: string, subject: string, html: string): Promise<boo
   if (!RESEND_API_KEY) return false
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
-    headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ from: RESEND_FROM, to: [to], subject, html }),
   })
   return res.ok
@@ -110,8 +120,9 @@ Deno.serve(async (req) => {
     if (!auth.includes(CRON_SECRET)) return new Response('Unauthorized', { status: 401 })
   }
 
-  const { shift } = await req.json() as { shift: 'pagi' | 'middle' | 'malam' }
-  if (!['pagi', 'middle', 'malam'].includes(shift)) {
+  const { shift } = await req.json() as { shift: string }
+  const normalizedShift = normalizeShift(shift)
+  if (!normalizedShift) {
     return new Response('Invalid shift', { status: 400 })
   }
 
@@ -128,55 +139,76 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ sent: 0, message: 'No active branches' }), { status: 200 })
   }
 
-  // Batch-query submitted records to avoid N+1
-  const branchIds = branches.map((b) => b.id)
-
+  const branchIds = branches.map((branch) => branch.id)
   const missing: MissingEntry[] = []
 
-  if (shift === 'pagi') {
+  if (normalizedShift === 'opening') {
     const [{ data: ceklisRows }, { data: prepRows }] = await Promise.all([
-      supabase.from('daily_checklists').select('branch_id').eq('tanggal', today).eq('shift', 'pagi').in('branch_id', branchIds),
-      supabase.from('daily_preparation').select('branch_id').eq('tanggal', today).eq('shift', 'pagi').in('branch_id', branchIds),
+      supabase.from('daily_checklists').select('branch_id').eq('tanggal', today).eq('shift', 'opening').in('branch_id', branchIds),
+      supabase.from('daily_preparation').select('branch_id').eq('tanggal', today).eq('shift', 'opening').in('branch_id', branchIds),
     ])
-    const hasCeklis = new Set(ceklisRows?.map((r) => r.branch_id))
-    const hasPrep = new Set(prepRows?.map((r) => r.branch_id))
+    const hasCeklis = new Set(ceklisRows?.map((row) => row.branch_id))
+    const hasPrep = new Set(prepRows?.map((row) => row.branch_id))
 
-    for (const b of branches) {
+    for (const branch of branches) {
       const items = []
-      if (!hasCeklis.has(b.id)) items.push('Ceklis Pagi')
-      if (!hasPrep.has(b.id)) items.push('Preparation Pagi')
-      if (items.length) missing.push({ branch: b, items })
+      if (!hasCeklis.has(branch.id)) items.push('Ceklis Opening')
+      if (!hasPrep.has(branch.id)) items.push('Preparation Opening')
+      if (items.length) missing.push({ branch, items })
     }
   }
 
-  if (shift === 'middle') {
+  if (normalizedShift === 'middle') {
     const [{ data: ceklisRows }, { data: prepRows }, { data: laporanRows }, { data: setoranRows }] = await Promise.all([
       supabase.from('daily_checklists').select('branch_id').eq('tanggal', today).eq('shift', 'middle').in('branch_id', branchIds),
       supabase.from('daily_preparation').select('branch_id').eq('tanggal', today).eq('shift', 'middle').in('branch_id', branchIds),
       supabase.from('daily_reports').select('branch_id').eq('tanggal', yesterday).in('branch_id', branchIds),
       supabase.from('daily_deposits').select('branch_id').eq('tanggal', yesterday).in('status', ['submitted', 'approved']).in('branch_id', branchIds),
     ])
-    const hasCeklis = new Set(ceklisRows?.map((r) => r.branch_id))
-    const hasPrep = new Set(prepRows?.map((r) => r.branch_id))
-    const hasLaporan = new Set(laporanRows?.map((r) => r.branch_id))
-    const hasSetoran = new Set(setoranRows?.map((r) => r.branch_id))
+    const hasCeklis = new Set(ceklisRows?.map((row) => row.branch_id))
+    const hasPrep = new Set(prepRows?.map((row) => row.branch_id))
+    const hasLaporan = new Set(laporanRows?.map((row) => row.branch_id))
+    const hasSetoran = new Set(setoranRows?.map((row) => row.branch_id))
 
-    for (const b of branches) {
+    for (const branch of branches) {
       const items = []
-      if (!hasCeklis.has(b.id)) items.push('Ceklis Middle')
-      if (!hasPrep.has(b.id)) items.push('Preparation Middle')
-      if (!hasLaporan.has(b.id)) items.push('Laporan Harian')
-      if (!hasSetoran.has(b.id)) items.push('Setoran')
-      if (items.length) missing.push({ branch: b, items })
+      if (!hasCeklis.has(branch.id)) items.push('Ceklis Middle')
+      if (!hasPrep.has(branch.id)) items.push('Preparation Middle')
+      if (!hasLaporan.has(branch.id)) items.push('Laporan Harian')
+      if (!hasSetoran.has(branch.id)) items.push('Setoran')
+      if (items.length) missing.push({ branch, items })
     }
   }
 
-  if (shift === 'malam') {
-    const { data: ceklisRows } = await supabase
-      .from('daily_checklists').select('branch_id').eq('tanggal', today).eq('shift', 'malam').in('branch_id', branchIds)
-    const hasCeklis = new Set(ceklisRows?.map((r) => r.branch_id))
-    for (const b of branches) {
-      if (!hasCeklis.has(b.id)) missing.push({ branch: b, items: ['Ceklis Malam'] })
+  if (normalizedShift === 'malam') {
+    const [{ data: ceklisRows }, { data: prepRows }] = await Promise.all([
+      supabase.from('daily_checklists').select('branch_id').eq('tanggal', today).eq('shift', 'malam').in('branch_id', branchIds),
+      supabase.from('daily_preparation').select('branch_id').eq('tanggal', today).eq('shift', 'malam').in('branch_id', branchIds),
+    ])
+    const hasCeklis = new Set(ceklisRows?.map((row) => row.branch_id))
+    const hasPrep = new Set(prepRows?.map((row) => row.branch_id))
+
+    for (const branch of branches) {
+      const items = []
+      if (!hasCeklis.has(branch.id)) items.push('Ceklis Malam')
+      if (!hasPrep.has(branch.id)) items.push('Preparation Malam')
+      if (items.length) missing.push({ branch, items })
+    }
+  }
+
+  if (normalizedShift === 'closing') {
+    const [{ data: ceklisRows }, { data: prepRows }] = await Promise.all([
+      supabase.from('daily_checklists').select('branch_id').eq('tanggal', today).eq('shift', 'closing').in('branch_id', branchIds),
+      supabase.from('daily_preparation').select('branch_id').eq('tanggal', today).eq('shift', 'closing').in('branch_id', branchIds),
+    ])
+    const hasCeklis = new Set(ceklisRows?.map((row) => row.branch_id))
+    const hasPrep = new Set(prepRows?.map((row) => row.branch_id))
+
+    for (const branch of branches) {
+      const items = []
+      if (!hasCeklis.has(branch.id)) items.push('Ceklis Closing')
+      if (!hasPrep.has(branch.id)) items.push('Preparation Closing')
+      if (items.length) missing.push({ branch, items })
     }
   }
 
@@ -184,7 +216,6 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ sent: 0, message: 'All stores on track' }), { status: 200 })
   }
 
-  // Get managers
   const { data: managers } = await supabase
     .from('profiles')
     .select('id, full_name, email, role, managed_districts, managed_areas')
@@ -192,31 +223,32 @@ Deno.serve(async (req) => {
     .eq('is_active', true)
     .not('email', 'is', null)
 
-  // Group missing branches per manager
   const dmMap = new Map<string, { dm: Profile; entries: MissingEntry[] }>()
   for (const entry of missing) {
-    const matchedManagers = (managers ?? []).filter((dm) => {
-      if (dm.role === 'ops_manager') return true
-      if (dm.role === 'district_manager') return (dm.managed_districts ?? []).includes(entry.branch.district)
-      if (dm.role === 'area_manager') return (dm.managed_areas ?? []).includes(entry.branch.area)
+    const matchedManagers = (managers ?? []).filter((manager) => {
+      if (manager.role === 'ops_manager') return true
+      if (manager.role === 'district_manager') return (manager.managed_districts ?? []).includes(entry.branch.district)
+      if (manager.role === 'area_manager') return (manager.managed_areas ?? []).includes(entry.branch.area)
       return false
     })
-    for (const dm of matchedManagers) {
-      if (!dmMap.has(dm.id)) dmMap.set(dm.id, { dm, entries: [] })
-      dmMap.get(dm.id)!.entries.push(entry)
+
+    for (const manager of matchedManagers) {
+      if (!dmMap.has(manager.id)) dmMap.set(manager.id, { dm: manager, entries: [] })
+      dmMap.get(manager.id)!.entries.push(entry)
     }
   }
 
   let sent = 0
-  const shiftSubjectMap: Record<string, string> = {
-    pagi: 'Ceklis Pagi Belum Masuk',
+  const shiftSubjectMap: Record<'opening' | 'middle' | 'malam' | 'closing', string> = {
+    opening: 'Ceklis Opening Belum Masuk',
     middle: 'Reminder Siang (14:00 WIB) Belum Masuk',
     malam: 'Ceklis Malam Belum Masuk',
+    closing: 'Ceklis Closing Belum Masuk',
   }
 
   for (const { dm, entries } of dmMap.values()) {
-    const subject = `[Bagi Kopi] ${shiftSubjectMap[shift]} — ${dateLabel(today)}`
-    const html = buildEmailHtml(dm, entries, shift, today)
+    const subject = `[Bagi Kopi] ${shiftSubjectMap[normalizedShift]} - ${dateLabel(today)}`
+    const html = buildEmailHtml(dm, entries, normalizedShift, today)
     const ok = await sendEmail(dm.email, subject, html)
     if (ok) sent++
   }

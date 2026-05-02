@@ -97,8 +97,8 @@ export default function Preparation() {
   const today = todayWIB()
   const branchId = profile?.branch_id
 
-  const [activeShift, setActiveShift] = useState('pagi')
-  const [existing, setExisting] = useState({ pagi: null, middle: null, malam: null })
+  const [activeShift, setActiveShift] = useState('opening')
+  const [existing, setExisting] = useState({ opening: null, middle: null, malam: null, closing: null })
   const [qtyMap, setQtyMap] = useState({})
   const [photoMap, setPhotoMap] = useState({})
   const [notes, setNotes] = useState('')
@@ -143,9 +143,9 @@ export default function Preparation() {
       .select('*')
       .eq('branch_id', branchId)
       .eq('tanggal', today)
-      .in('shift', ['pagi', 'middle', 'malam'])
+      .in('shift', ['opening', 'middle', 'malam', 'closing'])
 
-    const map = { pagi: null, middle: null, malam: null }
+    const map = { opening: null, middle: null, malam: null, closing: null }
     if (data) data.forEach((row) => { map[row.shift] = row })
     setExisting(map)
   }
@@ -221,9 +221,10 @@ export default function Preparation() {
         actions={
           <SegmentedControl
             options={[
-              { key: 'pagi', label: 'Pagi' },
+              { key: 'opening', label: 'Opening' },
               { key: 'middle', label: 'Middle' },
               { key: 'malam', label: 'Malam' },
+              { key: 'closing', label: 'Closing' },
             ]}
             value={activeShift}
             onChange={setActiveShift}
@@ -253,7 +254,7 @@ export default function Preparation() {
         {error && <Alert variant="error">{error}</Alert>}
 
         {SECTIONS.map((section) => (
-          <SectionPanel key={section} eyebrow="Jumlah Preparation" title={`Preparation - ${section}`} description="Isi jumlah dan unggah 1 foto untuk setiap item yang disiapkan.">
+          <SectionPanel key={section} eyebrow="Jumlah Preparation" title={`Preparation - ${section}`} description="Isi jumlah dan unggah minimal 1 foto untuk setiap item yang disiapkan.">
             <div className="space-y-2">
               {PREPARATION_ITEMS.filter((i) => i.section === section).map((item) => (
                 <div key={item.key} className="rounded-[18px] bg-slate-50 px-4 py-3">
@@ -328,7 +329,7 @@ export default function Preparation() {
               </button>
             )}
             <LoadingButton onClick={handleSubmit} loading={saving} className="btn-primary flex-1">
-              {isEditing ? 'Simpan Koreksi' : `Submit Preparation ${activeShift === 'pagi' ? 'Pagi' : activeShift === 'middle' ? 'Middle' : 'Malam'}`}
+              {isEditing ? 'Simpan Koreksi' : `Submit Preparation ${activeShift.charAt(0).toUpperCase() + activeShift.slice(1)}`}
             </LoadingButton>
           </div>
         )}

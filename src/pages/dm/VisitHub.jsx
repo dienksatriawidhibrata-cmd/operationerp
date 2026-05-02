@@ -210,12 +210,12 @@ export default function VisitHub() {
           const flags = []
           let priorityScore = 0
 
-          if (checklistShifts.size < 3) {
-            flags.push(`Ceklis ${checklistShifts.size}/3 shift`)
+          if (checklistShifts.size < 4) {
+            flags.push(`Ceklis ${checklistShifts.size}/4 shift`)
             priorityScore += 2
           }
-          if (prepShifts.size < 3) {
-            flags.push(`Preparation ${prepShifts.size}/3 shift`)
+          if (prepShifts.size < 4) {
+            flags.push(`Preparation ${prepShifts.size}/4 shift`)
             priorityScore += 2
           }
           if (!reportMap.has(branch.id)) {
