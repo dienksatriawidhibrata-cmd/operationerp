@@ -238,7 +238,7 @@ export default function CeklisHarian() {
       <SectionPanel
         eyebrow="Shift Control"
         title="Pilih Shift"
-        description="Checklist pagi, middle, dan malam tetap dipisah supaya progresnya jelas dan mudah dicek ulang."
+        description="Checklist Opening, Middle, Malam, dan Closing dipisah supaya progresnya jelas dan mudah dicek ulang."
         actions={
           <SegmentedControl
             options={[

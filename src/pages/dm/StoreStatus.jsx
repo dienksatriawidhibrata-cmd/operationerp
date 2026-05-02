@@ -72,7 +72,7 @@ function AccordionRow({ label, icon, statusBadge, isOpen, onToggle, loading, chi
   )
 }
 
-const PLATFORM_ITEMS_PAGI = [
+const PLATFORM_ITEMS_OPENING = [
   { key: 'toko_buka', label: 'Toko Buka' },
   { key: 'gofood_aktif', label: 'GoFood' },
   { key: 'grabfood_aktif', label: 'GrabFood' },
@@ -122,13 +122,13 @@ function CeklisContent({ checklist }) {
 
   const answers = checklist.answers || {}
   const photos = checklist.photos || {}
-  const platformItems = checklist.shift === 'pagi' ? PLATFORM_ITEMS_PAGI : PLATFORM_ITEMS_NON_PAGI
+  const platformItems = checklist.shift === 'opening' ? PLATFORM_ITEMS_OPENING : PLATFORM_ITEMS_NON_PAGI
   const groomingPhotos = photos.staff_grooming || []
   const allAreaPhotos = AREA_KEYS.flatMap(({ key }) => photos[key] || [])
-  const allPhotos = [...(checklist.shift === 'pagi' ? groomingPhotos : []), ...allAreaPhotos]
+  const allPhotos = [...(checklist.shift === 'opening' ? groomingPhotos : []), ...allAreaPhotos]
 
   const areaOffsets = {}
-  let runningOffset = checklist.shift === 'pagi' ? groomingPhotos.length : 0
+  let runningOffset = checklist.shift === 'opening' ? groomingPhotos.length : 0
   AREA_KEYS.forEach(({ key }) => {
     areaOffsets[key] = runningOffset
     runningOffset += (photos[key] || []).length
@@ -150,7 +150,7 @@ function CeklisContent({ checklist }) {
         {checklist.is_late && <ToneBadge tone="warn">Terlambat</ToneBadge>}
       </div>
 
-      {checklist.shift === 'pagi' && (
+      {checklist.shift === 'opening' && (
         <div>
           <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Staff Grooming</div>
           <PhotoViewer urls={groomingPhotos} emptyText="Tidak ada foto grooming" allUrls={allPhotos} allOffset={0} />
@@ -279,10 +279,11 @@ function PreparationContent({ preparation }) {
 }
 
 const SECTIONS = [
-  { key: 'ceklis_pagi', label: 'Ceklis Pagi', icon: '☀️' },
+  { key: 'ceklis_opening', label: 'Ceklis Opening', icon: '☀️' },
   { key: 'ceklis_middle', label: 'Ceklis Middle', icon: '⛅' },
   { key: 'ceklis_malam', label: 'Ceklis Malam', icon: '🌙' },
-  { key: 'prep_pagi', label: 'Preparation Pagi', icon: '🥣' },
+  { key: 'ceklis_closing', label: 'Ceklis Closing', icon: '🔒' },
+  { key: 'prep_pagi', label: 'Preparation Opening', icon: '🥣' },
   { key: 'prep_middle', label: 'Preparation Middle', icon: '🥤' },
   { key: 'prep_malam', label: 'Preparation Malam', icon: '🌃' },
 ]
@@ -364,9 +365,10 @@ export default function StoreStatus() {
     try {
       if (section.startsWith('ceklis_')) {
         const shift =
-          section === 'ceklis_pagi' ? 'pagi' :
+          section === 'ceklis_opening' ? 'opening' :
           section === 'ceklis_middle' ? 'middle' :
-          'malam'
+          section === 'ceklis_malam' ? 'malam' :
+          'closing'
 
         const { data } = await supabase
           .from('daily_checklists')
@@ -379,7 +381,7 @@ export default function StoreStatus() {
         result = data
       } else {
         const shift =
-          section === 'prep_pagi' ? 'pagi' :
+          section === 'prep_pagi' ? 'opening' :
           section === 'prep_middle' ? 'middle' :
           'malam'
 
@@ -422,9 +424,10 @@ export default function StoreStatus() {
 
   const getSectionBadge = (section) => {
     const status = dateStatus[selectedId]
-    if (section === 'ceklis_pagi') return status?.pagi ? <ToneBadge tone="ok">Masuk</ToneBadge> : <ToneBadge tone="danger">Belum</ToneBadge>
+    if (section === 'ceklis_opening') return status?.opening ? <ToneBadge tone="ok">Masuk</ToneBadge> : <ToneBadge tone="danger">Belum</ToneBadge>
     if (section === 'ceklis_middle') return status?.middle ? <ToneBadge tone="ok">Masuk</ToneBadge> : <ToneBadge tone="warn">Belum</ToneBadge>
     if (section === 'ceklis_malam') return status?.malam ? <ToneBadge tone="ok">Masuk</ToneBadge> : <ToneBadge tone="slate">Belum</ToneBadge>
+    if (section === 'ceklis_closing') return status?.closing ? <ToneBadge tone="ok">Masuk</ToneBadge> : <ToneBadge tone="primary">Belum</ToneBadge>
     if (section === 'prep_pagi') return status?.prepPagi ? <ToneBadge tone="ok">Masuk</ToneBadge> : <ToneBadge tone="danger">Belum</ToneBadge>
     if (section === 'prep_middle') return status?.prepMiddle ? <ToneBadge tone="ok">Masuk</ToneBadge> : <ToneBadge tone="warn">Belum</ToneBadge>
     if (section === 'prep_malam') return status?.prepMalam ? <ToneBadge tone="ok">Masuk</ToneBadge> : <ToneBadge tone="slate">Belum</ToneBadge>
@@ -446,7 +449,7 @@ export default function StoreStatus() {
       ) : (
         branches.map((branch) => {
           const status = dateStatus[branch.id]
-          const hasAny = !!(status?.pagi || status?.middle || status?.malam || status?.prepPagi || status?.prepMiddle || status?.prepMalam)
+          const hasAny = !!(status?.opening || status?.middle || status?.malam || status?.closing || status?.prepPagi || status?.prepMiddle || status?.prepMalam)
           const isSelected = branch.id === selectedId
 
           return (
@@ -488,7 +491,7 @@ export default function StoreStatus() {
           className="flex flex-1 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-left shadow-sm"
         >
           {selectedBranch && (
-            <span className={`h-2 w-2 shrink-0 rounded-full ${dateStatus[selectedId]?.pagi ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+            <span className={`h-2 w-2 shrink-0 rounded-full ${dateStatus[selectedId]?.opening ? 'bg-emerald-400' : 'bg-rose-400'}`} />
           )}
           <span className="flex-1 truncate text-sm font-semibold text-slate-900">
             {selectedBranch ? `${selectedBranch.store_id} - ${shortName(selectedBranch)}` : 'Pilih toko'}

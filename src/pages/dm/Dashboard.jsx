@@ -72,19 +72,19 @@ function buildHeroSummary(stores) {
 
   const parts = []
 
-  // Ceklis pagi
-  const belumPagi = stores.filter((s) => !s.ceklisPagi).map(sName)
-  const terlambatPagi = stores.filter((s) => s.ceklisPagi?.is_late).map(sName)
+  // ceklis opening
+  const belumOpening = stores.filter((s) => !s.ceklisOpening).map(sName)
+  const terlambatOpening = stores.filter((s) => s.ceklisOpening?.is_late).map(sName)
 
-  if (belumPagi.length === 0) {
-    parts.push('Seluruh toko sudah mengerjakan ceklis pagi.')
-  } else if (belumPagi.length === total) {
-    parts.push('Belum ada toko yang submit ceklis pagi.')
+  if (belumOpening.length === 0) {
+    parts.push('Seluruh toko sudah mengerjakan ceklis opening.')
+  } else if (belumOpening.length === total) {
+    parts.push('Belum ada toko yang submit ceklis opening.')
   } else {
-    parts.push(`${belumPagi.length} dari ${total} toko belum ceklis pagi (${fmt(belumPagi)}).`)
+    parts.push(`${belumOpening.length} dari ${total} toko belum ceklis opening (${fmt(belumOpening)}).`)
   }
-  if (terlambatPagi.length > 0) {
-    parts.push(`${terlambatPagi.length} toko terlambat submit (${fmt(terlambatPagi)}).`)
+  if (terlambatOpening.length > 0) {
+    parts.push(`${terlambatOpening.length} toko terlambat submit (${fmt(terlambatOpening)}).`)
   }
 
   // Ceklis malam — hanya tampil kalau sebagian sudah masuk (artinya malam sudah dimulai)
@@ -1313,7 +1313,7 @@ function buildAlerts(stores, today, yesterday) {
       items.push({
         id: `missing-ceklis-${today}-${store.id}`,
         level: 'danger',
-        title: `${shortName} belum isi ceklis pagi`,
+        title: `${shortName} belum isi ceklis opening`,
         subtitle: `Pantau checklist tanggal ${formatVisitDate(today, { day: 'numeric', month: 'short' })}`,
         timeLabel: 'Perlu follow up',
       })
