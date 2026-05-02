@@ -1,195 +1,192 @@
-BAGI KOPI OPS — PROGRESS SUMMARY
-Update: 2026-04-30 (sesi 5) | Production: https://operationerp.pages.dev
+BAGI KOPI OPS - PROGRESS SUMMARY
+Update: 2026-05-02 (sesi 6) | Production: https://operationerp.pages.dev
 
 ===================================================
 STATUS PRODUCTION
 ===================================================
-Build bersih, auto-deploy dari GitHub main via Cloudflare Pages.
-Frontend-only (Supabase langsung) — backend FastAPI di backend/ tidak di-deploy.
+Build frontend bersih, auto-deploy dari GitHub `main` via Cloudflare Pages.
+App utama masih frontend-only (Supabase langsung). Folder `backend/` tidak dipakai untuk production web.
 
-Roles aktif: staff, barista, kitchen, waitress, asst_head_store, head_store,
-  district_manager, area_manager, ops_manager, finance_supervisor, trainer,
-  sc_supervisor, auditor, hr_staff, hr_spv, hr_legal, hr_administrator
+Roles aktif:
+- staff, barista, kitchen, waitress, asst_head_store, head_store
+- district_manager, area_manager, ops_manager, finance_supervisor, trainer
+- sc_supervisor, auditor, hr_staff, hr_spv, hr_legal, hr_administrator
 
-Login staff (shared pass): VITE_STAFF_PASS — role store + auditor
-Login manager/HR (individual): tab "Head Store & Manager"
+Login:
+- Staff shared password: `VITE_STAFF_PASS`
+- Head Store / Manager / HR: login individual via tab role masing-masing
 
 ===================================================
 FITUR AKTIF
 ===================================================
-OPERASIONAL HARIAN (staff/head_store)
-- Ceklis harian 3 shift + foto per item
-- Preparation harian 3 shift + qty (WAJIB) + foto (WAJIB per item)
-- Laporan harian toko: omset, setoran, opex (approval flow DM)
-- Pengajuan Dana Operasional (/staff/pengajuan-opex): head_store buat pengajuan,
-    approval flow DM -> AM/Ops -> Finance view + print
+OPERASIONAL HARIAN
+- Ceklis harian toko
+- Preparation harian
+- Laporan harian toko: omset, setoran, opex
+- Pengajuan dana operasional dengan approval flow berjenjang
 
-PEOPLE (head_store) — BARU sesi 5
-- Hub /people: Jadwal Shift, KPI, Rekrutmen dalam satu nav item
-- Jadwal Shift (/people/jadwal): editor jadwal mingguan per staff
-    Navigasi prev/next week, tab hari Sen-Min, shift picker per staff
-    sesuai konfigurasi cabang (32 cabang, data dari Shift.xlsx)
-    Simpan via upsert ke tabel shift_schedules
-- Export otomatis ke Google Sheets tiap Kamis 19:00 WIB via Google Apps Script
-    Kolom: Toko, Tanggal Shift, Bulan, Minggu, Nama Karyawan, Shift
-- Bottom nav head_store: KPI + Rekrutmen digabung -> "People"
+PEOPLE
+- Hub `/people`
+- Jadwal Shift `/people/jadwal`
+- Editor jadwal mingguan per staff
+- Export jadwal ke Google Sheets via Apps Script
 
 KPI & PERFORMANCE
-- KPI Toko, Personal, 360 — Leaderboard Top10/Bottom10
-- Leaderboard Operasional: semua dashboard kecuali HR, Audit, SC
+- KPI Toko
+- KPI Personal
+- Penilaian 360
+- Leaderboard operasional
 
 SUPPLY CHAIN
 - Surat jalan: order -> picking -> QC -> distribusi -> penerimaan
-- Download penerimaan CSV (warehouse_admin)
+- Download penerimaan CSV untuk warehouse_admin
 
-RECRUITMENT (/hr)
-- Pipeline 14 stage: batch_oje_issued -> ... -> on_duty
-- OJE in Store: 2 hari hadir + 13 kriteria skor 1-5
-- OJT Checklist: 14 item, 3 kolom sign-off
-- Edge Function recruitment-onboard: DEPLOYED + Secret STAFF_SHARED_PASSWORD set
-
-NOTIFIKASI (Google Chat)
-- Harian: toko belum setoran, rekap SC, opex, laporan harian, compliance (jam 23:00 WIB)
-- Apps Script: apps-script-bagikopi.txt
+RECRUITMENT
+- Pipeline rekrutmen HR
+- OJE in Store
+- OJT Checklist
+- Edge Function `recruitment-onboard` aktif
 
 LAINNYA
-- Visit monitoring DM/Area + audit toko (110 poin)
-- SOP Center: SOP Umum + SOP Produk
-- Pengumuman ops ke semua staff dashboard
-
-DIHAPUS (sesi 4):
-- Data Explorer + AI Analyst: komponen + edge function lokal sudah dihapus
-  MASIH PERLU (manual): hapus Edge Function ask-the-data + Secret GEMINI_API_KEY
-  di Supabase Dashboard -> Settings -> Secrets
+- Visit monitoring DM / Area
+- Audit toko
+- SOP Center
+- Pengumuman dashboard staff
 
 ===================================================
-COMMITS TERBARU (sesi 4-5 — 2026-04-30)
+UPDATE TERBARU - SESI 6
 ===================================================
-6ee9df4  feat(people): tambah People hub + fitur Jadwal Shift untuk head_store
-88d0c14  fix(preparation): qty semua item wajib diisi sebelum submit
-62b0048  feat(opex): form pengajuan dana operasional + full approval flow
-ab55067  fix(notif): setoran pakai tanggal kemarin (operasional H-1)
-a4d0ae8  feat(notif): tambah rekap SC, opex, laporan harian, compliance jam 23:00 WIB
-88fc6ec  fix(opex): cegah scroll mengubah nilai input qty dan harga satuan
-ce850fd  feat(notif): tambah 7 notifikasi harian ke Google Chat
-c7e68ff  feat(notif): Apps Script notifikasi toko belum setoran ke Google Chat
-4732a0d  feat(sc): tambah tombol download penerimaan CSV untuk warehouse_admin
-8d6e800  feat(cleanup): hapus Data Explorer + AI Analyst dari web app
+Fokus sesi ini:
+- Sinkronisasi penuh naming shift operasional ke standar:
+  `opening`, `middle`, `malam`, `closing`
 
-===================================================
-MIGRATIONS — STATUS
-===================================================
-[DONE]   001-028   semua migrasi aktif di production
-[TODO]   029       operational_leaderboards_rpc      -> JALANKAN di SQL Editor
-[TODO]   030       opex_requests                     -> JALANKAN di SQL Editor
-[TODO]   031       shift_schedules (People/Jadwal)   -> JALANKAN di SQL Editor
-[TODO]   019       cron_email_alerts                 -> tunggu DNS Resend verified
-[TODO]   021       security_hardening                -> belum dijalankan
+Yang sudah dirapikan:
+- Preparation staff sekarang pakai `opening/middle/malam/closing`
+- Dashboard staff membaca status preparation dengan shift baru
+- Reminder banner staff membaca `prepOpening` dan `prepClosing`
+- Monitoring DM / Store Status membaca checklist + preparation dengan shift baru
+- Visit recommendation menghitung compliance berbasis 4 shift
+- KPI auto score dan leaderboard fallback frontend menghitung target 4 shift
+- RPC leaderboard Supabase diupdate untuk 4 shift
+- Constraint + normalisasi data shift operasional dicatat ke migration repo
 
-Catatan: 029-031 wajib dijalankan agar fitur Leaderboard, Opex Approval,
-  dan Jadwal Shift bisa dipakai di production.
+Catatan penting:
+- Error `daily_preparation_shift_check` sekarang biasanya berarti frontend live masih bundle lama
+  yang masih submit `pagi`, sementara database sudah menerima `opening`.
 
 ===================================================
-YANG PERLU DIKERJAKAN
+COMMITS TERBARU
 ===================================================
-WAJIB (manual, Supabase Dashboard):
-  [ ] Jalankan 029_operational_leaderboards_rpc.sql di SQL Editor
-  [ ] Jalankan 030_opex_requests.sql di SQL Editor
-  [ ] Jalankan 031_shift_schedules.sql di SQL Editor
-  [ ] Hapus Edge Function: ask-the-data di Supabase Dashboard
-  [ ] Hapus Secret: GEMINI_API_KEY di Supabase Dashboard -> Settings -> Secrets
-
-GOOGLE APPS SCRIPT (Jadwal Shift Export):
-  [ ] Buat Google Spreadsheet -> Tools -> Apps Script -> paste script dari sesi 5
-  [ ] Set Script Properties: SUPABASE_URL + SUPABASE_SERVICE_KEY
-  [ ] Set timezone script ke Asia/Jakarta
-  [ ] Jalankan setupTrigger() sekali -> tiap Kamis 19:00 WIB berjalan otomatis
-
-PENDING:
-  [ ] Setup email: DNS Resend verified -> jalankan SQL + migration 019
-  [ ] Jalankan migration 021_security_hardening.sql
-  [ ] Pastikan semua file SOP di Drive di-set "Anyone with link can view"
-  [ ] Test full flow recruitment: batch OJE -> OJE in Store -> kontrak -> login staff baru
-
-BUTUH KEPUTUSAN:
-  - Finance AuditSetoran: kapan selisih_threshold (50000) dipakai?
-  - DM Dashboard (dm/Dashboard.jsx ~2390 baris): perlu audit + trim
+b590083  Align operational shifts across app and Supabase
+567ff5e  fix: revert preparation shift mapping from opening to pagi and remove closing prep
+8efc089  fix(script): sync apps script triggers with new shift naming (opening/closing)
+20c9bba  feat: complete refactoring of checklists to 4 shifts (opening, middle, malam, closing)
+54bf75d  feat: increase max photo upload limit to 5 for checklist and preparation
 
 ===================================================
-PEOPLE / JADWAL SHIFT — DETAIL TEKNIS (sesi 5)
+MIGRATIONS - STATUS
 ===================================================
-Route: /people (PeopleHub), /people/jadwal (JadwalShift)
-Akses: head_store only
+Repo migration terbaru:
+- 035_align_operational_shift_names.sql
+- 036_update_operational_leaderboards_for_4_shifts.sql
 
-Tabel baru: shift_schedules
-  Kolom: branch_id, staff_id, tanggal, shift_type, shift_hour, notes, created_by
-  Constraint: unique(branch_id, staff_id, tanggal)
-  RLS: head_store manage own branch, staff view own branch, managers view all
+Status saat ini:
+- Perubahan Supabase untuk shift operasional sudah didorong manual oleh user
+- Repo sekarang sudah punya catatan migration agar schema tidak drift lagi
 
-BRANCH_SHIFTS di constants.js: 32 cabang, data dari Shift.xlsx
-  Fungsi: getBranchShifts(branchName) -> array [{shift, hour}]
-  Fallback: DEFAULT_SHIFTS jika cabang tidak dikenal
+Migration penting:
+- 029 operational_leaderboards_rpc
+- 030 opex_requests
+- 031 shift_schedules
+- 035 align_operational_shift_names
+- 036 update_operational_leaderboards_for_4_shifts
 
-Export Google Apps Script (tiap Kamis 19:00 WIB):
-  - Ambil data minggu depan dari Supabase REST API (service_role key)
-  - Hapus baris lama untuk minggu yang sama (deduplicate)
-  - Tulis baris baru ke sheet "Jadwal Shift"
-  - Query: shift_schedules?select=tanggal,shift_type,shift_hour,
-      branch:branches!branch_id(name),staff:profiles!staff_id(full_name)
+Jika environment lain belum sinkron, jalankan migration sesuai urutan yang belum masuk.
 
 ===================================================
-OPEX APPROVAL FLOW — DETAIL (sesi 4)
+REMINDER / NOTIFIKASI
 ===================================================
-Route: /staff/pengajuan-opex (head_store buat pengajuan)
-Tabel: opex_requests
-  Status flow: submitted -> dm_approved -> am_approved/ops_approved -> rejected
-  Approval: DM (/dm/opex-approval), AM+Ops (/ops/opex-approval)
-  Finance view + print: /finance/opex
+Reminder staff dalam app:
+- Dipakai
+- Komponen: `src/components/ReminderBanner.jsx`
 
-Kolom items: jsonb array [{kebutuhan, kategori, jumlah, harga_satuan, total}]
-EXPENSE_CODES: dari constants.js (EXPENSE_CATEGORIES untuk dropdown)
+Reminder email via Edge Function:
+- File: `supabase/functions/send-deadline-alerts/index.ts`
+- Status: legacy / saat ini tidak dipakai menurut user
+- Tetap sudah ikut diselaraskan di repo, tapi bukan jalur reminder utama sekarang
 
-===================================================
-ACCOUNT MANAGEMENT — STATUS
-===================================================
-Staff aktif di Supabase: 58 akun dari StaffBaru.xlsx — SEMUA sudah ada,
-  branch_id dan role terisi lengkap.
-  (2 dikecualikan: Shella Rizky Damayanti + Dhea Putri — DROP/RESIGN=true)
-
-Total profiles di DB: 377 (semua role manager + HR + store staff)
+Google Chat:
+- Notifikasi operasional tetap via Apps Script / setup yang sudah ada
 
 ===================================================
-ENV VARS
+YANG SUDAH DIVERIFIKASI
 ===================================================
-Cloudflare Pages (wajib):
-  VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, VITE_APPS_SCRIPT_URL,
-  VITE_STAFF_PASS, VITE_GOOGLE_API_KEY, VITE_GOOGLE_KPI_SHEET_ID,
-  VITE_DRIVE_FOLDER_ID
-
-Lokal saja (jangan ke Cloudflare):
-  SUPABASE_SERVICE_ROLE_KEY
-
-Supabase Secrets:
-  RESEND_API_KEY, RESEND_FROM_EMAIL, CRON_SECRET  -> send-deadline-alerts
-  STAFF_SHARED_PASSWORD                            -> recruitment-onboard (SUDAH di-set)
-  GEMINI_API_KEY                                   -> ask-the-data (HAPUS)
+- `npm run build` lolos setelah perubahan shift 4-mode
+- Commit sudah masuk GitHub `main`
+- `origin/main` dan lokal `main` sinkron
 
 ===================================================
-SCRIPTS
+YANG PERLU DICEK SAAT ADA ERROR LAGI
 ===================================================
-node scripts/update-staff-shared-password.mjs     -> sync shared pass semua staff
-node scripts/reset-head-store-passwords.mjs "X"   -> reset semua head_store ke pass X
-node scripts/seed-staff-accounts.mjs              -> seed akun dari StaffBaru.xlsx
-python scripts/sync-pos-to-supabase.py            -> sync SQLite POS ke Supabase (UPSERT)
-powershell scripts\update-pos-data.ps1            -> ETL CSV/XLSX -> bagikopi.db -> Supabase
+Jika `preparation` gagal simpan dengan constraint shift:
+1. Cek constraint aktif di Supabase:
+   `daily_preparation_shift_check`
+2. Pastikan frontend live sudah redeploy ke commit terbaru
+3. Hard refresh / incognito untuk menghindari cache bundle lama
 
-DATA SALES & KOMPLAIN:
-  Source: C:\Users\dksat\Project\2026-bagikopi-sales-complain\
-  Supabase: pos_sales_monthly (1022 rows), pos_complaints (3887 rows) — diisi 2026-04-28
-  Update: jalankan update-pos-data.ps1 jika ada CSV/XLSX baru
+Jika status dashboard mismatch:
+1. Cek apakah data di DB sudah `opening/middle/malam/closing`
+2. Cek apakah frontend live sudah memakai build sesudah commit `b590083`
 
-Apps Script SOP: apps-script-bagikopi.txt -> paste ke editor, new version, deploy
-  Isi: listSops, getSopDoc, doPost (upload foto), testUpload, testSopDoc
+===================================================
+ACCOUNT / DATA STATUS
+===================================================
+Status akun yang tercatat dari sesi sebelumnya:
+- Staff aktif sudah seeded dari `StaffBaru.xlsx`
+- Branch dan role sudah terisi
+- Total profiles DB sebelumnya tercatat 377
 
-Apps Script Jadwal: script dari sesi 5 -> paste ke Google Spreadsheet baru
-  Isi: exportJadwal, setupTrigger, helper date functions
+Perlu verifikasi ulang hanya jika ada impor staff baru atau mutasi role baru.
+
+===================================================
+ENV VARS / SECRETS
+===================================================
+Cloudflare Pages:
+- VITE_SUPABASE_URL
+- VITE_SUPABASE_ANON_KEY
+- VITE_APPS_SCRIPT_URL
+- VITE_STAFF_PASS
+- VITE_GOOGLE_API_KEY
+- VITE_GOOGLE_KPI_SHEET_ID
+- VITE_DRIVE_FOLDER_ID
+
+Supabase secrets yang pernah dipakai:
+- RESEND_API_KEY
+- RESEND_FROM_EMAIL
+- CRON_SECRET
+- STAFF_SHARED_PASSWORD
+
+Catatan:
+- `send-deadline-alerts` sekarang bukan jalur reminder utama
+- review secret lama hanya jika mau cleanup penuh
+
+===================================================
+SCRIPTS / REFERENSI
+===================================================
+node scripts/update-staff-shared-password.mjs
+node scripts/reset-head-store-passwords.mjs "X"
+node scripts/seed-staff-accounts.mjs
+python scripts/sync-pos-to-supabase.py
+powershell scripts\update-pos-data.ps1
+
+Dokumen referensi yang penting di repo:
+- `summary1.txt` ini
+- `supabase/migrations/035_align_operational_shift_names.sql`
+- `supabase/migrations/036_update_operational_leaderboards_for_4_shifts.sql`
+
+===================================================
+NEXT FOCUS
+===================================================
+- Pastikan Cloudflare Pages benar-benar sudah serve build terbaru
+- Jika masih ada error submit preparation di live site, masalah hampir pasti cache / deploy lama
+- Setelah live sinkron, lanjutkan audit ringan pada flow checklist, preparation, dan leaderboard di production

@@ -14,6 +14,7 @@ import {
 import { getDefaultPersonalItems } from '../../lib/kpiDefaults'
 
 const BASE_VIEW_ROLES = ['staff', 'barista', 'kitchen', 'waitress', 'asst_head_store']
+const FULL_STAFF_ROLES = [...BASE_VIEW_ROLES, 'head_store']
 
 function gradeInfo(score) {
   if (score >= 4.5) return { label: 'Outstanding', color: 'text-green-700 bg-green-50' }
@@ -61,10 +62,10 @@ function hasAreaManagerForDistrict(branches = [], areaManagers = [], managedDist
 }
 
 async function loadVisiblePeople(profile) {
-  if (!profile?.role) return []
+  if (!profile?.role) return { people: [], branchMap: {} }
 
   if (BASE_VIEW_ROLES.includes(profile.role)) {
-    return [normalizeProfile(profile)]
+    return { people: [normalizeProfile(profile)], branchMap: {} }
   }
 
   if (profile.role === 'head_store') {
@@ -72,95 +73,89 @@ async function loadVisiblePeople(profile) {
       .from('profiles')
       .select('id, full_name, role, branch_id')
       .eq('branch_id', profile.branch_id)
-      .in('role', [...BASE_VIEW_ROLES, 'head_store'])
+      .in('role', FULL_STAFF_ROLES)
       .eq('is_active', true)
       .order('full_name')
     if (error) throw new Error(error.message || 'Gagal memuat daftar KPI.')
-    return (data || []).map((person) => normalizeProfile(person))
+    return { people: (data || []).map((p) => normalizeProfile(p)), branchMap: {} }
   }
 
   if (profile.role === 'district_manager') {
     const [branchesRes, profilesRes, areaManagersRes] = await Promise.all([
-      supabase.from('branches').select('id, district, area').in('district', profile.managed_districts || []),
+      supabase.from('branches').select('id, name, district, area').in('district', profile.managed_districts || []),
       supabase.from('profiles').select('id, full_name, role, branch_id, managed_districts, managed_areas')
-        .in('role', [...BASE_VIEW_ROLES, 'head_store', 'district_manager'])
+        .in('role', [...FULL_STAFF_ROLES, 'district_manager'])
         .eq('is_active', true)
         .order('full_name'),
-      supabase.from('profiles').select('id, managed_areas')
-        .eq('role', 'area_manager')
-        .eq('is_active', true),
+      supabase.from('profiles').select('id, managed_areas').eq('role', 'area_manager').eq('is_active', true),
     ])
     if (branchesRes.error || profilesRes.error || areaManagersRes.error) {
-      throw new Error(branchesRes.error?.message || profilesRes.error?.message || areaManagersRes.error?.message || 'Gagal memuat daftar KPI.')
+      throw new Error(branchesRes.error?.message || profilesRes.error?.message || 'Gagal memuat daftar KPI.')
     }
-    const branchIds = new Set((branchesRes.data || []).map((branch) => branch.id))
-    const scopedProfiles = (profilesRes.data || []).filter((person) => {
-      if (person.role === 'district_manager') return person.id === profile.id
-      return branchIds.has(person.branch_id)
+    const branchIds = new Set((branchesRes.data || []).map((b) => b.id))
+    const branchMap = Object.fromEntries((branchesRes.data || []).map((b) => [b.id, b]))
+    const scoped = (profilesRes.data || []).filter((p) => {
+      if (p.role === 'district_manager') return p.id === profile.id
+      return branchIds.has(p.branch_id)
     })
-    return scopedProfiles.map((person) => normalizeProfile(person, {
-      has_area_manager: person.role === 'district_manager'
-        ? hasAreaManagerForDistrict(branchesRes.data || [], areaManagersRes.data || [], person.managed_districts || [])
-        : true,
-    }))
+    return {
+      people: scoped.map((p) => normalizeProfile(p, {
+        has_area_manager: p.role === 'district_manager'
+          ? hasAreaManagerForDistrict(branchesRes.data || [], areaManagersRes.data || [], p.managed_districts || [])
+          : true,
+      })),
+      branchMap,
+    }
   }
 
   if (profile.role === 'area_manager') {
     const [branchesRes, districtManagersRes, headStoresRes] = await Promise.all([
-      supabase.from('branches').select('id, district, area').in('area', profile.managed_areas || []),
+      supabase.from('branches').select('id, name, district, area').in('area', profile.managed_areas || []),
       supabase.from('profiles').select('id, full_name, role, managed_districts, managed_areas')
-        .eq('role', 'district_manager')
-        .eq('is_active', true)
-        .order('full_name'),
+        .eq('role', 'district_manager').eq('is_active', true).order('full_name'),
       supabase.from('profiles').select('id, full_name, role, branch_id')
-        .eq('role', 'head_store')
-        .eq('is_active', true)
-        .order('full_name'),
+        .eq('role', 'head_store').eq('is_active', true).order('full_name'),
     ])
     if (branchesRes.error || districtManagersRes.error || headStoresRes.error) {
-      throw new Error(branchesRes.error?.message || districtManagersRes.error?.message || headStoresRes.error?.message || 'Gagal memuat daftar KPI.')
+      throw new Error(branchesRes.error?.message || 'Gagal memuat daftar KPI.')
     }
-    const branchIds = new Set((branchesRes.data || []).map((branch) => branch.id))
-    const districts = new Set((branchesRes.data || []).map((branch) => branch.district))
-    const districtManagers = (districtManagersRes.data || [])
-      .filter((manager) => (manager.managed_districts || []).some((district) => districts.has(district)))
-      .map((manager) => normalizeProfile(manager, { has_area_manager: true }))
-    const headStores = (headStoresRes.data || [])
-      .filter((person) => branchIds.has(person.branch_id))
-      .map((person) => normalizeProfile(person, { has_area_manager: true }))
-    return [...districtManagers, ...headStores]
+    const branchIds = new Set((branchesRes.data || []).map((b) => b.id))
+    const districts = new Set((branchesRes.data || []).map((b) => b.district))
+    const branchMap = Object.fromEntries((branchesRes.data || []).map((b) => [b.id, b]))
+    const dms = (districtManagersRes.data || [])
+      .filter((m) => (m.managed_districts || []).some((d) => districts.has(d)))
+      .map((m) => normalizeProfile(m, { has_area_manager: true }))
+    const hs = (headStoresRes.data || [])
+      .filter((p) => branchIds.has(p.branch_id))
+      .map((p) => normalizeProfile(p, { has_area_manager: true }))
+    return { people: [...dms, ...hs], branchMap }
   }
 
+  // ops_manager & support_spv — semua staff semua toko
   if (profile.role === 'ops_manager' || profile.role === 'support_spv') {
-    const [branchesRes, districtManagersRes, headStoresRes, areaManagersRes] = await Promise.all([
-      supabase.from('branches').select('id, district, area'),
-      supabase.from('profiles').select('id, full_name, role, managed_districts, managed_areas')
-        .eq('role', 'district_manager')
+    const [branchesRes, allProfilesRes, areaManagersRes] = await Promise.all([
+      supabase.from('branches').select('id, name, district, area').eq('is_active', true),
+      supabase.from('profiles')
+        .select('id, full_name, role, branch_id, managed_districts, managed_areas')
+        .in('role', [...FULL_STAFF_ROLES, 'district_manager'])
         .eq('is_active', true)
         .order('full_name'),
-      supabase.from('profiles').select('id, full_name, role, branch_id')
-        .eq('role', 'head_store')
-        .eq('is_active', true)
-        .order('full_name'),
-      supabase.from('profiles').select('id, managed_areas')
-        .eq('role', 'area_manager')
-        .eq('is_active', true),
+      supabase.from('profiles').select('id, managed_areas').eq('role', 'area_manager').eq('is_active', true),
     ])
-    if (branchesRes.error || districtManagersRes.error || headStoresRes.error || areaManagersRes.error) {
-      throw new Error(branchesRes.error?.message || districtManagersRes.error?.message || headStoresRes.error?.message || areaManagersRes.error?.message || 'Gagal memuat daftar KPI.')
+    if (branchesRes.error || allProfilesRes.error || areaManagersRes.error) {
+      throw new Error(branchesRes.error?.message || allProfilesRes.error?.message || 'Gagal memuat daftar KPI.')
     }
-    const headStores = (headStoresRes.data || []).map((person) => normalizeProfile(person, { has_area_manager: true }))
-    const districtManagers = (districtManagersRes.data || []).map((manager) => normalizeProfile(manager, {
-      has_area_manager: hasAreaManagerForDistrict(branchesRes.data || [], areaManagersRes.data || [], manager.managed_districts || []),
+    const branchMap = Object.fromEntries((branchesRes.data || []).map((b) => [b.id, b]))
+    const people = (allProfilesRes.data || []).map((p) => normalizeProfile(p, {
+      has_area_manager: p.role === 'district_manager'
+        ? hasAreaManagerForDistrict(branchesRes.data || [], areaManagersRes.data || [], p.managed_districts || [])
+        : true,
+      branch_name: branchMap[p.branch_id]?.name || null,
     }))
-    return [...headStores, ...districtManagers]
+    return { people, branchMap }
   }
 
-  if (profile.role === 'trainer') {
-    return []
-  }
-
-  return []
+  return { people: [], branchMap: {} }
 }
 
 function aggregateScoreRows(items, scores) {
@@ -169,12 +164,9 @@ function aggregateScoreRows(items, scores) {
     if (!byItem[row.item_key]) byItem[row.item_key] = []
     byItem[row.item_key].push(row)
   })
-
   return items.map((item) => {
     const rows = byItem[item.item_key] || []
-    const avgScore = rows.length
-      ? rows.reduce((sum, row) => sum + row.score, 0) / rows.length
-      : 0
+    const avgScore = rows.length ? rows.reduce((sum, row) => sum + row.score, 0) / rows.length : 0
     return { item, rows, avgScore }
   })
 }
@@ -209,9 +201,7 @@ function KPIScorecard({ staff, period, viewerRole, canVerify, onVerified }) {
           .eq('staff_id', staff.id).eq('period_month', period),
       ])
       if (itemsRes.error || scoresRes.error) {
-        setItems([])
-        setScores([])
-        setEvaluatorMap({})
+        setItems([]); setScores([]); setEvaluatorMap({})
         setError(itemsRes.error?.message || scoresRes.error?.message || 'Gagal memuat KPI personal.')
         setLoading(false)
         return
@@ -222,18 +212,17 @@ function KPIScorecard({ staff, period, viewerRole, canVerify, onVerified }) {
       let nextEvaluatorMap = {}
       if (scorerIds.length) {
         const { data: scorers, error: scorerError } = await supabase
-          .from('profiles')
-          .select('id, full_name, role')
-          .in('id', scorerIds)
+          .from('profiles').select('id, full_name, role').in('id', scorerIds)
         if (scorerError) {
           setError(scorerError.message || 'Gagal memuat penilai KPI.')
           setLoading(false)
           return
         }
-        nextEvaluatorMap = Object.fromEntries((scorers || []).map((scorer) => [scorer.id, scorer]))
+        nextEvaluatorMap = Object.fromEntries((scorers || []).map((s) => [s.id, s]))
       }
 
-      setItems((itemsRes.data || []).length ? (itemsRes.data || []) : getDefaultPersonalItems(staff.role))
+      const resolvedItems = (itemsRes.data || []).length ? (itemsRes.data || []) : getDefaultPersonalItems(staff.role)
+      setItems(resolvedItems)
       setScores(nextScores)
       setEvaluatorMap(nextEvaluatorMap)
       setLoading(false)
@@ -242,15 +231,12 @@ function KPIScorecard({ staff, period, viewerRole, canVerify, onVerified }) {
   }, [staff, period])
 
   const aggregated = useMemo(() => aggregateScoreRows(items, scores), [items, scores])
+  const itemNameMap = useMemo(() => Object.fromEntries(items.map((i) => [i.item_key, i.item_name])), [items])
   const isVerified = scores.some((row) => !!row.verified_at)
   const totalWeighted = aggregated.reduce((sum, entry) => sum + entry.avgScore * (entry.item.contribution / 100), 0)
   const grade = gradeInfo(totalWeighted)
   const expectedRoles = expectedEvaluatorRoles(staff)
-  const submittedRoles = new Set(
-    scores
-      .map((row) => evaluatorMap[row.scored_by]?.role)
-      .filter(Boolean)
-  )
+  const submittedRoles = new Set(scores.map((row) => evaluatorMap[row.scored_by]?.role).filter(Boolean))
   const readyToVerify = expectedRoles.length > 0 && expectedRoles.every((role) => submittedRoles.has(role))
 
   const evaluatorGroups = useMemo(() => {
@@ -275,23 +261,22 @@ function KPIScorecard({ staff, period, viewerRole, canVerify, onVerified }) {
       .update({ verified_at: new Date().toISOString(), verified_by: user?.id || null })
       .eq('staff_id', staff.id)
       .eq('period_month', period)
-
     if (verifyError) {
       setError(verifyError.message || 'Gagal memverifikasi KPI.')
       setVerifying(false)
       return
     }
-
     setVerifying(false)
     onVerified()
   }
 
   if (loading) return <div className="flex justify-center py-8"><div className="h-7 w-7 animate-spin rounded-full border-2 border-primary-600 border-t-transparent" /></div>
   if (error) return <EmptyPanel title="KPI tidak bisa dimuat" description={error} />
-  if (!scores.length) return <EmptyPanel title="Belum ada data KPI" description="Belum ada data KPI untuk periode ini." />
+  if (!scores.length) return <EmptyPanel title="Belum ada data KPI" description="Belum ada penilaian untuk periode ini." />
 
   return (
     <div className="space-y-4">
+      {/* Skor summary */}
       <div className="rounded-2xl border border-primary-100 bg-gradient-to-br from-primary-50 to-white p-5">
         <div className="mb-3 flex items-start justify-between">
           <div>
@@ -309,12 +294,13 @@ function KPIScorecard({ staff, period, viewerRole, canVerify, onVerified }) {
         </div>
       </div>
 
+      {/* Verifikasi */}
       {canVerify && !isVerified && (
         <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4">
           <div className="text-sm font-semibold text-amber-800">Verifikasi KPI</div>
           <div className="mt-1 text-xs text-amber-700">
             {readyToVerify
-              ? `Semua penilai wajib untuk ${roleLabel(staff.role)} sudah mengisi.`
+              ? `Semua penilai wajib sudah mengisi.`
               : `Menunggu input dari: ${expectedRoles.filter((role) => !submittedRoles.has(role)).map(roleLabel).join(', ')}`}
           </div>
           <button
@@ -328,14 +314,15 @@ function KPIScorecard({ staff, period, viewerRole, canVerify, onVerified }) {
         </div>
       )}
 
-      <SectionPanel title="Rincian Per Item">
+      {/* Rincian per item */}
+      <SectionPanel title="Rincian Per Item" eyebrow="KPI Items">
         <div className="divide-y divide-slate-100">
           {aggregated.map(({ item, avgScore, rows }) => (
             <div key={item.item_key} className="px-4 py-3">
               <div className="mb-1.5 flex items-center justify-between">
                 <div className="min-w-0 flex-1">
                   <div className="text-xs font-semibold text-slate-800">{item.item_name}</div>
-                  <div className="mt-0.5 text-[10px] text-slate-500">{rows.length} input penilai</div>
+                  <div className="mt-0.5 text-[10px] text-slate-500">{rows.length} input penilai · target: {item.target}</div>
                 </div>
                 <span className="ml-2 text-[10px] text-slate-400">{item.contribution}%</span>
               </div>
@@ -345,23 +332,40 @@ function KPIScorecard({ staff, period, viewerRole, canVerify, onVerified }) {
         </div>
       </SectionPanel>
 
+      {/* Input penilai + catatan */}
       {evaluatorGroups.length > 0 && (
-        <SectionPanel title={`Input Penilai (${evaluatorGroups.length})`}>
+        <SectionPanel title={`Input Penilai (${evaluatorGroups.length})`} eyebrow="Catatan Penilai">
           <div className="divide-y divide-slate-100">
             {evaluatorGroups.map(({ id, scorer, rows }) => (
-              <div key={id} className="px-4 py-3">
+              <div key={id} className="px-4 py-4">
                 <div className="text-xs font-semibold text-slate-800">{scorer?.full_name || 'Penilai'}</div>
-                <div className="text-[10px] text-slate-500">{roleLabel(scorer?.role)}</div>
+                <div className="text-[10px] text-slate-500 mb-2">{roleLabel(scorer?.role)}</div>
+
+                {/* Skor per item dari penilai ini */}
+                <div className="space-y-1.5 mb-3">
+                  {rows.map((row) => (
+                    <div key={row.item_key} className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-1.5">
+                      <span className="text-[11px] text-slate-600 flex-1 min-w-0 truncate">
+                        {itemNameMap[row.item_key] || row.item_key}
+                      </span>
+                      <span className="ml-2 shrink-0 text-xs font-bold text-primary-700">{row.score} / 5</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Catatan per item */}
                 {rows.some((row) => row.notes) ? (
-                  <div className="mt-2 space-y-1">
+                  <div className="space-y-1">
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Catatan</div>
                     {rows.filter((row) => row.notes).map((row) => (
-                      <div key={`${id}-${row.item_key}`} className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600">
-                        <span className="font-semibold">{row.item_key}</span>: {row.notes}
+                      <div key={`${id}-${row.item_key}-note`} className="rounded-xl bg-blue-50 border border-blue-100 px-3 py-2 text-xs text-slate-700">
+                        <span className="font-semibold text-blue-700">{itemNameMap[row.item_key] || row.item_key}:</span>{' '}
+                        {row.notes}
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="mt-2 text-xs italic text-slate-400">Tidak ada catatan.</div>
+                  <div className="text-xs italic text-slate-400">Tidak ada catatan dari penilai ini.</div>
                 )}
               </div>
             ))}
@@ -382,19 +386,24 @@ export default function KPIPersonalPage() {
   const { profile } = useAuth()
   const [period, setPeriod] = useState(currentPeriodWIB())
   const [staffList, setStaffList] = useState([])
+  const [branchMap, setBranchMap] = useState({})
+  const [selectedBranchId, setSelectedBranchId] = useState('all')
   const [selectedStaff, setSelectedStaff] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [reloadKey, setReloadKey] = useState(0)
+
+  const isOpsWide = profile?.role === 'ops_manager' || profile?.role === 'support_spv'
 
   const loadStaff = useCallback(async () => {
     if (!profile) return
     setLoading(true)
     setError('')
     try {
-      const list = await loadVisiblePeople(profile)
-      setStaffList(list)
-      setSelectedStaff((current) => list.find((person) => person.id === current?.id) || list[0] || null)
+      const { people, branchMap: bMap } = await loadVisiblePeople(profile)
+      setStaffList(people)
+      setBranchMap(bMap)
+      setSelectedStaff((current) => people.find((p) => p.id === current?.id) || people[0] || null)
     } catch (err) {
       setStaffList([])
       setSelectedStaff(null)
@@ -406,11 +415,40 @@ export default function KPIPersonalPage() {
 
   useEffect(() => { loadStaff() }, [loadStaff, reloadKey])
 
+  // Unique branches untuk filter
+  const branchOptions = useMemo(() => {
+    if (!isOpsWide) return []
+    const seen = new Map()
+    staffList.forEach((p) => {
+      if (p.branch_id && !seen.has(p.branch_id)) {
+        seen.set(p.branch_id, branchMap[p.branch_id]?.name || p.branch_name || p.branch_id)
+      }
+    })
+    return [['all', 'Semua Toko'], ...Array.from(seen.entries()).sort((a, b) => a[1].localeCompare(b[1]))]
+  }, [staffList, branchMap, isOpsWide])
+
+  const filteredStaff = useMemo(() => {
+    if (!isOpsWide || selectedBranchId === 'all') return staffList
+    return staffList.filter((p) => p.branch_id === selectedBranchId || (!p.branch_id && selectedBranchId === 'none'))
+  }, [staffList, selectedBranchId, isOpsWide])
+
+  // Saat filter toko berubah, reset selected staff
+  useEffect(() => {
+    setSelectedStaff((cur) => filteredStaff.find((p) => p.id === cur?.id) || filteredStaff[0] || null)
+  }, [filteredStaff])
+
   const canVerifySelected = selectedStaff ? canVerifyKpiTarget(profile?.role, selectedStaff.role) : false
+
+  const personLabel = (staff) => {
+    const branch = branchMap[staff.branch_id]?.name || staff.branch_name
+    const branchSuffix = branch ? ` — ${branch.replace('Bagi Kopi - ', '')}` : ''
+    return `${staff.full_name} (${roleLabel(staff.role)})${branchSuffix}`
+  }
 
   return (
     <SubpageShell title="KPI Personal" subtitle="Scorecard penilaian bulanan" eyebrow="KPI Personal" footer={<SmartBottomNav />}>
       <div className="mx-auto max-w-2xl space-y-4 px-4 py-5 pb-32">
+        {/* Filter Periode */}
         <select
           value={period}
           onChange={(e) => setPeriod(e.target.value)}
@@ -419,14 +457,28 @@ export default function KPIPersonalPage() {
           {lastNPeriods(6).map((p) => <option key={p} value={p}>{periodLabel(p)}</option>)}
         </select>
 
-        {staffList.length > 0 && (
+        {/* Filter Toko (ops_manager only) */}
+        {isOpsWide && branchOptions.length > 1 && (
           <select
-            value={selectedStaff?.id || ''}
-            onChange={(e) => setSelectedStaff(staffList.find((staff) => staff.id === e.target.value) || null)}
+            value={selectedBranchId}
+            onChange={(e) => setSelectedBranchId(e.target.value)}
             className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 focus:border-primary-400 focus:outline-none"
           >
-            {staffList.map((staff) => (
-              <option key={staff.id} value={staff.id}>{staff.full_name} - {roleLabel(staff.role)}</option>
+            {branchOptions.map(([id, name]) => (
+              <option key={id} value={id}>{name}</option>
+            ))}
+          </select>
+        )}
+
+        {/* Pilih Orang */}
+        {filteredStaff.length > 0 && (
+          <select
+            value={selectedStaff?.id || ''}
+            onChange={(e) => setSelectedStaff(filteredStaff.find((s) => s.id === e.target.value) || null)}
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 focus:border-primary-400 focus:outline-none"
+          >
+            {filteredStaff.map((staff) => (
+              <option key={staff.id} value={staff.id}>{personLabel(staff)}</option>
             ))}
           </select>
         )}
@@ -436,7 +488,7 @@ export default function KPIPersonalPage() {
         ) : error ? (
           <EmptyPanel title="Daftar staff tidak bisa dimuat" description={error} />
         ) : !selectedStaff ? (
-          <EmptyPanel title="Belum ada data KPI" description="Pilih staff untuk melihat KPI." />
+          <EmptyPanel title="Belum ada data KPI" description={filteredStaff.length === 0 ? "Tidak ada staff di toko ini." : "Pilih staff untuk melihat KPI."} />
         ) : (
           <KPIScorecard
             key={`${selectedStaff.id}-${period}-${reloadKey}`}
@@ -444,7 +496,7 @@ export default function KPIPersonalPage() {
             period={period}
             viewerRole={profile?.role}
             canVerify={canVerifySelected}
-            onVerified={() => setReloadKey((value) => value + 1)}
+            onVerified={() => setReloadKey((v) => v + 1)}
           />
         )}
       </div>
