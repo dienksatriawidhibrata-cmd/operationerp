@@ -299,7 +299,17 @@ export const DEFAULT_SHIFTS = [
 ]
 
 export function getBranchShifts(branchName) {
-  return BRANCH_SHIFTS[branchName] || DEFAULT_SHIFTS
+  if (!branchName) return DEFAULT_SHIFTS
+  // Exact match
+  if (BRANCH_SHIFTS[branchName]) return BRANCH_SHIFTS[branchName]
+  // DB uses 'Bagi Kopi Melong', constants use 'Bagi Kopi - Melong'
+  // Try inserting ' - ' after 'Bagi Kopi '
+  const normalized = branchName.replace(/^Bagi Kopi\s+(?!-)/, 'Bagi Kopi - ')
+  if (BRANCH_SHIFTS[normalized]) return BRANCH_SHIFTS[normalized]
+  // Try removing ' - ' (reverse direction)
+  const withoutDash = branchName.replace(/^Bagi Kopi\s+-\s+/, 'Bagi Kopi ')
+  if (BRANCH_SHIFTS[withoutDash]) return BRANCH_SHIFTS[withoutDash]
+  return DEFAULT_SHIFTS
 }
 
 export const AUDIT_SECTIONS = [
