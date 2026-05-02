@@ -287,7 +287,7 @@ export default function KPI360ResultsPage() {
 
   return (
     <SubpageShell title="Hasil KPI 360" subtitle="Rekap penilaian rekan kerja" eyebrow="KPI 360" footer={<SmartBottomNav />}>
-      <div className="mx-auto max-w-5xl space-y-6">
+      <div className="mx-auto max-w-5xl space-y-6 px-4 pb-32">
         <SectionPanel
           eyebrow="Filter"
           title="Pilih Periode dan Grup"
