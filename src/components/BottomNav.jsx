@@ -324,9 +324,9 @@ export function SmartBottomNav() {
   const { profile } = useAuth()
   const role = profile?.role
   if (SUPER_ADMIN_ROLES.includes(role)) return <OpsBottomNav />
-  if (isOpsLikeRole(role))       return <OpsBottomNav />
-  if (isManagerRole(role))       return <DMBottomNav />
-  if (isStoreRole(role))         return <StaffBottomNav />
+  if (isOpsLikeRole(role, profile))       return <OpsBottomNav />
+  if (isManagerRole(role, profile))       return <DMBottomNav />
+  if (isStoreRole(role, profile))         return <StaffBottomNav />
   if (role === 'trainer')        return <TrainerBottomNav />
   if (isFinanceRole(role))       return <FinanceBottomNav />
   if (role === 'auditor')        return <AuditorBottomNav />

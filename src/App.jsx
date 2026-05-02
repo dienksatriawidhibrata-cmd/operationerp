@@ -20,6 +20,7 @@ import {
   SUPER_ADMIN_ROLES,
   TASK_ASSIGNEE_ROLES,
   TRAINER_ROLES,
+  SANDBOX_USER_EMAIL,
 } from './lib/access'
 
 import Login from './pages/Login'
@@ -120,7 +121,7 @@ function RequireAuth({ children, roles }) {
   if (!user) return <Navigate to="/login" replace />
   if (!profile) return <AuthScreen message={profileError || 'Menghubungkan data profil...'} />
   if (profile.is_active === false) return <DeactivatedScreen onSignOut={signOut} />
-  if (roles && !roles.includes(profile.role)) return <Navigate to="/" replace />
+  if (roles && !roles.includes(profile.role) && profile.email !== SANDBOX_USER_EMAIL) return <Navigate to="/" replace />
 
   return <Suspense fallback={<PageLoader />}>{children}</Suspense>
 }

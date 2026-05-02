@@ -10,6 +10,7 @@ export const SC_ROLES = ['purchasing_admin', 'warehouse_admin', 'picking_spv', '
 export const TRAINER_ROLES = ['trainer', 'ops_manager', ...SUPPORT_PEOPLE_ROLES]
 export const OJE_ROLES = ['trainer', 'ops_manager', ...SUPPORT_PEOPLE_ROLES, 'head_store', 'district_manager', 'area_manager']
 export const HR_ROLES = ['hr_staff', 'hr_spv', 'hr_legal', 'hr_administrator']
+export const SANDBOX_USER_EMAIL = 'tester@bagikopi.id'
 
 export const KPI_ALLOWED_ROLES = [...STORE_ROLES, ...MANAGER_ROLES, ...SUPPORT_PEOPLE_ROLES]
 export const KPI_PERSONAL_VIEW_ROLES = [...STORE_ROLES, ...MANAGER_ROLES, ...SUPPORT_PEOPLE_ROLES, 'trainer']
@@ -24,11 +25,15 @@ export const KPI_PERSONAL_STORE_TARGET_ROLES = ['staff', 'barista', 'kitchen', '
 export const KPI_PERSONAL_MANAGER_TARGET_ROLES = ['head_store', 'district_manager']
 export const KPI_PERSONAL_TARGET_ROLES = [...KPI_PERSONAL_STORE_TARGET_ROLES, ...KPI_PERSONAL_MANAGER_TARGET_ROLES]
 
-export function isStoreRole(role) {
+export function isStoreRole(role, profile) {
+  if (profile?.email === SANDBOX_USER_EMAIL) return true
+
   return STORE_ROLES.includes(role)
 }
 
-export function isManagerRole(role) {
+export function isManagerRole(role, profile) {
+  if (profile?.email === SANDBOX_USER_EMAIL) return true
+
   return MANAGER_ROLES.includes(role)
 }
 
@@ -44,7 +49,9 @@ export function isSupportFinanceRole(role) {
   return SUPPORT_FINANCE_ROLES.includes(role)
 }
 
-export function isOpsLikeRole(role) {
+export function isOpsLikeRole(role, profile) {
+  if (profile?.email === SANDBOX_USER_EMAIL) return true
+
   return role === 'ops_manager' || SUPPORT_ROLES.includes(role)
 }
 
@@ -141,7 +148,7 @@ export function getScopedBranches(branches = [], profile) {
     return branches.filter((branch) => areas.has(branch.area))
   }
 
-  if (isOpsLikeRole(profile.role) || isSupplyChainRole(profile.role)) {
+  if (isOpsLikeRole(profile.role, profile) || isSupplyChainRole(profile.role)) {
     return branches
   }
 
@@ -163,7 +170,7 @@ export function getScopeLabel(profile, branches = []) {
     return `Area ${(profile.managed_areas || []).join(', ') || '-'}`
   }
 
-  if (isOpsLikeRole(profile.role)) {
+  if (isOpsLikeRole(profile.role, profile)) {
     return `${branches.length} toko aktif`
   }
 

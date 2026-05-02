@@ -292,6 +292,8 @@ export const BRANCH_SHIFTS = {
   'Bagi Kopi - Subang':          [S('DAY OFF'), S('OPENING','08:30 - 17:00'), S('MIDDLE 1','13:00 - 21:00'), S('CLOSING','14:00 - 22:00')],
   'Bagi Kopi - Sulanjana':       [S('DAY OFF'), S('OPENING','08:00 - 16:00'), S('CLOSING','13:00 - 21:00')],
   'Bagi Kopi - Ujung Berung':    [S('DAY OFF'), S('OPENING','06:30 - 15:00'), S('MIDDLE 1','11:00 - 19:00'), S('MIDDLE 2','15:00 - 23:00'), S('CLOSING','19:00 - 03:00')],
+  'Bagi Kopi - Lab':             [S('DAY OFF'), S('OPENING','06:30 - 15:00'), S('MIDDLE 1','11:00 - 19:00'), S('MIDDLE 2','15:00 - 23:00'), S('CLOSING','19:00 - 03:00')],
+
 }
 
 export const DEFAULT_SHIFTS = [
