@@ -260,7 +260,7 @@ export const AUDIT_MAX_SCORE = 110
 // Per-branch shift config (from Shift.xlsx)
 const S = (shift, hour) => ({ shift, hour: hour || null })
 export const BRANCH_SHIFTS = {
-  'Bagi Kopi - Bintaro':         [S('DAY OFF'), S('OPENING','06:30 - 14:30'), S('MIDDLE 1','11:00 - 19:00'), S('MIDDLE 2','15:00 - 23:00'), S('CLOSING','19:00 - 03:00')],
+  'Bagi Kopi - Bintaro':         [S('DAY OFF'), S('OPENING','06:30 - 14:30'), S('MIDDLE 1','11:00 - 19:00'), S('CLOSING','15:00 - 23:00')],
   'Bagi Kopi - Buah Batu':       [S('DAY OFF'), S('OPENING','06:30 - 15:00'), S('MIDDLE 1','11:00 - 19:00'), S('MIDDLE 2','15:00 - 23:00'), S('CLOSING','19:00 - 03:00')],
   'Bagi Kopi - Cawang':          [S('DAY OFF'), S('OPENING','06:30 - 14:30'), S('MIDDLE 1','11:00 - 19:00'), S('MIDDLE 2','15:00 - 23:00'), S('CLOSING','19:00 - 03:00')],
   'Bagi Kopi - Cilandak Barat':  [S('DAY OFF'), S('OPENING','06:30 - 14:30'), S('MIDDLE 1','11:00 - 19:00'), S('CLOSING','15:00 - 23:00')],
@@ -270,22 +270,22 @@ export const BRANCH_SHIFTS = {
   'Bagi Kopi - Ciputat Juanda':  [S('DAY OFF'), S('OPENING','06:30 - 14:30'), S('MIDDLE 1','11:00 - 19:00'), S('MIDDLE 2','15:00 - 23:00'), S('CLOSING','19:00 - 03:00')],
   'Bagi Kopi - Citraland':       [S('DAY OFF'), S('OPENING','06:30 - 15:00'), S('MIDDLE 1','11:00 - 19:00'), S('MIDDLE 2','14:00 - 22:00'), S('CLOSING','17:00 - 01:00')],
   'Bagi Kopi - Ciumbuleuit':     [S('DAY OFF'), S('OPENING','06:30 - 15:00'), S('MIDDLE 1','11:00 - 19:00'), S('MIDDLE 2','15:00 - 23:00'), S('CLOSING','19:00 - 03:00')],
-  'Bagi Kopi - Jatinangor':      [S('DAY OFF'), S('OPENING','06:30 - 15:00'), S('MIDDLE 1','12:00 - 20:00'), S('CLOSING','16:00 - 00:00')],
+  'Bagi Kopi - Jatinangor':      [S('DAY OFF'), S('OPENING','06:30 - 14:30'), S('MIDDLE 1','11:00 - 19:00'), S('MIDDLE 2','15:00 - 23:00'), S('CLOSING','19:00 - 03:00')],
   'Bagi Kopi - Kalimalang':      [S('DAY OFF'), S('OPENING','06:30 - 14:30'), S('MIDDLE 1','11:00 - 19:00'), S('MIDDLE 2','15:00 - 23:00'), S('CLOSING','19:00 - 03:00')],
   'Bagi Kopi - Karawaci':        [S('DAY OFF'), S('OPENING','06:30 - 14:30'), S('MIDDLE 1','11:00 - 19:00'), S('MIDDLE 2','15:00 - 23:00'), S('CLOSING','19:00 - 03:00')],
   'Bagi Kopi - Kayu Putih':      [S('DAY OFF'), S('OPENING','06:30 - 14:30'), S('MIDDLE 1','12:00 - 20:00'), S('MIDDLE 1 WEEKEND','11:00 - 19:00'), S('MIDDLE 2 WEEKEND','15:00 - 23:00'), S('CLOSING','16:00 - 24:00'), S('CLOSING WEEKEND','19:00 - 03:00')],
   'Bagi Kopi - Kemang Utara':    [S('DAY OFF'), S('OPENING','06:30 - 14:30'), S('MIDDLE 1','11:00 - 19:00'), S('MIDDLE 2','15:00 - 23:00'), S('CLOSING','19:00 - 03:00')],
   'Bagi Kopi - Kiara Artha':     [S('DAY OFF'), S('OPENING','06:30 - 15:00'), S('MIDDLE 1','09:30 - 18:00'), S('MIDDLE 2','15:00 - 23:00'), S('CLOSING','19:00 - 03:00')],
-  'Bagi Kopi - Kota Wisata':     [S('DAY OFF'), S('OPENING','06:30 - 15:00'), S('MIDDLE 1','09:30 - 18:00'), S('MIDDLE 2','15:00 - 23:00'), S('CLOSING 1','16:00 - 00:00'), S('CLOSING 2','19:00 - 03:00')],
-  'Bagi Kopi - Kranggan':        [S('DAY OFF'), S('OPENING','06:30 - 15:00'), S('MIDDLE 1','11:00 - 19:00'), S('MIDDLE 2','15:00 - 23:00'), S('CLOSING','19:00 - 03:00')],
+  'Bagi Kopi - Kota Wisata':     [S('DAY OFF'), S('OPENING','06:30 - 14:30'), S('MIDDLE 1','09:30 - 18:00'), S('MIDDLE 2','15:00 - 23:00'), S('CLOSING 1','16:00 - 00:00'), S('CLOSING 2','19:00 - 03:00')],
+  'Bagi Kopi - Kranggan':        [S('DAY OFF'), S('OPENING','06:30 - 14:30'), S('MIDDLE 1','11:00 - 19:00'), S('MIDDLE 2','15:00 - 23:00'), S('CLOSING','19:00 - 03:00')],
   'Bagi Kopi - Lebak Bulus':     [S('DAY OFF'), S('OPENING','06:30 - 14:30'), S('MIDDLE 1','11:00 - 19:00'), S('MIDDLE 2','15:00 - 23:00'), S('CLOSING','19:00 - 03:00')],
-  'Bagi Kopi - Lenteng Agung':   [S('DAY OFF'), S('OPENING','06:30 - 15:00'), S('MIDDLE 1','11:00 - 19:00'), S('MIDDLE 2','15:00 - 23:00'), S('CLOSING','19:00 - 03:00')],
-  'Bagi Kopi - Margonda Raya':   [S('DAY OFF'), S('OPENING','06:30 - 15:00'), S('MIDDLE 1','12:00 - 20:00'), S('CLOSING','16:00 - 00:00')],
+  'Bagi Kopi - Lenteng Agung':   [S('DAY OFF'), S('OPENING','06:30 - 14:30'), S('MIDDLE 1','11:00 - 19:00'), S('MIDDLE 2','15:00 - 23:00'), S('CLOSING','19:00 - 03:00')],
+  'Bagi Kopi - Margonda Raya':   [S('DAY OFF'), S('OPENING','06:30 - 14:30'), S('OPENING 2','09:30 - 18:00'), S('MIDDLE 1','12:00 - 20:00'), S('CLOSING','16:00 - 00:00')],
   'Bagi Kopi - Margorejo':       [S('DAY OFF'), S('OPENING','08:30 - 16:30'), S('MIDDLE 1','12:00 - 20:00'), S('MIDDLE 2','15:00 - 23:00'), S('CLOSING','18:00 - 02:00')],
   'Bagi Kopi - Melong':          [S('DAY OFF'), S('OPENING','06:30 - 15:00'), S('MIDDLE 1','09:30 - 18:00'), S('MIDDLE 2','15:00 - 23:00'), S('CLOSING','19:00 - 03:00')],
   'Bagi Kopi - Metro':           [S('DAY OFF'), S('OPENING','06:30 - 15:00'), S('MIDDLE 1','09:30 - 18:00'), S('MIDDLE 2','15:00 - 23:00'), S('CLOSING','19:00 - 03:00')],
   'Bagi Kopi - Pamulang':        [S('DAY OFF'), S('OPENING','06:30 - 14:30'), S('MIDDLE 1','11:00 - 19:00'), S('MIDDLE 2','15:00 - 23:00'), S('CLOSING','19:00 - 03:00')],
-  'Bagi Kopi - Pekayon':         [S('DAY OFF'), S('OPENING','06:30 - 15:00'), S('MIDDLE 1','11:00 - 19:00'), S('MIDDLE 2','15:00 - 23:00'), S('CLOSING','19:00 - 03:00')],
+  'Bagi Kopi - Pekayon':         [S('DAY OFF'), S('OPENING','06:30 - 14:30'), S('MIDDLE 1','11:00 - 19:00'), S('MIDDLE 2','15:00 - 23:00'), S('CLOSING','19:00 - 03:00')],
   'Bagi Kopi - Pengumben':       [S('DAY OFF'), S('OPENING','06:30 - 14:30'), S('MIDDLE 1','11:00 - 19:00'), S('MIDDLE 2','15:00 - 23:00'), S('CLOSING','19:00 - 03:00')],
   'Bagi Kopi - Peta':            [S('DAY OFF'), S('OPENING','06:30 - 15:00'), S('MIDDLE 1','11:00 - 19:00'), S('MIDDLE 2','15:00 - 23:00'), S('CLOSING','19:00 - 03:00')],
   'Bagi Kopi - Setu Cipayung':   [S('DAY OFF'), S('OPENING','06:30 - 14:30'), S('MIDDLE 1','11:00 - 19:00'), S('MIDDLE 2','15:00 - 23:00'), S('CLOSING','19:00 - 03:00')],
@@ -300,17 +300,25 @@ export const DEFAULT_SHIFTS = [
   S('DAY OFF'), S('OPENING','06:30 - 14:30'), S('MIDDLE 1','11:00 - 19:00'), S('MIDDLE 2','15:00 - 23:00'), S('CLOSING','19:00 - 03:00'),
 ]
 
+const BRANCH_SHIFT_ALIASES = {
+  'Bagi Kopi Margonda': 'Bagi Kopi - Margonda Raya',
+  'Bagi Kopi Cimahi': 'Bagi Kopi - Cimahi Tengah',
+}
+
 export function getBranchShifts(branchName) {
   if (!branchName) return DEFAULT_SHIFTS
   // Exact match
   if (BRANCH_SHIFTS[branchName]) return BRANCH_SHIFTS[branchName]
+  if (BRANCH_SHIFT_ALIASES[branchName]) return BRANCH_SHIFTS[BRANCH_SHIFT_ALIASES[branchName]]
   // DB uses 'Bagi Kopi Melong', constants use 'Bagi Kopi - Melong'
   // Try inserting ' - ' after 'Bagi Kopi '
   const normalized = branchName.replace(/^Bagi Kopi\s+(?!-)/, 'Bagi Kopi - ')
   if (BRANCH_SHIFTS[normalized]) return BRANCH_SHIFTS[normalized]
+  if (BRANCH_SHIFT_ALIASES[normalized]) return BRANCH_SHIFTS[BRANCH_SHIFT_ALIASES[normalized]]
   // Try removing ' - ' (reverse direction)
   const withoutDash = branchName.replace(/^Bagi Kopi\s+-\s+/, 'Bagi Kopi ')
   if (BRANCH_SHIFTS[withoutDash]) return BRANCH_SHIFTS[withoutDash]
+  if (BRANCH_SHIFT_ALIASES[withoutDash]) return BRANCH_SHIFTS[BRANCH_SHIFT_ALIASES[withoutDash]]
   return DEFAULT_SHIFTS
 }
 
