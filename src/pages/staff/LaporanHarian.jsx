@@ -31,6 +31,7 @@ export default function LaporanHarian() {
   const [isEditingLaporan, setIsEditingLaporan] = useState(false)
 
   const [setoran, setSetoran] = useState(null)
+  const [setoranDate, setSetoranDate] = useState(yesterday)
   const [cashPos, setCashPos] = useState('')
   const [cashSetor, setCashSetor] = useState('')
   const [alasan, setAlasan] = useState('')
@@ -46,7 +47,7 @@ export default function LaporanHarian() {
       return
     }
     fetchData()
-  }, [branchId])
+  }, [branchId, setoranDate])
 
   useEffect(() => {
     if (loading || !location.hash) return
@@ -60,9 +61,11 @@ export default function LaporanHarian() {
   }, [loading, location.hash])
 
   const fetchData = async () => {
+    setLoading(true)
+    setError('')
     const [lapRes, setRes] = await Promise.all([
       supabase.from('daily_reports').select('*').eq('branch_id', branchId).eq('tanggal', yesterday).maybeSingle(),
-      supabase.from('daily_deposits').select('*').eq('branch_id', branchId).eq('tanggal', yesterday).maybeSingle(),
+      supabase.from('daily_deposits').select('*').eq('branch_id', branchId).eq('tanggal', setoranDate).maybeSingle(),
     ])
 
     if (lapRes.error) {
@@ -89,6 +92,12 @@ export default function LaporanHarian() {
       setCashSetor(setRes.data.cash_disetorkan)
       setAlasan(setRes.data.alasan_selisih || '')
       setFotoBukti(setRes.data.foto_bukti || [])
+    } else {
+      setSetoran(null)
+      setCashPos('')
+      setCashSetor('')
+      setAlasan('')
+      setFotoBukti([])
     }
     setLoading(false)
   }
@@ -146,7 +155,7 @@ export default function LaporanHarian() {
 
     const payload = {
       branch_id: branchId,
-      tanggal: yesterday,
+      tanggal: setoranDate,
       cash_pos: Number(cashPos),
       cash_disetorkan: Number(cashSetor),
       alasan_selisih: alasan || null,
@@ -175,6 +184,11 @@ export default function LaporanHarian() {
   const laporanDone = !!laporan && !isEditingLaporan
   const setoranEditable = !setoran || setoran.status === 'rejected'
   const reportDateLabel = new Date(yesterday).toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+  const setoranDateLabel = new Date(`${setoranDate}T00:00:00`).toLocaleDateString('id-ID', {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
@@ -329,10 +343,21 @@ export default function LaporanHarian() {
           <SectionPanel
             eyebrow="Cash Deposit"
             title="Form Setoran Cash"
-            description="Pastikan nominal, alasan selisih, dan bukti setoran lengkap sebelum dikirim."
+            description={`Pilih tanggal setoran lalu lengkapi nominal, alasan selisih, dan bukti setor untuk ${setoranDateLabel}.`}
             actions={setoran && <StatusPill status={setoran.status} />}
           >
             <div className="space-y-4">
+            <div>
+              <label className="label">Tanggal Setoran Cash</label>
+              <input
+                className="input"
+                type="date"
+                value={setoranDate}
+                onChange={(event) => setSetoranDate(event.target.value)}
+                disabled={savingSetoran}
+              />
+            </div>
+
             <div>
               <label className="label">Cash POS / Mesin Kasir (Rp)</label>
               <input
@@ -404,7 +429,7 @@ export default function LaporanHarian() {
               <label className="label">Foto Bukti Setoran</label>
               {setoranEditable ? (
                 <PhotoUpload
-                  folder={`setoran/${yesterday}`}
+                  folder={`setoran/${setoranDate}`}
                   value={fotoBukti}
                   onChange={setFotoBukti}
                   label="Upload Foto Slip / Struk Setoran"
